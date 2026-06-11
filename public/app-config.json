@@ -1,0 +1,7 @@
+{
+  "appName": "smalux",
+  "apiBaseUrl": "/api",
+  "wsBaseUrl": "/ws",
+  "rpcBaseUrl": "/rpc",
+  "theme": "system"
+}
