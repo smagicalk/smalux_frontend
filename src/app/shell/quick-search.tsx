@@ -54,7 +54,7 @@ export function QuickSearch({ className, compact = false }: QuickSearchProps) {
 
   return (
     <div className={cn("group/search relative min-w-0", className)}>
-      <label className="flex h-10 items-center gap-2 rounded-xl border border-white/45 bg-white/65 px-3 text-sm shadow-[var(--shadow-soft)] backdrop-blur dark:border-white/8 dark:bg-white/6">
+      <label className="flex h-9 items-center gap-2 rounded-md border border-border bg-card px-3 text-sm">
         <SearchIcon className="size-4 shrink-0 text-muted-foreground" aria-hidden />
         <input
           className="min-w-0 flex-1 bg-transparent text-sm outline-none"
@@ -70,10 +70,10 @@ export function QuickSearch({ className, compact = false }: QuickSearchProps) {
         />
       </label>
 
-      <div className="absolute left-0 right-0 top-12 z-30 hidden rounded-[1rem] border border-white/45 bg-[color:var(--surface-panel)] p-2 shadow-[var(--shadow-panel)] backdrop-blur group-focus-within/search:block dark:border-white/8">
+      <div className="absolute left-0 right-0 top-11 z-30 hidden rounded-md border border-border bg-card p-2 shadow-[var(--shadow-panel)] group-focus-within/search:block">
         <div className="mb-2 flex items-center justify-between px-2 py-1">
           <div className="min-w-0">
-            <p className="text-[10px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">
+            <p className="text-[11px] font-medium uppercase tracking-wider text-muted-foreground">
               {query ? "search" : "quick jump"}
             </p>
             {!query ? (
@@ -89,7 +89,7 @@ export function QuickSearch({ className, compact = false }: QuickSearchProps) {
               <button
                 key={item}
                 type="button"
-                className="rounded-md border border-border/70 bg-[color:var(--surface-muted)] px-2 py-1 text-[11px] font-medium text-muted-foreground transition hover:text-foreground"
+                className="rounded-md border border-border bg-muted px-2 py-1 text-[11px] font-medium text-muted-foreground transition-colors hover:text-foreground"
                 onMouseDown={(event) => event.preventDefault()}
                 onClick={() => setQuery(item)}
               >
@@ -106,7 +106,7 @@ export function QuickSearch({ className, compact = false }: QuickSearchProps) {
                 key={item.to}
                 to={item.to}
                 className={cn(
-                  "group flex items-center justify-between gap-3 rounded-lg border border-transparent transition hover:border-white/45 hover:bg-[color:var(--surface-muted)] dark:hover:border-white/8",
+                  "group flex items-center justify-between gap-3 rounded-lg border border-transparent transition-colors hover:bg-muted",
                   compact ? "p-2" : "p-2.5"
                 )}
                 onClick={() => setQuery("")}
@@ -114,7 +114,7 @@ export function QuickSearch({ className, compact = false }: QuickSearchProps) {
                 <div className="flex min-w-0 items-center gap-3">
                   <div
                     className={cn(
-                      "flex shrink-0 items-center justify-center rounded-lg bg-[color:var(--surface-muted)] text-muted-foreground dark:bg-white/8",
+                      "flex shrink-0 items-center justify-center rounded-lg bg-muted text-muted-foreground",
                       compact ? "size-8" : "size-8"
                     )}
                   >
@@ -132,7 +132,7 @@ export function QuickSearch({ className, compact = false }: QuickSearchProps) {
             ))}
           </div>
         ) : (
-          <div className="rounded-lg border border-dashed border-border/80 bg-[color:var(--surface-muted)] p-4 text-sm text-muted-foreground">
+          <div className="rounded-lg border border-dashed border-border bg-muted p-4 text-sm text-muted-foreground">
             没有匹配的后台模块
           </div>
         )}

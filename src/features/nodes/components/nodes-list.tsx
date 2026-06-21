@@ -11,9 +11,10 @@ import {
 
 type NodesListProps = {
   nodes: MonitorNode[];
+  onInspect: (node: MonitorNode) => void;
 };
 
-export function NodesList({ nodes }: NodesListProps) {
+export function NodesList({ nodes, onInspect }: NodesListProps) {
   if (nodes.length === 0) {
     return (
       <Card tone="muted">
@@ -32,9 +33,9 @@ export function NodesList({ nodes }: NodesListProps) {
 
   return (
     <>
-      <NodeMobileCards nodes={nodes} />
+      <NodeMobileCards nodes={nodes} onInspect={onInspect} />
       <div className="hidden md:block">
-        <NodesTable nodes={nodes} />
+        <NodesTable nodes={nodes} onInspect={onInspect} />
       </div>
     </>
   );

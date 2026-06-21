@@ -68,7 +68,7 @@
 - 页面不应该只是统一换肤，而应该按职责分成值班台、节点面、链路面、审计面、策略面、治理面。
 - 这轮额外确认后，总览页要减负，侧栏不能继续做成高卡片感壳层，每个页面只专注自己的主任务。
 - 需要明确：当前项目更接近“高完成度监控后台原型”，还不是“真实后端已打通的成品系统”。
-- 本轮继续拆分页面级组件后，主题页、部署页、日志页和公开状态页的页内职责更清晰，页面本身只保留状态和布局。
+- 本轮继续拆分页面级组件后，主题页、部署页、日志页、公开状态页、节点页、执行页、Ping 页、通知页和账户页的页内职责更清晰，页面本身只保留状态和布局。
 - 部署方式需要同时考虑：
   - 单独静态部署
   - Nginx 静态资源 + API/WS/RPC 反代
@@ -334,10 +334,50 @@ pnpm build
 ## 本轮补充
 
 - 继续补齐“点了没反应”的区域：总览页的 runtime status / overview metrics / recent events / 运维控制面，Ping 页的监测目标和安全限制，执行页的模板、定时任务和执行记录，通知页的模板行，主题页的参数/回滚/安全规则，设置页的颜色系统。
+- 执行页继续拆分为 `execution-overview-cards`、`execution-boundary-panels`、`execution-direct-panel`、`execution-template-panel`、`execution-scheduled-panel`、`execution-runs-panel`、`execution-terminal-panel`，页面入口只保留模板联动、目标选择和 toast 编排。
+- Ping 页继续拆分为 `ping-filters-panel`、`ping-targets-panel`、`ping-summary-card`、`ping-boundary-panels`、`ping-charts-panel`、`ping-security-rules-panel`，并新增 `model/ping-display.ts` 管理状态、分组、协议健康和安全规则展示元数据。
+- 通知页继续拆分为 `notification-overview-cards`、`notification-filters-panel`、`notification-channels-panel`、`notification-templates-panel`、`notification-policies-panel`、`notification-history-panel`，并新增 `model/notification-display.ts` 管理策略严重度和投递状态展示元数据。
+- 账户页继续拆分为 `account-overview-cards`、`account-filters-panel`、`account-users-panel`、`account-roles-panel`、`account-sessions-panel`，并新增 `model/account-display.ts` 管理账户状态展示元数据。
+- 节点页继续拆分为 `node-filters-panel`、`node-fleet-status-card`、`node-operations-card`、`node-agent-boundary-card`、`node-governance-card`，并新增 `model/node-display.ts` 管理状态颜色、Agent 接入、Token Scope 和区域治理展示元数据。
+- 节点列表组件 `nodes-list`、`nodes-table`、`node-mobile-cards` 不再直接调用 toast，改为接收 `onInspect` 回调，业务反馈统一留在页面层。
+- 设置页限制项继续拆分为 `setting-limits-filter-bar`、`setting-limits-summary`、`setting-limits-grid`，并新增 `model/setting-limits.ts` 管理主题上传、Ping、远程执行、通知、Agent 注册和日志保留参数。
+- `SettingLimitsCard` 现在只负责搜索状态、分组筛选、当前参数选择和保存草稿反馈，限制项数据与展示列表已下沉。
+- 总览页运维控制面继续拆分为 `operations-exception-card`、`recent-events-card`、`control-plane-card`，并新增 `model/operations.ts` 管理异常摘要和控制面入口数据。
+- 部署洞察继续拆分为 `deployment-charts-panel`、`deployment-runtime-injection-card`、`deployment-nginx-card`、`deployment-rust-embed-card`，并新增 `model/deployment-insights.ts` 管理运行时注入、Nginx 片段和 Rust 内置提示。
+- 主题库继续拆分为 `theme-library-filters`、`theme-library-list`、`theme-library-item`，并新增 `model/theme-display.ts` 管理主题生命周期状态展示元数据。
+- 公开状态页继续拆分为 `public-status-header`、`public-service-list`、`public-subscribe-card`、`public-region-card`、`public-service-status`，并新增 `model/public-status-summary.ts` 管理公开状态摘要和最近检查条。
+- 部署目标面板继续拆分为 `deployment-target-card` 和 `selected-deployment-summary`，单个部署模式卡片、选中方案摘要和页面选择状态职责分离。
+- 设置页安全洞察继续拆分为 `settings-security-insights` 和 `model/security-insights.ts`，安全覆盖率、配置成熟度、风险分层和限制项风险数据不再堆在页面文件。
+- 日志页继续抽离 `model/log-filters.ts`，搜索、模块、结果和时间窗口筛选变成可单测的纯函数；`log-list-panel` 不再直接调用 toast，改由页面传入 `onLogClick`。
+- 新增 `public-status-summary.test.ts` 与 `log-filters.test.ts`，覆盖公开状态摘要和日志筛选核心规则。
+- 节点页继续抽离 `model/node-filters.ts`，分组选项、搜索、状态和分组筛选成为可复用纯函数，并补 `node-filters.test.ts`。
+- 账户页继续抽离 `model/account-filters.ts`，角色/状态筛选、MFA/Passkey 可见用户摘要从页面下沉，并补 `account-filters.test.ts`。
+- 通知页继续抽离 `model/notification-filters.ts`，渠道类型筛选、投递状态筛选和通知概览摘要从页面下沉，并补 `notification-filters.test.ts`。
+- Ping 页继续抽离 `model/ping-filters.ts`，目标搜索、状态和协议筛选从页面下沉，并补 `ping-filters.test.ts`。
+- 公开节点快读区继续拆分为 `public-node-card` 和 `public-node-metric`，`public-fleet-section` 只保留标题、说明和列表编排。
+- 主题页继续抽离 `model/theme-insights.ts`，生命周期分布、参数类型聚合、上传趋势和上传限制从页面下沉，并补 `theme-insights.test.ts`。
+- 设置页限制项继续抽离 `model/setting-limit-filters.ts`，分组筛选、关键字筛选和可见行计数从组件下沉，并补 `setting-limit-filters.test.ts`。
+- 主题治理面板继续拆分为 `theme-upload-settings-card` 和 `theme-governance-charts`，`theme-governance-panel` 只保留布局编排。
+- 执行页继续抽离 `model/execution-selection.ts`，模板选择、审批模板计数、失败执行计数、风险标签、Token Scope 和影响范围从页面/组件下沉，并补 `execution-selection.test.ts`。
+- 部署页继续抽离 `model/deployment-page-insights.ts`，部署评分序列、缓存策略、交付复杂度和运行态分段从页面下沉，并补 `deployment-page-insights.test.ts`。
+- 执行直接面板继续拆分 `execution-confirmation-guard`，高风险二次确认提示和按钮从命令表单区域分离。
+- 重新搜索同类面板后，参考哪吒服务器公开备注里的账单周期、金额、到期、自动续费、流量配额和流量类型字段，将节点页操作命名从“添加节点”调整为“添加服务器”。
+- 新增共享 `Dialog` 组件，基于已安装的 `@radix-ui/react-dialog` 封装 Overlay、Content、Header、Title、Description、Body、Footer 和 Close。
+- 新增 `add-server-dialog`，表单包含服务器名称、价格金额/货币单位、计费周期（免费、按日、按周、按半月、按月、按年、按两年、按三年）、到期时间、永久有效、自动延续、流量计算方式（上行+下行、只算上行、只算下行）、额度和单位（GB/TB/PB）。
+- 新增 `model/server-create-form.ts` 和 `server-create-form.test.ts`，对服务器草稿表单做基础校验与提交摘要生成；提交仍为前端 mock toast，不代表真实后端已创建服务器。
+- 按“后台监控不需要悬浮、不要无意义信息”的反馈继续简化 `add-server-dialog`：删除头部摘要条、实时预览、安全边界说明、图标分区和描述文案，只保留标题、字段、错误提示和底部操作按钮。
+- `DialogContent` 现在支持 `closeClassName` 覆盖；共享 Dialog 默认去掉大阴影，遮罩保留克制半透明底层，避免弹窗看起来像展示页悬浮卡片。
+- 继续修复顶部后台监控标题栏：移除 header 内层圆角、阴影和半透明卡片样式，搜索框也去掉悬浮阴影；添加服务器弹窗的流量字段改为两列自适应布局，额度和单位不再挤在同一窄列。
+- 本轮 Playwright 坐标检查确认：顶部内层 `borderRadius=0px`、`boxShadow=none`；弹窗输入控件无重叠，桌面和移动端均无横向溢出。
+- 继续压平共享 `PageHeader`，去掉页面标题卡片的圆角、边框背景和阴影，只保留底部分隔线；添加服务器弹窗改成 `max-w-xl`、紧凑 `h-9` 输入控件，验证后弹窗高度从约 664px 降到约 576px。
+- 本轮 Playwright 复查：页面标题 `borderRadius=0px`、`boxShadow=none`，弹窗控件 `overlaps=[]`，桌面和移动端横向溢出均为 0。
+- 价格字段继续补充货币单位，支持 CNY、USD、EUR、GBP、JPY、HKD、TWD、SGD、AUD、CAD；提交摘要会输出金额和货币中文/代码，弹窗布局改为服务器名称独占一行、价格和货币同一行，避免重叠。
+- 本轮安全检测：`pnpm audit --audit-level low` 无已知漏洞；源码未命中 `dangerouslySetInnerHTML`、`eval(`、`new Function`、`innerHTML`；已移除 Google Fonts 远程请求；运行时端点增加相对路径或 http(s)/ws(s) scheme 校验；主题 localStorage 读写改为可降级。
+- 已删除依赖包目录 `node_modules/.pnpm/nanoid@3.3.12/node_modules/nanoid/.claude`，仓库内复查没有再命中 `.claude`。
 - 修正主题页的结构问题：外层主题卡片不再是嵌套按钮，改为可键盘访问的 `div role="button"`，内部 `参数` 和 `回滚` 按钮通过 `stopPropagation()` 独立工作。
 - 新起了本地 dev 服务 `http://127.0.0.1:5173`，用它验证最新源码而不是旧预览。
 - 已用 Playwright 抽样确认这些点击会在页面尾部生成对应 toast，包含总览刷新、Ping 异常、HTTP API、后台 API、执行模板、通知模板、主题参数、颜色 swatch 和主题安全规则。
-- 这轮验证仍然保持 `pnpm typecheck`、`pnpm lint`、`pnpm test`、`pnpm build` 全部通过。
+- 这轮验证仍然保持 `pnpm typecheck`、`pnpm lint`、`pnpm test`、`pnpm build` 全部通过；当前单元测试为 15 个文件、37 条用例。
 
 ## 下一步建议
 

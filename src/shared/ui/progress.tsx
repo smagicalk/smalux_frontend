@@ -11,10 +11,7 @@ export function Progress({ className, value, ...props }: ProgressProps) {
 
   return (
     <ProgressPrimitive.Root
-      className={cn(
-        "relative h-2.5 w-full overflow-hidden rounded-full bg-[color:var(--surface-muted)]",
-        className
-      )}
+      className={cn("relative h-1.5 w-full overflow-hidden rounded-full bg-muted", className)}
       value={normalizedValue}
       {...props}
     >

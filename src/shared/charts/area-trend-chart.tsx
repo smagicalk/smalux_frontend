@@ -18,7 +18,7 @@ export function AreaTrendChart({
   const areaPoints = `0,${chartHeight} ${points} 100,${chartHeight}`;
 
   return (
-    <div className="rounded-[1.1rem] bg-[color:var(--surface-muted)] p-3 dark:bg-white/6">
+    <div className="rounded-xl bg-muted p-3 ">
       <svg
         role="img"
         aria-label={label}

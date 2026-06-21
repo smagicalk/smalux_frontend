@@ -10,7 +10,7 @@ type FieldProps = {
 
 export function Field({ label, className, children }: FieldProps) {
   return (
-    <label className={cn("grid gap-2 text-sm", className)}>
+    <label className={cn("grid gap-1.5 text-sm", className)}>
       <span className="font-medium">{label}</span>
       {children}
     </label>
@@ -23,7 +23,7 @@ export function TextInput({ className, ...props }: TextInputProps) {
   return (
     <input
       className={cn(
-        "h-11 rounded-xl border border-input bg-white/70 px-3 text-sm outline-none transition focus:border-primary/40 focus:ring-2 focus:ring-primary/15 dark:bg-white/6",
+        "h-9 rounded-md border border-input bg-transparent px-3 text-sm outline-none transition-colors placeholder:text-muted-foreground focus-visible:ring-2 focus-visible:ring-ring/40",
         className
       )}
       {...props}
@@ -37,7 +37,7 @@ export function Select({ className, children, ...props }: SelectProps) {
   return (
     <select
       className={cn(
-        "h-11 rounded-xl border border-input bg-white/70 px-3 text-sm outline-none transition focus:border-primary/40 focus:ring-2 focus:ring-primary/15 dark:bg-white/6",
+        "h-9 rounded-md border border-input bg-transparent px-3 text-sm outline-none transition-colors focus-visible:ring-2 focus-visible:ring-ring/40",
         className
       )}
       {...props}
@@ -53,7 +53,7 @@ export function Textarea({ className, ...props }: TextareaProps) {
   return (
     <textarea
       className={cn(
-        "min-h-32 resize-y rounded-[1.15rem] border border-input bg-white/70 p-3 text-sm outline-none transition focus:border-primary/40 focus:ring-2 focus:ring-primary/15 dark:bg-white/6",
+        "min-h-24 resize-y rounded-md border border-input bg-transparent p-3 text-sm outline-none transition-colors placeholder:text-muted-foreground focus-visible:ring-2 focus-visible:ring-ring/40",
         className
       )}
       {...props}

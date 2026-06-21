@@ -20,7 +20,7 @@ export function ModuleShortcuts() {
       </CardHeader>
       <CardContent className="grid gap-3 lg:grid-cols-3">
         {navigationSections.map((section) => (
-          <section key={section.label} className="grid gap-2 rounded-[1rem] bg-white/55 p-3 dark:bg-white/5">
+          <section key={section.label} className="grid gap-2 rounded-xl bg-card p-3 ">
             <div className="flex items-center justify-between gap-2">
               <h3 className="text-[10px] font-semibold uppercase tracking-[0.16em] text-muted-foreground">
                 {section.label}
@@ -34,10 +34,10 @@ export function ModuleShortcuts() {
                   <Link
                     key={item.to}
                     to={item.to}
-                    className="group flex items-center justify-between gap-3 rounded-lg border border-transparent p-2.5 transition hover:border-white/45 hover:bg-[color:var(--surface-muted)] dark:hover:border-white/8"
+                    className="group flex items-center justify-between gap-3 rounded-lg border border-transparent p-2.5 transition hover:border-border hover:bg-muted "
                   >
                     <div className="flex min-w-0 items-center gap-2.5">
-                      <div className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-[color:var(--surface-muted)] text-muted-foreground dark:bg-white/8">
+                      <div className="flex size-8 shrink-0 items-center justify-center rounded-lg bg-muted text-muted-foreground ">
                         <item.icon className="size-4" aria-hidden />
                       </div>
                       <div className="min-w-0">

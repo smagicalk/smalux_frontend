@@ -9,12 +9,9 @@ type CardProps = ComponentProps<"section"> & {
 };
 
 const cardToneClassName: Record<CardTone, string> = {
-  default:
-    "border-white/60 bg-[color:var(--surface-panel)] shadow-[var(--shadow-soft)] dark:border-white/8",
-  muted:
-    "border-border/80 bg-[color:var(--surface-muted)] shadow-none dark:border-white/8",
-  strong:
-    "border-white/70 bg-[color:var(--surface-panel-strong)] shadow-[var(--shadow-panel)] dark:border-white/10"
+  default: "border-border bg-card",
+  muted: "border-border bg-muted",
+  strong: "border-border bg-[color:var(--surface-panel-strong)]"
 };
 
 const interactiveCardPaddingClassName = {
@@ -32,7 +29,7 @@ export function Card({ className, tone = "default", ...props }: CardProps) {
   return (
     <section
       className={cn(
-        "min-w-0 rounded-[1.4rem] border text-card-foreground backdrop-blur-sm",
+        "min-w-0 rounded-xl border text-card-foreground",
         cardToneClassName[tone],
         className
       )}
@@ -42,11 +39,11 @@ export function Card({ className, tone = "default", ...props }: CardProps) {
 }
 
 export function CardHeader({ className, ...props }: ComponentProps<"div">) {
-  return <div className={cn("flex flex-col gap-2 p-4", className)} {...props} />;
+  return <div className={cn("flex flex-col gap-1.5 p-4", className)} {...props} />;
 }
 
 export function CardTitle({ className, ...props }: ComponentProps<"h3">) {
-  return <h3 className={cn("text-lg font-semibold tracking-[-0.03em]", className)} {...props} />;
+  return <h3 className={cn("text-base font-semibold tracking-tight", className)} {...props} />;
 }
 
 export function CardDescription({ className, ...props }: ComponentProps<"p">) {
@@ -74,7 +71,7 @@ export function InteractiveCardButton({
     <button
       type={type}
       className={cn(
-        "min-w-0 cursor-pointer rounded-[1.15rem] border text-left transition hover:-translate-y-0.5 hover:shadow-[var(--shadow-soft)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-primary/20 disabled:pointer-events-none disabled:opacity-50",
+        "min-w-0 cursor-pointer rounded-lg border text-left transition-colors hover:bg-muted focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring/40 disabled:pointer-events-none disabled:opacity-50",
         cardToneClassName[tone],
         interactiveCardPaddingClassName[padding],
         className

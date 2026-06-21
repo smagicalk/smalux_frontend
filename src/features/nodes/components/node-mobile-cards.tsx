@@ -1,6 +1,5 @@
 import type { MonitorNode } from "@/shared/domain/node";
 import { formatLatency, formatMbps } from "@/shared/lib/format";
-import { toast } from "sonner";
 import {
   Card,
   CardContent,
@@ -14,9 +13,10 @@ import { StatusBadge } from "@/shared/ui/status-badge";
 
 type NodeMobileCardsProps = {
   nodes: MonitorNode[];
+  onInspect: (node: MonitorNode) => void;
 };
 
-export function NodeMobileCards({ nodes }: NodeMobileCardsProps) {
+export function NodeMobileCards({ nodes, onInspect }: NodeMobileCardsProps) {
   return (
     <div className="flex flex-col gap-4 md:hidden">
       {nodes.map((node) => (
@@ -24,11 +24,7 @@ export function NodeMobileCards({ nodes }: NodeMobileCardsProps) {
           key={node.id}
           tone="strong"
           className="cursor-pointer transition hover:-translate-y-0.5"
-          onClick={() =>
-            toast.info(node.name, {
-              description: `${node.group} · ${node.region} · ${node.status}`
-            })
-          }
+          onClick={() => onInspect(node)}
         >
           <CardHeader className="flex-row items-start justify-between gap-3">
             <div className="min-w-0">

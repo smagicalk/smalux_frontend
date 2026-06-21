@@ -37,4 +37,23 @@ describe("loadRuntimeConfig", () => {
 
     expect(config).toEqual(defaultRuntimeConfig);
   });
+
+  it("falls back when endpoint schemes are unsafe", async () => {
+    const config = await loadRuntimeConfig(async () => {
+      return new Response(
+        JSON.stringify({
+          appName: "smalux-test",
+          apiBaseUrl: "javascript:alert(1)",
+          wsBaseUrl: "//evil.example/ws",
+          rpcBaseUrl: "data:text/plain,unsafe",
+          theme: "dark"
+        }),
+        {
+          status: 200
+        }
+      );
+    });
+
+    expect(config).toEqual(defaultRuntimeConfig);
+  });
 });

@@ -2,15 +2,15 @@ import type { MonitorNode } from "@/shared/domain/node";
 import { formatLatency, formatMbps } from "@/shared/lib/format";
 import { PercentBar } from "@/shared/ui/percent-bar";
 import { StatusBadge } from "@/shared/ui/status-badge";
-import { toast } from "sonner";
 
 const tableHeaders = ["节点", "状态", "CPU", "内存", "磁盘", "流量", "延迟"];
 
 type NodesTableProps = {
   nodes: MonitorNode[];
+  onInspect: (node: MonitorNode) => void;
 };
 
-export function NodesTable({ nodes }: NodesTableProps) {
+export function NodesTable({ nodes, onInspect }: NodesTableProps) {
   return (
     <div className="overflow-hidden rounded-[1rem] border border-white/45 bg-[color:var(--surface-panel)] shadow-[var(--shadow-soft)] dark:border-white/8">
       <div className="overflow-x-auto">
@@ -29,11 +29,7 @@ export function NodesTable({ nodes }: NodesTableProps) {
               <tr
                 key={node.id}
                 className="cursor-pointer border-t border-white/45 transition hover:bg-[color:var(--surface-muted)]/75 dark:border-white/8 dark:hover:bg-white/4"
-                onClick={() =>
-                  toast.info(node.name, {
-                    description: `${node.group} · ${node.region} · ${node.status}`
-                  })
-                }
+                onClick={() => onInspect(node)}
               >
                 <td className="px-4 py-3 align-middle">
                   <div className="min-w-0">

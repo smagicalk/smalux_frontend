@@ -1,0 +1,2636 @@
+{
+	"type": "gh",
+	"name": "NodeSeekDev/NodeGet-board",
+	"version": "main",
+	"default": null,
+	"files": [
+		{
+			"name": "/.env",
+			"hash": "lbPBS1T6vOHVKvv7/Do33MgQEozaz8s8eStpMHCjdlU=",
+			"size": 134
+		},
+		{
+			"name": "/.github/workflows/build-nightly.yml",
+			"hash": "SH7PUQUXkTHzhHYyRoQQFXMDCKlh7EsCgPSxQ7KcKBo=",
+			"size": 1504
+		},
+		{
+			"name": "/.gitignore",
+			"hash": "eRjpGV9ZBbDOaizXhncMAy5MMlDDrYLn+uV///tlQJM=",
+			"size": 493
+		},
+		{
+			"name": "/.husky/pre-commit",
+			"hash": "AyUtJCdelJwtN5T2O9RQttwCRyJUVS0tbYS/94rD64g=",
+			"size": 26
+		},
+		{
+			"name": "/.vscode/extensions.json",
+			"hash": "cNVrVQ55bj6pKSJ2OuAwN6GpRZb9qdc3mCx19qIOiN0=",
+			"size": 39
+		},
+		{
+			"name": "/components.json",
+			"hash": "bgcNQ6GppZnT4bGnO7CneSqAZgsggZcAX7UFdV0KwfM=",
+			"size": 445
+		},
+		{
+			"name": "/demo-extension/app.json",
+			"hash": "1n4yXxylvlR12+8TmLpP5RJyreryACv55uIWgXEXLBY=",
+			"size": 941
+		},
+		{
+			"name": "/demo-extension/readme.md",
+			"hash": "81cvvymK12+Ny4ZRnfq0BmWjHBLl7VsPeWcVc/0yMW4=",
+			"size": 589
+		},
+		{
+			"name": "/demo-extension/resources/assets/icon.svg",
+			"hash": "JWbDBfCrFS5fmYi/uWj5IzSZyfn5YhxGwo8/k52+kLo=",
+			"size": 261
+		},
+		{
+			"name": "/demo-extension/resources/assets/main.js",
+			"hash": "KF85WG2SatfmzUu4StMgj/tCwZcSJLgqk765OZ3vprE=",
+			"size": 1012
+		},
+		{
+			"name": "/demo-extension/resources/assets/route-icon.svg",
+			"hash": "IhMNWq7syt3KPcMmOMzxObGNpOsuue5XeAPsKcF2EaA=",
+			"size": 337
+		},
+		{
+			"name": "/demo-extension/resources/assets/style.css",
+			"hash": "EMkmPtfcoWToDn6lIU2Itn/fgFypihK9CIXACcmpXBc=",
+			"size": 1916
+		},
+		{
+			"name": "/demo-extension/resources/index.html",
+			"hash": "iOD1DpQmpSbEaMu/8skbSr8hFG2wceoodN2mwdUN/So=",
+			"size": 1522
+		},
+		{
+			"name": "/demo-extension/worker.js",
+			"hash": "1GybCZ8o0EBhcpKTNlaZfZnSZfB0yS7QZ/ZjplyI+9s=",
+			"size": 728
+		},
+		{
+			"name": "/demo-static-bucket/about.html",
+			"hash": "tfchqNbuF1EzVMlPIrXYYAiw9mP3A0jRm/1M3G9EoL4=",
+			"size": 1930
+		},
+		{
+			"name": "/demo-static-bucket/assets/index.js",
+			"hash": "9MtzkYGdzreC/QRdXUgW1faVKnJZDEYPBKu+XLGrSWU=",
+			"size": 760
+		},
+		{
+			"name": "/demo-static-bucket/assets/loading.mp4",
+			"hash": "EoJMn8yLGzvA6t5DnfM3Ils7l0usHX/tDElYpD2u7gA=",
+			"size": 338993
+		},
+		{
+			"name": "/demo-static-bucket/assets/style.css",
+			"hash": "d6JQTjLp6FvYlJ9eYFk5g2CW9unMXqxuOiVSu/A+by0=",
+			"size": 4400
+		},
+		{
+			"name": "/demo-static-bucket/index.html",
+			"hash": "rpbpKIYy3Xt9tMXh9nftvdGwYqvA1MzaNmBWNHm/nFY=",
+			"size": 3085
+		},
+		{
+			"name": "/env.d.ts",
+			"hash": "Axi7PoT/TeztsuXwmZ9K8IMf9bsGNP2PqacGW9LYgk4=",
+			"size": 170
+		},
+		{
+			"name": "/eslint.config.mjs",
+			"hash": "Dbpq8RS14CNuCAoyu/BecKV/747BQ+dQP//GnkBTn+k=",
+			"size": 318
+		},
+		{
+			"name": "/example.env.development",
+			"hash": "Rt7QbXlUOXUZK2BsIj4bjVhtBvYaucItlAzvogDJWps=",
+			"size": 314
+		},
+		{
+			"name": "/index.html",
+			"hash": "9/BCy4xTOINhd/1NVKu36/ePDegkpsLr7+5YhNg60Ek=",
+			"size": 1479
+		},
+		{
+			"name": "/LICENSE",
+			"hash": "hIahDEOTzuHCU5J2nd07LWwkLW7Hko4UFO//ffsvB+8=",
+			"size": 34523
+		},
+		{
+			"name": "/package.json",
+			"hash": "cEsEmy9DcpUGJrQl8Ez2JA1ItCign0vKGsshZ1YXkzA=",
+			"size": 2899
+		},
+		{
+			"name": "/pnpm-lock.yaml",
+			"hash": "/QIEYfDzxhBI7uIWNGfGPSIV3rly33WbnNlR8EUFu1s=",
+			"size": 170514
+		},
+		{
+			"name": "/pnpm-workspace.yaml",
+			"hash": "E5oq0Ohe2TMgJRNDG68yVjYc4sNdSvNyQcCk83nbqdo=",
+			"size": 114
+		},
+		{
+			"name": "/prettier.config.mjs",
+			"hash": "UuBKsByN3663hJQC67zF6qJT3z+/G5Bxxemf6l1ping=",
+			"size": 248
+		},
+		{
+			"name": "/public/android-icon-36x36.png",
+			"hash": "TSC4p9OcJnLMr0PTkthqAGExxkwWRfmj3gzyKHAod78=",
+			"size": 3270
+		},
+		{
+			"name": "/public/android-icon-48x48.png",
+			"hash": "BY+AGQm3/1TaSKLOd4YpoCPs7ROd6I1+ehpznivqiW4=",
+			"size": 4723
+		},
+		{
+			"name": "/public/android-icon-72x72.png",
+			"hash": "0Q9F/TzN81YIqWuwdcfUxyqc/tleoZu4AMmZsz7m5Ss=",
+			"size": 7930
+		},
+		{
+			"name": "/public/android-icon-96x96.png",
+			"hash": "ve0KMrlMiEdSEWAaiQVweAo2uTHWcIk2VLjyUxdCPmY=",
+			"size": 11744
+		},
+		{
+			"name": "/public/android-icon-144x144.png",
+			"hash": "OpmjYTSNeU5aL+kzS1FZUJtZlz82/luiOoZWWiIiYSY=",
+			"size": 22296
+		},
+		{
+			"name": "/public/android-icon-192x192.png",
+			"hash": "ukCbHxS55MWqbgtw1rJL5+lAcPLemhC1KpzVWgZV1ms=",
+			"size": 37496
+		},
+		{
+			"name": "/public/apple-icon.png",
+			"hash": "jTycNGP/ez7FlGlQUq84psunfg0NhgbatwzglQUbxW0=",
+			"size": 37932
+		},
+		{
+			"name": "/public/apple-icon-57x57.png",
+			"hash": "eh5gKUI7D0QPcCD2AdgbVg0IpCluBoFhJHr91rO7h00=",
+			"size": 5877
+		},
+		{
+			"name": "/public/apple-icon-60x60.png",
+			"hash": "kWvArvULIkjfLB6qBke9OcT8h2TYYK2+a1Z8slIk/hU=",
+			"size": 6242
+		},
+		{
+			"name": "/public/apple-icon-72x72.png",
+			"hash": "0Q9F/TzN81YIqWuwdcfUxyqc/tleoZu4AMmZsz7m5Ss=",
+			"size": 7930
+		},
+		{
+			"name": "/public/apple-icon-76x76.png",
+			"hash": "hbM6AxfPneHp4KNrGMt0+2qq/A/XOP9Tx+pICdf6q6w=",
+			"size": 8505
+		},
+		{
+			"name": "/public/apple-icon-114x114.png",
+			"hash": "hC08rS4H8gsxDkpT4og7L7JF72Gcq9mUwihoAq53QoM=",
+			"size": 15143
+		},
+		{
+			"name": "/public/apple-icon-120x120.png",
+			"hash": "26Ljp60Cmey3H+FIN+x+uXkGjfRekoei2/oKPzi0osc=",
+			"size": 16391
+		},
+		{
+			"name": "/public/apple-icon-144x144.png",
+			"hash": "OpmjYTSNeU5aL+kzS1FZUJtZlz82/luiOoZWWiIiYSY=",
+			"size": 22296
+		},
+		{
+			"name": "/public/apple-icon-152x152.png",
+			"hash": "CQdTBJuaSPNbXJPlIb0JXJFd9M/0YIGGHN+8t0tHBPg=",
+			"size": 24720
+		},
+		{
+			"name": "/public/apple-icon-180x180.png",
+			"hash": "qrx1UWIfo/5rOrw8yzhjaeFncWUbOtSI3pzXL+NrX3o=",
+			"size": 33169
+		},
+		{
+			"name": "/public/apple-icon-precomposed.png",
+			"hash": "jTycNGP/ez7FlGlQUq84psunfg0NhgbatwzglQUbxW0=",
+			"size": 37932
+		},
+		{
+			"name": "/public/browserconfig.xml",
+			"hash": "E7xkcnNFWAis0PZgUSSrOni7rme1Mvi5k9wPjOKgPQ0=",
+			"size": 281
+		},
+		{
+			"name": "/public/deploy-button.png",
+			"hash": "z2y/9D/pDOhLP28waZQA7qKsZWjv4+KV4JHIdNMWtd0=",
+			"size": 57196
+		},
+		{
+			"name": "/public/favicon.ico",
+			"hash": "xiYXX909D61lQgSSW90wH3KE6dWbSN2XLPsGSxd1/Iw=",
+			"size": 1150
+		},
+		{
+			"name": "/public/favicon-16x16.png",
+			"hash": "yOpe/9knK0JMi10zgmRZRcY2R8PrAhcjEs8hkaUCtyk=",
+			"size": 1457
+		},
+		{
+			"name": "/public/favicon-32x32.png",
+			"hash": "HzbugUNYRjkTLkUvWM8+f+HUlmPQn/rqlV+176ZLeL4=",
+			"size": 2816
+		},
+		{
+			"name": "/public/favicon-96x96.png",
+			"hash": "ve0KMrlMiEdSEWAaiQVweAo2uTHWcIk2VLjyUxdCPmY=",
+			"size": 11744
+		},
+		{
+			"name": "/public/geo/100000_full.json",
+			"hash": "ma3+3tUiOEi743oKEvgCPhHuEhYceABSHCfbQv3qwnU=",
+			"size": 582522
+		},
+		{
+			"name": "/public/geo/world.json",
+			"hash": "EK5UBeTYqmUEdKwGVrT4hk13Thna5SvMfCjG1lLEMn8=",
+			"size": 1470444
+		},
+		{
+			"name": "/public/linux-logo-icon/alpinelinux.svg",
+			"hash": "S5LvuLeLJ6GvPRHoruLKNbZIzVpBkl+gy/MQvbjVKyc=",
+			"size": 1085
+		},
+		{
+			"name": "/public/linux-logo-icon/alpinelinux-icon.svg",
+			"hash": "S5LvuLeLJ6GvPRHoruLKNbZIzVpBkl+gy/MQvbjVKyc=",
+			"size": 1085
+		},
+		{
+			"name": "/public/linux-logo-icon/archlinux.svg",
+			"hash": "VqxFbcY7halEyb3DFH8txM126HyCM0RhmRvh+t7Hy7U=",
+			"size": 1210
+		},
+		{
+			"name": "/public/linux-logo-icon/centos.svg",
+			"hash": "WhyC4+Kp+EpBO/rakDnHlQCzwD9qJnProrgjZ9u+P4A=",
+			"size": 2565
+		},
+		{
+			"name": "/public/linux-logo-icon/debian.svg",
+			"hash": "JXHFvvfgSGErR/MCAhMVq/tS4Ll/TrbRvhP5S2wHQWU=",
+			"size": 8072
+		},
+		{
+			"name": "/public/linux-logo-icon/fedora.svg",
+			"hash": "aV74+L0b6YUkv+Spe0AIQjJ5YE+mC5QpZj6epuJMB1E=",
+			"size": 2379
+		},
+		{
+			"name": "/public/linux-logo-icon/freebsd.svg",
+			"hash": "n9Kl3RDv3lIcUDd8mgicsWetwz0OcpfhEHDHzskyQVU=",
+			"size": 1729
+		},
+		{
+			"name": "/public/linux-logo-icon/gentoo.svg",
+			"hash": "b9hRCeSHO2LYtJYVoJgTN+C1isJQwYXIXf7awrr6vyM=",
+			"size": 3430
+		},
+		{
+			"name": "/public/linux-logo-icon/kali.svg",
+			"hash": "NbODcFa3SKbsbw1JoWv1gdQ06gUlMvKWfSTP2CzQ/mk=",
+			"size": 3657
+		},
+		{
+			"name": "/public/linux-logo-icon/linux.svg",
+			"hash": "wSeqIaH9vq5Z/zc9tyLgsClaR4b3X2Dc0fvRD4m3WpE=",
+			"size": 18456
+		},
+		{
+			"name": "/public/linux-logo-icon/manjaro.svg",
+			"hash": "vVNiIzrvXEA5pOrZRwhorlTlG/SL/DYWV9OjAxDvlvM=",
+			"size": 654
+		},
+		{
+			"name": "/public/linux-logo-icon/mint.svg",
+			"hash": "RF2TDaVQGIiMdbDfpjoj0XoCOJra8EYjAJWdhugQLy8=",
+			"size": 2054
+		},
+		{
+			"name": "/public/linux-logo-icon/nixos.svg",
+			"hash": "vWpdwSEdM1aWS3mg+jGNInU1dqL2SjCZMO4folkGfN4=",
+			"size": 934
+		},
+		{
+			"name": "/public/linux-logo-icon/oracle.svg",
+			"hash": "KCEBpxTGLpFxVNzkM8P4qIFfR1UXLOjRw3nyU+9IALk=",
+			"size": 3255
+		},
+		{
+			"name": "/public/linux-logo-icon/redhat.svg",
+			"hash": "vTFgxxvuYEflBPHZyP7rQ2uWz1hPw5R9cXcFJ1o1QnE=",
+			"size": 2123
+		},
+		{
+			"name": "/public/linux-logo-icon/rocky.svg",
+			"hash": "34HddIaHS33gFSf7b9Uf3207Slg9ePeSHNqKf1+OpEI=",
+			"size": 730
+		},
+		{
+			"name": "/public/linux-logo-icon/ubuntu.svg",
+			"hash": "AknXxpCxdnLc8ah6S14mm2hV8qZT6k9nJWbQZ5I24WA=",
+			"size": 3162
+		},
+		{
+			"name": "/public/linux-logo-icon/windows.svg",
+			"hash": "NlfUKlLyGQrWv0QZjzFkd0fiirMVu3/Y4LHi+Cc7wtY=",
+			"size": 674
+		},
+		{
+			"name": "/public/linux-logo-icon/zorin.svg",
+			"hash": "d8Xdw/wHK1T7GfvEZ20pr64x2nt2sFdJNizaRQ9pM5U=",
+			"size": 829
+		},
+		{
+			"name": "/public/logo.png",
+			"hash": "857ggjgU60d/lKsmioaRrx7Pvv287o8JMeQfn5Nlu/A=",
+			"size": 114657
+		},
+		{
+			"name": "/public/manifest.json",
+			"hash": "fkoej0aTABFA2Ql7h0uUgLPXvRrD4W1WMTsacXLTJUk=",
+			"size": 724
+		},
+		{
+			"name": "/public/ms-icon-70x70.png",
+			"hash": "EiG4BhoBcAjkpx8dV8CMX3UrEZoHzeZxEy3wjxuUfq8=",
+			"size": 7640
+		},
+		{
+			"name": "/public/ms-icon-144x144.png",
+			"hash": "OpmjYTSNeU5aL+kzS1FZUJtZlz82/luiOoZWWiIiYSY=",
+			"size": 22296
+		},
+		{
+			"name": "/public/ms-icon-150x150.png",
+			"hash": "q4wFFSOCrU/fXUWQIqRXn2grmQuRsHN98YLF928+4v0=",
+			"size": 24027
+		},
+		{
+			"name": "/public/ms-icon-310x310.png",
+			"hash": "NSfEkAtyByMckvAiE/zwRU4MVvE8MPY8ZJrX8PZ4SGk=",
+			"size": 79016
+		},
+		{
+			"name": "/public/theme-init.js",
+			"hash": "QqhoQQi8Nc+EnfnGOVEgarcw220ixP6NCvrVAtL1J+A=",
+			"size": 1757
+		},
+		{
+			"name": "/README.md",
+			"hash": "ou6FciwNJc1YnSV/P6MQLh6I09Iqe4MnURTQHNQ9nZE=",
+			"size": 228
+		},
+		{
+			"name": "/scripts/typed-router.d.ts/config.ts",
+			"hash": "aXmNG3MWrQ1Oy5REUMsCZc/4OQyxin0IQ5ssBL3g7s4=",
+			"size": 280
+		},
+		{
+			"name": "/scripts/typed-router.d.ts/input.ts",
+			"hash": "RQ8K9PTB7MTHGA8uNkyKWb/tad01D7a0e86GQcKjd4Y=",
+			"size": 19
+		},
+		{
+			"name": "/scripts/typed-router.d.ts/shared.ts",
+			"hash": "0aWgQgASRd67NJPQqwdi3fm0OktzX86AGy6oEUAT1Ps=",
+			"size": 289
+		},
+		{
+			"name": "/src/about.md",
+			"hash": "h5t0R5qPBUJWTSuq424+rZpeNGc9oB4pmcxNjGTsvwo=",
+			"size": 12
+		},
+		{
+			"name": "/src/App.vue",
+			"hash": "rebZat9AOzwmQASp8aidb1hysFot+lj8srIsmOzeHtE=",
+			"size": 2300
+		},
+		{
+			"name": "/src/components/agents/AddAgentDialog.vue",
+			"hash": "wcVfPQ2uqLbC00A69+BRoAcCqpZeEiq7Vb1srgIRs+Q=",
+			"size": 19795
+		},
+		{
+			"name": "/src/components/agents/generateToken.ts",
+			"hash": "oSnmyHEgt4XCBfbT4Lg/EdUg3Ia2Ma30oiHq1JUqpw0=",
+			"size": 2406
+		},
+		{
+			"name": "/src/components/agents/ShowAgentCommandDialog.vue",
+			"hash": "A4XXoW6fwzOqVPVPh3EmmjbeWy74AR6ao7ID3Cg++0Y=",
+			"size": 6269
+		},
+		{
+			"name": "/src/components/BackendSwitcher.vue",
+			"hash": "u5GG8QCXwxdD0vFJu28dQnP1e391neCA5IR6/DqCK30=",
+			"size": 10979
+		},
+		{
+			"name": "/src/components/batch-exec/CodeCard.vue",
+			"hash": "BrHDNd9iuwIlqyUv6UeEwl/0PeGda/L4LE/VqxKPuvQ=",
+			"size": 1752
+		},
+		{
+			"name": "/src/components/batch-exec/ResultCard.vue",
+			"hash": "rjeTY/NyHuPcUGmri14ycSjSYit9uhEIIE1+1CaXRhU=",
+			"size": 1217
+		},
+		{
+			"name": "/src/components/batch-exec/SelectNodesCard.vue",
+			"hash": "7rSYmvNMQAiIpVZAPfYX/vGdRxpaYlG+bpZPANocMS8=",
+			"size": 2734
+		},
+		{
+			"name": "/src/components/batch-exec/widgets/Code.vue",
+			"hash": "I9sg7NPZaDyC6QWmnrqYVLyI+puU4ylECRjEvsb4uLM=",
+			"size": 3294
+		},
+		{
+			"name": "/src/components/batch-exec/widgets/ExecResult.vue",
+			"hash": "N8eyl0uC1WAUQqURVKABnJBYCLbRC8klrQHjEfcInGs=",
+			"size": 2949
+		},
+		{
+			"name": "/src/components/batch-exec/widgets/ScriptsSelectDialog.vue",
+			"hash": "Utl7MCUWo94ks5+3xxsOGoY8kp9IwEcfmS2kc7mriFA=",
+			"size": 3718
+		},
+		{
+			"name": "/src/components/batch-exec/widgets/SelectNodes.vue",
+			"hash": "km5wcQs3/ifu0Ch1W01VpfESC+ednwuMLVHJEo8oQGs=",
+			"size": 5465
+		},
+		{
+			"name": "/src/components/cron/CronFormDialog.vue",
+			"hash": "3/ssiPk8YnCGQg9aYbnoyhMLkZ3jr+3E7ip2wWa1Uk4=",
+			"size": 22635
+		},
+		{
+			"name": "/src/components/cron/CronHistoryDetailDialog.vue",
+			"hash": "OAB1SXzWfdZYd4se5CQUSW7Y0dneBKUpWXWBGJGvYpY=",
+			"size": 8850
+		},
+		{
+			"name": "/src/components/cron/CronHistoryFilter.vue",
+			"hash": "t742dL1DcC8bQxvPBby6VzOvf1zgZD47B1EbSc0xDNE=",
+			"size": 6281
+		},
+		{
+			"name": "/src/components/cron/CronHistoryTable.vue",
+			"hash": "RWVjVsu1tPVGMA7Y5ZNp8Ms/8RbPeD2QuMvbLxQ4gM4=",
+			"size": 9294
+		},
+		{
+			"name": "/src/components/cron/CronNodeSelectDialog.vue",
+			"hash": "cmFfKRcIRk4bUZy233mkDAWdwjtKHmPcVtw4KQ8BSJg=",
+			"size": 3361
+		},
+		{
+			"name": "/src/components/cron/CronTable.vue",
+			"hash": "0gl2rL2qmpJJ3XWmW6YGv8LXBSc/SoQyr7ae8kTuUlo=",
+			"size": 9328
+		},
+		{
+			"name": "/src/components/extensions/ExtensionDetail.vue",
+			"hash": "x3WSj6ULNk3+lmDUA1ZSMyEqoC1Ym8hT4OHJsRnIvg8=",
+			"size": 29227
+		},
+		{
+			"name": "/src/components/extensions/ExtensionIcon.vue",
+			"hash": "NUMmg2lnMxZ0fAStsqGPZ7weU7jP4qS0vY6wHMJqJAM=",
+			"size": 1015
+		},
+		{
+			"name": "/src/components/extensions/ExtensionInstallDialog.vue",
+			"hash": "VXo2vj90i5K1g1/yD7yp6+TrRbskRhxkU0a5WIyuxb8=",
+			"size": 14780
+		},
+		{
+			"name": "/src/components/extensions/QuickExtensionDialog.vue",
+			"hash": "oXjv8kOdgTnytfofFFOK166b9Fnp/h/AlldWgWXSPso=",
+			"size": 5756
+		},
+		{
+			"name": "/src/components/FooterView.vue",
+			"hash": "7O5FnbaXEH83L1mnPlUsVvMxXpeXQZsx0SgqqffGAqQ=",
+			"size": 824
+		},
+		{
+			"name": "/src/components/HeaderView.vue",
+			"hash": "fkEjD3/gzuGHXqThUbOZkxTA1FMsEibXCZZKrvY1Eas=",
+			"size": 1348
+		},
+		{
+			"name": "/src/components/js-runtime/WorkerFormDialog.vue",
+			"hash": "ZcaEnOqAiXyfTJsuqhZdAALia+TgoX72A28o71l1Rko=",
+			"size": 3532
+		},
+		{
+			"name": "/src/components/js-runtime/WorkerTable.vue",
+			"hash": "Pnj8+iZ5s2mcRINKz2iffoaRJ/L9AvZqk5gjPz0NzHU=",
+			"size": 4724
+		},
+		{
+			"name": "/src/components/kv/KvCreateNamespaceDialog.vue",
+			"hash": "aABCirV4BDbwSel2bFQUgXCj/HIz3duOwJ3nxVz0ZxI=",
+			"size": 1848
+		},
+		{
+			"name": "/src/components/kv/KvEntryTable.vue",
+			"hash": "aRyuXxhmJ1OeyL+Nioic5neVU9NpeCeKN5lhixv96v8=",
+			"size": 3130
+		},
+		{
+			"name": "/src/components/kv/KvFlatTable.vue",
+			"hash": "zB0eZBvEHiD+q5FrGG1f+FhbY3EUiSmqmHq5bHrUV80=",
+			"size": 3695
+		},
+		{
+			"name": "/src/components/kv/KvNamespaceTable.vue",
+			"hash": "lxyFiaxVM47ye50DDYM+OjF6DfdfYBVY0MNhtJ6BjpE=",
+			"size": 4205
+		},
+		{
+			"name": "/src/components/kv/KvNodeTable.vue",
+			"hash": "3SVCH1wVvkPx75p5080KdQk/hahLoXdR1KRfpgfq+2M=",
+			"size": 7269
+		},
+		{
+			"name": "/src/components/kv/KvSetDialog.vue",
+			"hash": "YAfA7tChFGTdYjM2Cu6eten0ZpmRF5m+Kzs8VYEdsXI=",
+			"size": 2751
+		},
+		{
+			"name": "/src/components/kv/KvViewDialog.vue",
+			"hash": "fEhUYwQBHmqfySJxVB0YANJtI/VoFAASRrkHzJKjYeg=",
+			"size": 1507
+		},
+		{
+			"name": "/src/components/logsPanel/components/headerFilter.vue",
+			"hash": "gXHsF0Q4BVZET9HFZ5yW6mQxXiFBwSeKX5syhsjxWk4=",
+			"size": 7473
+		},
+		{
+			"name": "/src/components/logsPanel/components/logsItem.vue",
+			"hash": "8u1woqQhHCfkugPZZ/TZDIJ0Nc0WFMH80ngsVjJWpkA=",
+			"size": 4935
+		},
+		{
+			"name": "/src/components/logsPanel/components/logsList.vue",
+			"hash": "UQnPES0JM/F32zyePBFlzgmwrRsChfpHvDiOdsAGOnA=",
+			"size": 2235
+		},
+		{
+			"name": "/src/components/logsPanel/logsView.vue",
+			"hash": "51QdAE7UT9g2p8OVVMmS/G+R2wHVv0SnUqzotPYJFwA=",
+			"size": 4103
+		},
+		{
+			"name": "/src/components/map/countryName.ts",
+			"hash": "4eASShhrkxf30rfWCS9VEcQuzWTs36UJaRJ96ONXaNw=",
+			"size": 15998
+		},
+		{
+			"name": "/src/components/map/FlatWorldMap.vue",
+			"hash": "2q2OP9jxqhHJ78xqFSQQmsAub41A3plCO1AhT0gHvaM=",
+			"size": 19549
+		},
+		{
+			"name": "/src/components/map/Globe3DMap.vue",
+			"hash": "O6Dj3TjMtM4w6PXnpml/PRKzokZSNQ0vY3/PXdn6g+g=",
+			"size": 35242
+		},
+		{
+			"name": "/src/components/map/theme.ts",
+			"hash": "8MtNbafY5b+CQ1JB/cOVbSGynyujSn9kA21GTRZ6kfs=",
+			"size": 7429
+		},
+		{
+			"name": "/src/components/misc/loader.vue",
+			"hash": "1ZaMptL8gY3mFUR4zXxXJBYzpX8WuEAzol+rkjrqEO0=",
+			"size": 1565
+		},
+		{
+			"name": "/src/components/misc/loader2.vue",
+			"hash": "Mpc19NhoIjmWkmlcQFiHPbAxGhzUuaXpIbGPg0qu17k=",
+			"size": 1114
+		},
+		{
+			"name": "/src/components/misc/mockInput.vue",
+			"hash": "bKUak6l6ga3lwKouaJ1Dcl3Z54CPunM/y3cwg7LnEKM=",
+			"size": 2541
+		},
+		{
+			"name": "/src/components/misc/qrcode.vue",
+			"hash": "SkZH41SVw9P9sZTHCS+rEH7vA5Rf+stciIQVHNTUdZ0=",
+			"size": 850
+		},
+		{
+			"name": "/src/components/node/latency/latency.vue",
+			"hash": "1MIhUKCLGMQumWKAIPg30baBmDBKazUS5Bpg+l+nDxM=",
+			"size": 10325
+		},
+		{
+			"name": "/src/components/node/latency/LatencyQualityCanvas.vue",
+			"hash": "knT5Gi/0mvrhNwC1sUr6ay0dZ07Ie/TxkSIXlyumeYM=",
+			"size": 2059
+		},
+		{
+			"name": "/src/components/node/latency/utils.ts",
+			"hash": "R7/GF0C/vMg2xJMfL2l451NQ+C3mfrw3Ub/ojRfKv6w=",
+			"size": 2921
+		},
+		{
+			"name": "/src/components/node/NodeMetadataForm.vue",
+			"hash": "3VJqLyGU8b8mzKF7w/ZHft+5nbCifX3nenGYRNOpZIM=",
+			"size": 9975
+		},
+		{
+			"name": "/src/components/node/setting/NodeSettingTabBasic.vue",
+			"hash": "Y+M2rFd21Dj7aFah23DF7NHkR5kGaGypi+FGJb9yJQE=",
+			"size": 2879
+		},
+		{
+			"name": "/src/components/node/setting/NodeSettingTabConfig.vue",
+			"hash": "Eihh9eiK2lnZ2F/7Ork0DCGCoT3VhyChczkGvRHbLQg=",
+			"size": 20706
+		},
+		{
+			"name": "/src/components/node/setting/NodeSettingTabDelete.vue",
+			"hash": "NKqCOMlegVxQ9kUc5CrNDNxA8saftJUEZlH5CQ32sD8=",
+			"size": 8136
+		},
+		{
+			"name": "/src/components/node/setting/NodeSettingTabStorage.vue",
+			"hash": "PcthdRuYkY3V4//I8SH746SD79ZUv3q4JJMGjwhEHgs=",
+			"size": 8834
+		},
+		{
+			"name": "/src/components/node/setting/NodeSettingTabUpstream.vue",
+			"hash": "0fPRBzrw9KjoJBt/Lg7bWD7iKZOkuMGb8Gkf4KZXRB4=",
+			"size": 11929
+		},
+		{
+			"name": "/src/components/node/setting/UpstreamDetailDialog.vue",
+			"hash": "ppwSnwYkMj0hkw64bneQBqZBdOQ1DB1DyIGiOGl9N4E=",
+			"size": 6307
+		},
+		{
+			"name": "/src/components/node/status/composables/useDatabaseLimits.ts",
+			"hash": "Kus6HsPTgn0Vzg8Di0JEWHWJe9eb5JroMfyaerq/DlU=",
+			"size": 1581
+		},
+		{
+			"name": "/src/components/node/status/composables/useLiveLabel.ts",
+			"hash": "ateBdCx69lBZEAvGWOlPWJ/2MU8216gGfWVEHdvsdIA=",
+			"size": 1037
+		},
+		{
+			"name": "/src/components/node/status/composables/useStatusPage.ts",
+			"hash": "ny2VFuk/zmb2vzvZxV4AlWqjESuNZTseOAm0R+GEIio=",
+			"size": 5175
+		},
+		{
+			"name": "/src/components/node/status/composables/useTabDetails.ts",
+			"hash": "C7Q6RpLlxBXfmYWVFVdZp6O7jTrdX4NWPmAMNB7BPHM=",
+			"size": 5124
+		},
+		{
+			"name": "/src/components/node/status/composables/useTabSummaries.ts",
+			"hash": "VYV6JvDEoe25vOjKiyEhNy3I+7LDw6kB+68bAp0FO4o=",
+			"size": 5663
+		},
+		{
+			"name": "/src/components/node/status/constants.ts",
+			"hash": "Oo6GWsGHFR9Z/8RyWxcQOIvycnQTT1L1ePehGEM3lGc=",
+			"size": 1721
+		},
+		{
+			"name": "/src/components/node/status/StatusCpuTab.vue",
+			"hash": "0/wlESi91GoV39jDlpiKJM7zaRY17wzDNXs/CwHSlbc=",
+			"size": 8279
+		},
+		{
+			"name": "/src/components/node/status/StatusDiskTab.vue",
+			"hash": "kw4QuRuDW2s8Ut67yzBRhoSvxTkDIlK5v8LcL7tv054=",
+			"size": 9559
+		},
+		{
+			"name": "/src/components/node/status/StatusMemoryTab.vue",
+			"hash": "Lx5NYCeI3XNyCMjb9oue8uThRhBnQ/sGrUagdXDkRmc=",
+			"size": 6736
+		},
+		{
+			"name": "/src/components/node/status/StatusNetworkTab.vue",
+			"hash": "O0L230FVNbXja8erN240JmCogk8FIN+fPqNhpipgY00=",
+			"size": 16677
+		},
+		{
+			"name": "/src/components/node/status/StatusTabBar.vue",
+			"hash": "VGOhKARP1/JBIMg8lz/ho+HywTBWTr07kWbodCIh1WA=",
+			"size": 1602
+		},
+		{
+			"name": "/src/components/node/status/StatusWindowControls.vue",
+			"hash": "hunvZ2U0helqQxT0qq8e9VYp63LimzWZoaGUF7NljAY=",
+			"size": 1918
+		},
+		{
+			"name": "/src/components/node/status/types.ts",
+			"hash": "xZPaa8/9tssMZs9nSCUGMkIeqlYZU9tjwJcwlZQOlCc=",
+			"size": 318
+		},
+		{
+			"name": "/src/components/node/traffic/TrafficBarChart.vue",
+			"hash": "FexkRguz1ITmGo9oh3/jg2CTnS2BRYzaeEEMOeDJ0zo=",
+			"size": 3262
+		},
+		{
+			"name": "/src/components/node-manage/codeCopy.vue",
+			"hash": "g5cEG/j9CgHfq1SLih5r7qXW10pXTwwcwht/G/iRDrM=",
+			"size": 1592
+		},
+		{
+			"name": "/src/components/node-manage/NodeManageTabAgents.vue",
+			"hash": "9+DuVkZA5VFcqI5TUqkAVEmGD0YCBy5VO4RM7ntJThY=",
+			"size": 20636
+		},
+		{
+			"name": "/src/components/node-manage/NodeManageTabServers.vue",
+			"hash": "HOo80qslWuWa4YL0bKQyk2fmTq93emt/vqdNWP3oGPQ=",
+			"size": 14918
+		},
+		{
+			"name": "/src/components/node-manage/ShareDialog.vue",
+			"hash": "DjaQh799Uuc/ilrPbDY5Yvb0cx4OhSSeD+VriqlLk/0=",
+			"size": 2470
+		},
+		{
+			"name": "/src/components/node-manage/VersionDialog.vue",
+			"hash": "XX6NVDmxORX4T4ons7wbYGbf/TgEU/FuOQbxxCThCfU=",
+			"size": 2593
+		},
+		{
+			"name": "/src/components/ping/PingChinaMapNative.vue",
+			"hash": "Xe4J0V4BSUTGSs4H95AYVgHo6yEkbOXrLHx+ff90BD8=",
+			"size": 8097
+		},
+		{
+			"name": "/src/components/ping/PingHistogram.vue",
+			"hash": "f/oi5CulyKdq7+N5fTpBMv2sbAcQVhodzN5M4Yc7pfU=",
+			"size": 4837
+		},
+		{
+			"name": "/src/components/ping/pingLatencyConfig.ts",
+			"hash": "qRn+niIUgOc6NUs5W91eC2BjlfU4f6bsM4xec2FloC8=",
+			"size": 758
+		},
+		{
+			"name": "/src/components/ping/PingQualityCanvas.vue",
+			"hash": "hclEuSyNUmTbSeiUYyFWLxcLgZl387KYjOCxmr4oIE4=",
+			"size": 1242
+		},
+		{
+			"name": "/src/components/ping/PingResultTable.vue",
+			"hash": "QhJh6+gCIFPP1sLWZRPGAD9JUaAUX9pRtjK2foaclNQ=",
+			"size": 5433
+		},
+		{
+			"name": "/src/components/ping/PingView.vue",
+			"hash": "gGK+QJdr0L4llBA1YqXmvPdQlhxCP3226cyr18h/QiY=",
+			"size": 9404
+		},
+		{
+			"name": "/src/components/ping/usePingTask.ts",
+			"hash": "XJZoVNOSX0RbP5TWK+ib8QD9omtTJDn+wghtcj+POso=",
+			"size": 10187
+		},
+		{
+			"name": "/src/components/rpc-debug-panel/components/RpcAuthView.vue",
+			"hash": "Xx6FmxHYImkZE7y/lbcYgcNumfaMK6nKsgdq5LEeWm0=",
+			"size": 5811
+		},
+		{
+			"name": "/src/components/rpc-debug-panel/components/RpcComposerView.vue",
+			"hash": "vhoW14lOlpWQqdPw08ciyQBS86Rf20tg2juPJ2JhzBY=",
+			"size": 15316
+		},
+		{
+			"name": "/src/components/rpc-debug-panel/components/RpcDebugDataTable.vue",
+			"hash": "wlSeERhlpvG3WxoBLtE9hDDoXhq4I1h9MWZXyeUnrwA=",
+			"size": 3304
+		},
+		{
+			"name": "/src/components/rpc-debug-panel/components/RpcNetworkDrawer.vue",
+			"hash": "FNh6rtDCAK0EGUJM839a2RbOyoT/p71ucbDJD7NKaTY=",
+			"size": 12044
+		},
+		{
+			"name": "/src/components/rpc-debug-panel/components/RpcNetworkView.vue",
+			"hash": "aC0eRNsnoJsWKyb0n2edSeJafq+rKNAyThvoWMi5PEM=",
+			"size": 12304
+		},
+		{
+			"name": "/src/components/rpc-debug-panel/components/RpcSettingsView.vue",
+			"hash": "BiTT3ZXMvZzTN+/cWgdICuOwyGhvUZR2BTI3+5YLyRo=",
+			"size": 3938
+		},
+		{
+			"name": "/src/components/rpc-debug-panel/components/RpcStreamsView.vue",
+			"hash": "Vx7L0xbq3NZc6eURwx6EKqc8/cRYZ3/KH3u+njZIjYg=",
+			"size": 5729
+		},
+		{
+			"name": "/src/components/rpc-debug-panel/helpers.ts",
+			"hash": "rPo2u1iOeDZ8zVyurQXeqs/DRgGclQuoGctp7csDi9k=",
+			"size": 3084
+		},
+		{
+			"name": "/src/components/rpc-debug-panel/install.ts",
+			"hash": "atOgyjMUZX2qlQDCR/ZUhCiXxpY1XaO6RMtAUZJ58CM=",
+			"size": 199
+		},
+		{
+			"name": "/src/components/rpc-debug-panel/RpcDebugPanel.vue",
+			"hash": "Q59KEuIOZXwQEaaETBd5OPclAzwN4vrNwqCjyORr5lM=",
+			"size": 4728
+		},
+		{
+			"name": "/src/components/rpc-debug-panel/RpcDebugPanelDialog.vue",
+			"hash": "kyaYLjKvKShjISpNpBtt9SYsgIdu7w3NAIvok0GkEEI=",
+			"size": 6848
+		},
+		{
+			"name": "/src/components/rpc-debug-panel/rpcDebugStore.ts",
+			"hash": "eVkp1stJiqaG/qNKpPGR10zBT7RpdnLNYNmxA9VLcYM=",
+			"size": 11004
+		},
+		{
+			"name": "/src/components/rpc-debug-panel/rpcMethodCatalog.ts",
+			"hash": "7lF0XGzsmeWIOLTTdomfemdGcCPVVLkiO/qYR0frJns=",
+			"size": 20931
+		},
+		{
+			"name": "/src/components/rpc-debug-panel/types.ts",
+			"hash": "nkagK9VJ0/ehiVUvnz8mcuZlyXFWGWtUsOLkgTtau/c=",
+			"size": 545
+		},
+		{
+			"name": "/src/components/rpc-debug-panel/websocketPatch.ts",
+			"hash": "UeBQpzH7eUIy5xIJzWhpK1Iw4QuafOFg2Hbma1CzwKQ=",
+			"size": 7372
+		},
+		{
+			"name": "/src/components/script/ScriptFormDialog.vue",
+			"hash": "Wf0fhbnRSFhE4ujsVYXG/0L3Xmpc4bP3jQO1DwyoTbw=",
+			"size": 4528
+		},
+		{
+			"name": "/src/components/script/ScriptTable.vue",
+			"hash": "YQBtid+fOQmClSrNbIeMpkE810VCUS5cKm/pqQO45Zg=",
+			"size": 6847
+		},
+		{
+			"name": "/src/components/servers-detail/DatabaseStorageTab.vue",
+			"hash": "unHryQCI7q7l3LNYhy/EVTLIC7gGv79N/309qCRzRyU=",
+			"size": 6496
+		},
+		{
+			"name": "/src/components/SettingsDialog.vue",
+			"hash": "UTwlGBWj6Laf7dwgkNPhSiJcrpwT+mBocdl1JBXXdDw=",
+			"size": 4520
+		},
+		{
+			"name": "/src/components/static-bucket/StaticBucketDialog.vue",
+			"hash": "A52mIzuKovcbo5gr24nMI69DhVWin5c5VHQMNWncS2w=",
+			"size": 3953
+		},
+		{
+			"name": "/src/components/static-bucket/StaticBucketFileUploadDialog.vue",
+			"hash": "8PQSfqXNOjNjL08iIRTvA4ztAJuZuOzB6nn8/NMO79A=",
+			"size": 3010
+		},
+		{
+			"name": "/src/components/static-bucket/StaticBucketFileView.vue",
+			"hash": "Bq5nN1G3kXT4kb2Ku3UkawReSGSwIiiaHuGuOTP0Jb4=",
+			"size": 10400
+		},
+		{
+			"name": "/src/components/static-bucket/StaticBucketTable.vue",
+			"hash": "RniWDujXERiKBkenom7Mt3fyGQT6N10bUNzuapzIV6g=",
+			"size": 6773
+		},
+		{
+			"name": "/src/components/static-bucket/StaticBucketTreeNode.vue",
+			"hash": "flZ+UKgjZq2LdHMJrjgHhRg6pNxUlYE+gibjoYfYWVc=",
+			"size": 5450
+		},
+		{
+			"name": "/src/components/static-bucket/StaticBucketUploadDirDialog.vue",
+			"hash": "4s37sEhh5nybf2viuAbV+sy+MXypx672Yn76mIDmtoo=",
+			"size": 6445
+		},
+		{
+			"name": "/src/components/theme-management/ThemeDetail.vue",
+			"hash": "ZP3P/zAbiFMs6zc/qcHpAqMLubDg1MQ+c9kz0slrml4=",
+			"size": 18069
+		},
+		{
+			"name": "/src/components/theme-management/ThemeRemoteImportDialog.vue",
+			"hash": "IfGXq523EKWaMsOy7/DMYbwky4YZy/bvbKrF8QITe+A=",
+			"size": 17742
+		},
+		{
+			"name": "/src/components/theme-management/ThemeTokenPresetDialog.vue",
+			"hash": "LuEx3QZrdNxtq5P+0nvvI7lJUdJovU7eQ720MhRTy1s=",
+			"size": 4157
+		},
+		{
+			"name": "/src/components/theme-management/ThemeUploadLocalDialog.vue",
+			"hash": "WoOde7vI6mVi3sd/dncBkIjDsAB3EpezUpak6KMS6wQ=",
+			"size": 13990
+		},
+		{
+			"name": "/src/components/token/components/baseInfoFrom.vue",
+			"hash": "fShCcwLFXqgaE7S7jA8gra/8W85309Cmpq+5H3XmuSA=",
+			"size": 7502
+		},
+		{
+			"name": "/src/components/token/components/limitScopeConfig.vue",
+			"hash": "9/3N8ZiJjGHSDcFi+z7I2Wfem8kX4JkVQ7h20i2+4dY=",
+			"size": 10657
+		},
+		{
+			"name": "/src/components/token/components/permissions/CrontabPermission.vue",
+			"hash": "pRlw/Ojmkga0QQi6wF244xtBLk0Eprc1w/nYnkC9H4A=",
+			"size": 3112
+		},
+		{
+			"name": "/src/components/token/components/permissions/CrontabResultPermission.vue",
+			"hash": "s+jyR9qK7CmNAtCwF7s5Xs0C8GtGg+Vi0p0bwvo9FbY=",
+			"size": 5910
+		},
+		{
+			"name": "/src/components/token/components/permissions/DynamicMonitoringPermission.vue",
+			"hash": "0Hc8IFfkgmuOqPEQmR+2phhDUv33MRugANtTY6XbyFA=",
+			"size": 4903
+		},
+		{
+			"name": "/src/components/token/components/permissions/DynamicMonitoringSummaryPermission.vue",
+			"hash": "hoiO+LTXzFGefeVlLn8Yd3V2SwkEHFfKaiBNPrvOz7A=",
+			"size": 4425
+		},
+		{
+			"name": "/src/components/token/components/permissions/JsResultPermission.vue",
+			"hash": "hyMqhAZVtIqIojzgwm+8fQF5h2LBWtLP5fXoMSAswas=",
+			"size": 5754
+		},
+		{
+			"name": "/src/components/token/components/permissions/JsWorkerPermission.vue",
+			"hash": "31/GTACGCOIXUC13Lb1RgUR2F8Rhxc/Em9Q696cACns=",
+			"size": 5367
+		},
+		{
+			"name": "/src/components/token/components/permissions/KvPermission.vue",
+			"hash": "/okJIyDsRDqJC410oHm1XfAIRLFxH6vpnzQmKYPkxj4=",
+			"size": 7243
+		},
+		{
+			"name": "/src/components/token/components/permissions/kvPermissionState.ts",
+			"hash": "UuyTigq627jh/LufMeJgFtGrtVhZM/3tTzXysNSSxy8=",
+			"size": 2741
+		},
+		{
+			"name": "/src/components/token/components/permissions/NodeGetPermission.vue",
+			"hash": "dkyZcbFzvsiekbLrBq/hh2rBcob9ghzrdVzVBTgPtco=",
+			"size": 2899
+		},
+		{
+			"name": "/src/components/token/components/permissions/permissionsCard.vue",
+			"hash": "aozpUQeG9eDCDPrbPgXBu50J6o0uf7m7zq0q7v0lTCM=",
+			"size": 5751
+		},
+		{
+			"name": "/src/components/token/components/permissions/permissionsItem.vue",
+			"hash": "BpXV75c5sQatJ4NOrwRN9jRE4QP1hmluTBkicz1gnbs=",
+			"size": 3115
+		},
+		{
+			"name": "/src/components/token/components/permissions/permissionsState.ts",
+			"hash": "g6HnMsO7+hI+/xmrE7oJZFzhCcIEVO0mPOBENdsZ4hY=",
+			"size": 3715
+		},
+		{
+			"name": "/src/components/token/components/permissions/StaticMonitoringPermission.vue",
+			"hash": "zr8a+LCNMwoB35J7RHijNzZHvUF5RAvrjpeiH1nNRTQ=",
+			"size": 4850
+		},
+		{
+			"name": "/src/components/token/components/permissions/TaskPermission.vue",
+			"hash": "4jXQNeLlfQoKmjzTcCZoRkFu41OpzVoEX1ux/GY6+xk=",
+			"size": 5450
+		},
+		{
+			"name": "/src/components/token/components/permissions/TerminalPermission.vue",
+			"hash": "pqeEPI3sEA2wQReJviEzMqsE3GnRXDXB/hSoVJGz8J4=",
+			"size": 2079
+		},
+		{
+			"name": "/src/components/token/components/permissions/usePermissionModuleOpen.ts",
+			"hash": "SO3me/Q2sU78+iY42iz784kUdzUTwZyCN3+q+2QYX/E=",
+			"size": 680
+		},
+		{
+			"name": "/src/components/token/components/previewTokenJson.vue",
+			"hash": "yOMZP1yUKZYAzCwwFDxOs87W6i5dIuAcGJpvIVxMIgg=",
+			"size": 1373
+		},
+		{
+			"name": "/src/components/token/components/TokenCreateModeSelect.vue",
+			"hash": "fVQHRcw1oid5mS/0So9iRt2N3pHYUROjPlo3GA6XDLQ=",
+			"size": 1925
+		},
+		{
+			"name": "/src/components/token/components/tokenDetailPreview.vue",
+			"hash": "wXce3AhYHScIOH17t+yjp/ErVUwGie+c42SJmQAlEe8=",
+			"size": 12748
+		},
+		{
+			"name": "/src/components/token/components/TokenEditorWorkspace.vue",
+			"hash": "YreVz8bYKuCu+2wraQnvvLg0vnkXOy4DPRvUdNHOKIs=",
+			"size": 3245
+		},
+		{
+			"name": "/src/components/token/components/tokenLimitFrom.vue",
+			"hash": "kT2zKIuno+fPVwUJuiEa0zBzcW7aMtrQnbmhuS8kP6I=",
+			"size": 2217
+		},
+		{
+			"name": "/src/components/token/components/tokenLimitItem.vue",
+			"hash": "Rz6RgEbK6GN6TK7rOHlFPduKUXfvidzcGwnfil0SSSo=",
+			"size": 3448
+		},
+		{
+			"name": "/src/components/token/components/TokenSuccessDialog.vue",
+			"hash": "EsldHCGfeeAqZZ2qJCITDr18i6f4jD0TWb2jkQrukHM=",
+			"size": 3983
+		},
+		{
+			"name": "/src/components/token/components/TokenTemplateList.vue",
+			"hash": "V4H7m0YL1C4JPr20pSX+HzBw6gQOmKspFdfne3Q0zwE=",
+			"size": 1271
+		},
+		{
+			"name": "/src/components/token/create-token/CreateTokenCard.vue",
+			"hash": "RhrVcbbpuuK0vEA7oyuItuZXF9E7uYUF9NwY9axTyys=",
+			"size": 2532
+		},
+		{
+			"name": "/src/components/token/detailToken/detailTokenCard.vue",
+			"hash": "/Zk8yZ5GJF/erC5us/Ru2TauGZ9nMdqnnIGB9ox/Buo=",
+			"size": 4455
+		},
+		{
+			"name": "/src/components/token/editToken/editTokenCard.vue",
+			"hash": "ck3qMcM7VlJKk/Q0IgoYRRS9Vhum9pEwzswiL93tJJo=",
+			"size": 2860
+		},
+		{
+			"name": "/src/components/token/importToken/importToken.ts",
+			"hash": "0oVy2mXcOeXeeYjv7yNpQIwL1quOc/U5zJnZGr0fUAg=",
+			"size": 112
+		},
+		{
+			"name": "/src/components/token/importToken/ImportTokenCard.vue",
+			"hash": "VY4QYeZzM0r3JXcC39Xm4AO4cjTj6WSd7imR4rUwJM4=",
+			"size": 5575
+		},
+		{
+			"name": "/src/components/token/scopeCodec.ts",
+			"hash": "YlOPl01KPRmSVPg9XHawhd8OZHgi5IpXVzxEC9g5BG4=",
+			"size": 6396
+		},
+		{
+			"name": "/src/components/token/scopeUi.ts",
+			"hash": "NiIwkXK9YXVHID25aopEvjH3miVsHZfXem91cjubbwg=",
+			"size": 1653
+		},
+		{
+			"name": "/src/components/token/token-list/tokenListCard.vue",
+			"hash": "nJpDkrv6NNRRPBcq70uxaJlZSyExJUYRFOOT1Jv90WY=",
+			"size": 18880
+		},
+		{
+			"name": "/src/components/token/tokenPayload.ts",
+			"hash": "mRI/YBVG5pIhytbh/Kvj+K2pcpxFUsvdw/x+SCztVZE=",
+			"size": 11170
+		},
+		{
+			"name": "/src/components/token/tokenPermissionTemplates.ts",
+			"hash": "11QkcJenn0yq9Qig74coq9QJgLsdLpXQVDh9z5GfNPY=",
+			"size": 5625
+		},
+		{
+			"name": "/src/components/token/tokenTemplates.ts",
+			"hash": "1IMyhqylJsUvdzPTTT/qLLmOwHD7bMr7HbpxkE8jCDg=",
+			"size": 3894
+		},
+		{
+			"name": "/src/components/token/type.ts",
+			"hash": "B7lII0IPqSmTriPXGSiD4xUfuQG/27Mxtvnv1shuf0E=",
+			"size": 1017
+		},
+		{
+			"name": "/src/components/token/useAgent.ts",
+			"hash": "oY/LS4+63JrKonpSxzAvQwhmppZNCeJKUojct6tW8J0=",
+			"size": 2854
+		},
+		{
+			"name": "/src/components/token/useKv.ts",
+			"hash": "ABBOYTaXxRIW+HmM2565sk0/EPsSUdy3GnkE/G7z038=",
+			"size": 1166
+		},
+		{
+			"name": "/src/components/ui/alert/Alert.vue",
+			"hash": "BhhJxH9sSnFyuL24uJvSZRYvFhxHubhyKaqQsJx98bo=",
+			"size": 441
+		},
+		{
+			"name": "/src/components/ui/alert/AlertDescription.vue",
+			"hash": "vYJEB9CfVavuGf7pAs7oqmjcfKqtn79cvnOpQlGV5Yk=",
+			"size": 396
+		},
+		{
+			"name": "/src/components/ui/alert/AlertTitle.vue",
+			"hash": "BqGcH/ucVnPaAhtbdN6uDac2N56tZ6Z6Er+ZdutX+54=",
+			"size": 355
+		},
+		{
+			"name": "/src/components/ui/alert/index.ts",
+			"hash": "dTKOIDehimipJ0Lvdd9y568D/Fc3KdLNZ6K9jmnjy+U=",
+			"size": 909
+		},
+		{
+			"name": "/src/components/ui/alert-dialog/AlertDialog.vue",
+			"hash": "5WryBlLlGsDN1bvNIxrBOEk8xk5A6cczrY48xut5i8U=",
+			"size": 492
+		},
+		{
+			"name": "/src/components/ui/alert-dialog/AlertDialogAction.vue",
+			"hash": "RwCQ3r6pm+BzzfY2LvnHB31oXevZWKbE8n3SiCC0A+c=",
+			"size": 624
+		},
+		{
+			"name": "/src/components/ui/alert-dialog/AlertDialogCancel.vue",
+			"hash": "VpcLQ7sQstRFA3CBjXUHlaagwwnAQqclGGm0xq1nDDI=",
+			"size": 674
+		},
+		{
+			"name": "/src/components/ui/alert-dialog/AlertDialogContent.vue",
+			"hash": "bqZV5nFrfIcaI1Kh1WQ9At+CWubBPemkXEs6vv0fHW0=",
+			"size": 1569
+		},
+		{
+			"name": "/src/components/ui/alert-dialog/AlertDialogDescription.vue",
+			"hash": "dnhr3FQ3LGNBQ/kAwUcU5qxjRc6hKirNKjxUUewsiJY=",
+			"size": 648
+		},
+		{
+			"name": "/src/components/ui/alert-dialog/AlertDialogFooter.vue",
+			"hash": "ftRUaFb3SUZ/t6iGr5uC3N5YbDUYx8vfFdi2GmS0m+U=",
+			"size": 374
+		},
+		{
+			"name": "/src/components/ui/alert-dialog/AlertDialogHeader.vue",
+			"hash": "NqvLjJUP1i2hWcLdBuRwBR3Q0GGpYe/mCAjfWYj4pO8=",
+			"size": 352
+		},
+		{
+			"name": "/src/components/ui/alert-dialog/AlertDialogTitle.vue",
+			"hash": "TdHUxd2Yqk1Dw0fYxrtDm8n8jAqbIppbN1kglZskG3Y=",
+			"size": 604
+		},
+		{
+			"name": "/src/components/ui/alert-dialog/AlertDialogTrigger.vue",
+			"hash": "q7rJxYU0QTJwzmVW1BIhGWGIrJ4W+TaFz9MQ/3b7CZc=",
+			"size": 324
+		},
+		{
+			"name": "/src/components/ui/alert-dialog/index.ts",
+			"hash": "r5fTWVCyyrYYimTDAbh52gQD2xiACqYq276E8TVRS7U=",
+			"size": 648
+		},
+		{
+			"name": "/src/components/ui/badge/Badge.vue",
+			"hash": "JI7IDpPqkQwHLggTm9Hr+IGxxtufsbeWD9BweVUMmIA=",
+			"size": 660
+		},
+		{
+			"name": "/src/components/ui/badge/index.ts",
+			"hash": "lJ+HQinUs0KVu3hB6j5VflUMNXI9VRu4kpuoLiAbvlc=",
+			"size": 1306
+		},
+		{
+			"name": "/src/components/ui/button/Button.vue",
+			"hash": "ISQgQbpyRYjwSYfUB44RU0zb8E+cO3eI2Kkc0buf7Xk=",
+			"size": 679
+		},
+		{
+			"name": "/src/components/ui/button/index.ts",
+			"hash": "ihdNKUvVWG13SEOfRv5zbWdNwgwO6aBASqJkD4P52EQ=",
+			"size": 1810
+		},
+		{
+			"name": "/src/components/ui/card/Card.vue",
+			"hash": "m7ES6Wz/faBIr/7lB3WGtrerqG7WW0+qMu5MwqSYy48=",
+			"size": 411
+		},
+		{
+			"name": "/src/components/ui/card/CardAction.vue",
+			"hash": "lrMc9uVQm/O3uQDbvXJAi29UcBRz5VXf15l28eKVC6s=",
+			"size": 358
+		},
+		{
+			"name": "/src/components/ui/card/CardContent.vue",
+			"hash": "wNx7gpaPEn59VdwZuP+TccRSFFtMr0jUwEdwwPEse3k=",
+			"size": 301
+		},
+		{
+			"name": "/src/components/ui/card/CardDescription.vue",
+			"hash": "uDRh4FcKdvoYlQVk2NqUCmvPpzEdAoPMh+x2RITjyy0=",
+			"size": 326
+		},
+		{
+			"name": "/src/components/ui/card/CardFooter.vue",
+			"hash": "jKQv4Go3+6AFCloE5iHweIug+s98DX/vAQDMZg7kEG8=",
+			"size": 335
+		},
+		{
+			"name": "/src/components/ui/card/CardHeader.vue",
+			"hash": "65VAdW8/VkUfagEjRoiws8bR+YEArNqynDW32gq9Xg0=",
+			"size": 450
+		},
+		{
+			"name": "/src/components/ui/card/CardTitle.vue",
+			"hash": "vhxjVJ+7MkwGq8ME6p9cmg4VJmWE58zOCSJsiHP4Nbk=",
+			"size": 319
+		},
+		{
+			"name": "/src/components/ui/card/index.ts",
+			"hash": "S0nmcT9MV9vhQ3zoZS3IvFwfj3Vu664N3zy+PTgheZU=",
+			"size": 397
+		},
+		{
+			"name": "/src/components/ui/checkbox/Checkbox.vue",
+			"hash": "+TXzcWeeyyr9IcdRRu1//TzL6UKP4yrHR03CwMrTLg4=",
+			"size": 1451
+		},
+		{
+			"name": "/src/components/ui/checkbox/index.ts",
+			"hash": "U0jMUdvASzY/OsVSlp2FvL9nR2TV87bCZUlcDNu+8Pg=",
+			"size": 53
+		},
+		{
+			"name": "/src/components/ui/collapsible/Collapsible.vue",
+			"hash": "Xtnd/DSQsrILSjWf/Q9iZ1t0J1kY5nxi0Pq8pEbY/Rc=",
+			"size": 454
+		},
+		{
+			"name": "/src/components/ui/collapsible/CollapsibleContent.vue",
+			"hash": "wV4+d+6WwzRE6jYMQVtKn8Z2wN0zjyjmUX9ZsuTimAU=",
+			"size": 734
+		},
+		{
+			"name": "/src/components/ui/collapsible/CollapsibleTrigger.vue",
+			"hash": "fPEJCf3gtP9MxVSdfC8OjvIuPchLNvmCJ5DYRoAg62s=",
+			"size": 197
+		},
+		{
+			"name": "/src/components/ui/collapsible/index.ts",
+			"hash": "mjGU7eXRuoJ9hzhyqpnWEX76IfqbPdg4Bs8CBObWsA4=",
+			"size": 208
+		},
+		{
+			"name": "/src/components/ui/command/Command.vue",
+			"hash": "GjokHSLIg6C5MJ8HEuMOJ+XPBDcDfiLhFZ/KZCECRmU=",
+			"size": 2625
+		},
+		{
+			"name": "/src/components/ui/command/CommandDialog.vue",
+			"hash": "Xgby9zQtsRAKTHjwZKnJNCjazc5+S5/ofwYPy7B6GaI=",
+			"size": 1025
+		},
+		{
+			"name": "/src/components/ui/command/CommandEmpty.vue",
+			"hash": "2MCB7zdkK52kLbnFaYxzLqWyFjoQtgmxw9jFmKD+Q9k=",
+			"size": 786
+		},
+		{
+			"name": "/src/components/ui/command/CommandGroup.vue",
+			"hash": "rOPS+ggDdIJ790lwi2QFnnHjx6kZeCyE1AtOd4BHLTg=",
+			"size": 1377
+		},
+		{
+			"name": "/src/components/ui/command/CommandInput.vue",
+			"hash": "asIEMJ4SYqBWTBnuN3c0mRHMrlqpvEWu2OAFsszlGA0=",
+			"size": 1723
+		},
+		{
+			"name": "/src/components/ui/command/CommandItem.vue",
+			"hash": "ZM7jdGfD4pNyyzq/jli/h02BUN3uYyoCyg1T6MfadKM=",
+			"size": 2608
+		},
+		{
+			"name": "/src/components/ui/command/CommandList.vue",
+			"hash": "r6h6dWBqvKD7DGq9xL1u7wiy9F6EAvhrVkPXOVl7rMk=",
+			"size": 770
+		},
+		{
+			"name": "/src/components/ui/command/CommandSeparator.vue",
+			"hash": "/MDgq7irkdBD2UR4TzOqlg4UiKVveB3ijYReKTslBUc=",
+			"size": 567
+		},
+		{
+			"name": "/src/components/ui/command/CommandShortcut.vue",
+			"hash": "1+w6q+RNCpIL7YivVerCgisBs5dp8SCRYFz+gNGi3ag=",
+			"size": 372
+		},
+		{
+			"name": "/src/components/ui/command/index.ts",
+			"hash": "WXWkyOc9ZsWFJY/7du3P0GUt0ZcFXHBJPUTmr/cJSCk=",
+			"size": 1059
+		},
+		{
+			"name": "/src/components/ui/dialog/Dialog.vue",
+			"hash": "5CoJeKV90Yke1Ad46cd/iy/uw901uh3YrLtExPIp8FA=",
+			"size": 462
+		},
+		{
+			"name": "/src/components/ui/dialog/DialogClose.vue",
+			"hash": "vYUmkmqYxn8O/TWGk+yjMSUicb9q14zZmrrPURhAJcQ=",
+			"size": 289
+		},
+		{
+			"name": "/src/components/ui/dialog/DialogContent.vue",
+			"hash": "YRCyYHESKvbItdHPiZ5sMShQu80nmeb3YU+DSvoQnUI=",
+			"size": 1967
+		},
+		{
+			"name": "/src/components/ui/dialog/DialogDescription.vue",
+			"hash": "XxIz8EDtijHUV7XLtZjl2mpJa+Q0+2CujERmJr7fcik=",
+			"size": 679
+		},
+		{
+			"name": "/src/components/ui/dialog/DialogFooter.vue",
+			"hash": "rFYfOFypsFMsrJp3bSQOQJtNSssaYLVFB8w92Hr+2i0=",
+			"size": 350
+		},
+		{
+			"name": "/src/components/ui/dialog/DialogHeader.vue",
+			"hash": "T7jQETIwRrJrQjFJ/QsHTkfdbbLuvw0KqIgmlO4Vkjw=",
+			"size": 342
+		},
+		{
+			"name": "/src/components/ui/dialog/DialogOverlay.vue",
+			"hash": "lvtP9kRTvxK5JwRjtrnoe3nV14UKVLpIMcfwH1eA298=",
+			"size": 703
+		},
+		{
+			"name": "/src/components/ui/dialog/DialogScrollContent.vue",
+			"hash": "Q4hdyBHA/UN2eZ/p+/wqjkMUbrIJlnD0xqEQq6g8sLU=",
+			"size": 1878
+		},
+		{
+			"name": "/src/components/ui/dialog/DialogTitle.vue",
+			"hash": "9k7ixjZXSqmprvemAt7X5VQmp/TxBez1jX8iVGX9HjY=",
+			"size": 648
+		},
+		{
+			"name": "/src/components/ui/dialog/DialogTrigger.vue",
+			"hash": "ZFiwrZe5+TRZQoadhKO4pu0ivFRXYPW9ldSUna3A+uY=",
+			"size": 301
+		},
+		{
+			"name": "/src/components/ui/dialog/index.ts",
+			"hash": "DrYQz2UN9w8hNEfk2G+BjCLzeF9y3MuvDYi0EcIQubw=",
+			"size": 624
+		},
+		{
+			"name": "/src/components/ui/dropdown-menu/DropdownMenu.vue",
+			"hash": "jqlw8DgIwGUgu8ysl3D1ijN1tqNvqSRxpCjCf0gPdDM=",
+			"size": 462
+		},
+		{
+			"name": "/src/components/ui/dropdown-menu/DropdownMenuContent.vue",
+			"hash": "I2EfwQu05CoMM5tqRJwmnWpwa+IVaC2Gq1DCbQyae0s=",
+			"size": 926
+		},
+		{
+			"name": "/src/components/ui/dropdown-menu/DropdownMenuItem.vue",
+			"hash": "hOJonBogvWpWROx8Y4hGMrDJ6fPwLWaQ59j9D63NfHg=",
+			"size": 807
+		},
+		{
+			"name": "/src/components/ui/dropdown-menu/DropdownMenuTrigger.vue",
+			"hash": "NNifOIhkEikYYfqI+X2mmZzI9YUlv+6soZohWM1dyLI=",
+			"size": 177
+		},
+		{
+			"name": "/src/components/ui/dropdown-menu/index.ts",
+			"hash": "aHZM9aISC0upTkHHVrMILjOAjIfsL4RTMLQD6WTl8eI=",
+			"size": 284
+		},
+		{
+			"name": "/src/components/ui/flickering-grid/FlickeringGrid.vue",
+			"hash": "avyBmmbQ1F20NOZUXnHLIR9NvW1fLFdph7WDd7tLnZA=",
+			"size": 4674
+		},
+		{
+			"name": "/src/components/ui/flickering-grid/index.ts",
+			"hash": "C9Tw98cJmD+v0fMkQgKg3hfeTKFNutnCRzzQhlSYg0I=",
+			"size": 66
+		},
+		{
+			"name": "/src/components/ui/input/index.ts",
+			"hash": "unKNsp+XuJQxiDbQlHBbNMD3kjUlSBiXAyJMaU0p7Vs=",
+			"size": 47
+		},
+		{
+			"name": "/src/components/ui/input/Input.vue",
+			"hash": "MKGz0LHEpZJB19pNkdetT308cvuGamJ7saTJED+JU3A=",
+			"size": 1269
+		},
+		{
+			"name": "/src/components/ui/label/index.ts",
+			"hash": "ZsJhczYLxiE7GEczdaqiLevUzEk/JuUzGmCHhR/wPsc=",
+			"size": 47
+		},
+		{
+			"name": "/src/components/ui/label/Label.vue",
+			"hash": "a7LpUFCwejS9a910P3hxfAX0S4fnb0VAvIZ2BWUaQMY=",
+			"size": 752
+		},
+		{
+			"name": "/src/components/ui/number-field/index.ts",
+			"hash": "vebt2POQWaLkgH81dChBSimSJgQ0M/u5uwM6UKjmaPU=",
+			"size": 60
+		},
+		{
+			"name": "/src/components/ui/number-field/NumberField.vue",
+			"hash": "GEPi5HTELsDI9AKUMcc2de5MtLwo6hWJUhGlu2wmHzI=",
+			"size": 1597
+		},
+		{
+			"name": "/src/components/ui/pagination/index.ts",
+			"hash": "hYMmbJY+tzViWGj6egonLokN7ciqfUA+WitEOCd38uw=",
+			"size": 544
+		},
+		{
+			"name": "/src/components/ui/pagination/Pagination.vue",
+			"hash": "Jak/3FANP5I+ZX6lxyD3DLUUTXUP3+J5NqCZCkcmJE0=",
+			"size": 796
+		},
+		{
+			"name": "/src/components/ui/pagination/PaginationContent.vue",
+			"hash": "E7Zqbulc+4r0TOODPuU6SJZnEOS4XFlUyodTQM/LoSc=",
+			"size": 647
+		},
+		{
+			"name": "/src/components/ui/pagination/PaginationEllipsis.vue",
+			"hash": "PeQVdY+DM0SdgsqHXQ1LTV6HEPHhaBbEHRgE8OhN7cA=",
+			"size": 779
+		},
+		{
+			"name": "/src/components/ui/pagination/PaginationFirst.vue",
+			"hash": "nZ25gEvZrTC/BKPMg5acYauLQxOG/mH7Lon5P+zWyJw=",
+			"size": 1114
+		},
+		{
+			"name": "/src/components/ui/pagination/PaginationItem.vue",
+			"hash": "AOCV9NiMSEmlTdBKUeyADsonVz4OV8Nrr+MwMV1Yupg=",
+			"size": 982
+		},
+		{
+			"name": "/src/components/ui/pagination/PaginationLast.vue",
+			"hash": "BnhwEEGWjhfr2P8OpG3h9ztpQ3hAJx0MYlCT2SDitBI=",
+			"size": 1109
+		},
+		{
+			"name": "/src/components/ui/pagination/PaginationNext.vue",
+			"hash": "AB55ELJ0or19qaiW+EIecHhZWFIyW2KQNEmuB9OjFhI=",
+			"size": 1189
+		},
+		{
+			"name": "/src/components/ui/pagination/PaginationPrevious.vue",
+			"hash": "KkkUWX/qtrrgXeym59aLHTM2AKLfGxXytFDKY61FPy4=",
+			"size": 1195
+		},
+		{
+			"name": "/src/components/ui/pop-confirm/index.ts",
+			"hash": "X4LFd4ojtDWecYa9YThxub0aJyGtk4OSmNYjWBlW17I=",
+			"size": 58
+		},
+		{
+			"name": "/src/components/ui/pop-confirm/PopConfirm.vue",
+			"hash": "zpTCjRAPhAQczzgsQW80acycgjJYgvKYj0Y8Ledq4ig=",
+			"size": 1675
+		},
+		{
+			"name": "/src/components/ui/popover/index.ts",
+			"hash": "1uy3H7Gn0Gqu/cylvLK2DSZWSOslTg0+DXvxx4UTCwk=",
+			"size": 248
+		},
+		{
+			"name": "/src/components/ui/popover/Popover.vue",
+			"hash": "Z4lePfamshPNNxKfK55fWDuMsx8PC9h/h/P2zFuJPZs=",
+			"size": 460
+		},
+		{
+			"name": "/src/components/ui/popover/PopoverAnchor.vue",
+			"hash": "DJtKq0XOR44Ail2t0wWnYRzXXLRXFq8JcZyxuz6uxnU=",
+			"size": 293
+		},
+		{
+			"name": "/src/components/ui/popover/PopoverContent.vue",
+			"hash": "7aTmmvbpFHfrN/AMmImojbp1wpPVmwOSf+rpPzDWMDc=",
+			"size": 1438
+		},
+		{
+			"name": "/src/components/ui/popover/PopoverTrigger.vue",
+			"hash": "5XIqIpm3LiicSi9j+7QXSEzBlDBMJIsP1meJeBn7GYQ=",
+			"size": 299
+		},
+		{
+			"name": "/src/components/ui/progress/index.ts",
+			"hash": "x6Y+BcP1hRwPe+GpHVcGKqgzRIrGSde5dPQ6xmvVTpY=",
+			"size": 53
+		},
+		{
+			"name": "/src/components/ui/progress/Progress.vue",
+			"hash": "SihqC2/ruMRLixOZNG36bH8vtnGdFKbbcN+DiGZxCnA=",
+			"size": 903
+		},
+		{
+			"name": "/src/components/ui/radio-group/index.ts",
+			"hash": "wlv62VvzGh3VbEtHm/bmjqAuM8leUJWrs0i1KEoSQn0=",
+			"size": 124
+		},
+		{
+			"name": "/src/components/ui/radio-group/RadioGroup.vue",
+			"hash": "iVR7U44Ea8gjqFH+MF884SW3pBjF4n1j2K/86OThe5E=",
+			"size": 770
+		},
+		{
+			"name": "/src/components/ui/radio-group/RadioGroupItem.vue",
+			"hash": "Szt8y2v3X1RKG+lb9skCJLdd62NxOqUOsGsyBIBQNMI=",
+			"size": 1420
+		},
+		{
+			"name": "/src/components/ui/rainbow-button/index.ts",
+			"hash": "kJtPwtaZWPKkBnBwIG5jCt9oex9k5XtNZXUVkPE4geg=",
+			"size": 64
+		},
+		{
+			"name": "/src/components/ui/rainbow-button/RainbowButton.vue",
+			"hash": "UqlZgmps9jJnBxRHOCQJ/fpRVPgm/9QOMeXn0C/RAbk=",
+			"size": 2017
+		},
+		{
+			"name": "/src/components/ui/scroll-area/index.ts",
+			"hash": "8nSU7i5YDXQA6AEOJyzt1bc++i1LDe0y3UrsMXCt2Ho=",
+			"size": 114
+		},
+		{
+			"name": "/src/components/ui/scroll-area/ScrollArea.vue",
+			"hash": "NYHYpRySXlqAWyHvvZlcqhGAJM88rBDi8CkvdeVns/w=",
+			"size": 954
+		},
+		{
+			"name": "/src/components/ui/scroll-area/ScrollBar.vue",
+			"hash": "cL7Wt8qd6hm3YG+HT1RIpJfAfXPBVNhrr5Q7LY6zVQk=",
+			"size": 1054
+		},
+		{
+			"name": "/src/components/ui/select/index.ts",
+			"hash": "cAxg8u4DfkUM7NsqDt58mS6zJgwA7HYyogRVaDneK1g=",
+			"size": 699
+		},
+		{
+			"name": "/src/components/ui/select/Select.vue",
+			"hash": "ChACUaetRJZ59JsHj2E0kpQLBd6S90Toygcvpqyt+Po=",
+			"size": 462
+		},
+		{
+			"name": "/src/components/ui/select/SelectContent.vue",
+			"hash": "AKCY2N5HVXIAqu1Llxs/v8VJDtUaeIgdUlFBmv6tYZg=",
+			"size": 1938
+		},
+		{
+			"name": "/src/components/ui/select/SelectGroup.vue",
+			"hash": "11eHWXUR8Ysvh51TyDotF3duvQEIAs812tT1k86aagk=",
+			"size": 289
+		},
+		{
+			"name": "/src/components/ui/select/SelectItem.vue",
+			"hash": "agYuA3UKLlFTr1YN9vDsIhs9PSVSz2sl5mSZ8CmFzZk=",
+			"size": 1441
+		},
+		{
+			"name": "/src/components/ui/select/SelectItemText.vue",
+			"hash": "dq0myqStGoyc0lpcae3qyk4w3pBVHz0W70Be7YIbAjo=",
+			"size": 308
+		},
+		{
+			"name": "/src/components/ui/select/SelectLabel.vue",
+			"hash": "hLDKxEqEZR6FoOnAstFcQnRdT/KisxNfzOyeNFpFKTo=",
+			"size": 457
+		},
+		{
+			"name": "/src/components/ui/select/SelectScrollDownButton.vue",
+			"hash": "xuYD6IBZwTtrO9Vo+vWBuxEuWQ6W1t4UAo+/a/tU0C4=",
+			"size": 827
+		},
+		{
+			"name": "/src/components/ui/select/SelectScrollUpButton.vue",
+			"hash": "YyZvsueQ0i89uGFoPwNS97tl++LpKYtNt7jVMCW2++k=",
+			"size": 811
+		},
+		{
+			"name": "/src/components/ui/select/SelectSeparator.vue",
+			"hash": "+IerttJpi9h1OMHUQYmHAHS0cGNWqyoYwZYLW0LDh4k=",
+			"size": 577
+		},
+		{
+			"name": "/src/components/ui/select/SelectTrigger.vue",
+			"hash": "QdPlgwfHsUtGE11ni8kkdo/OrgqTKkIKz0wk3ItuPGc=",
+			"size": 1707
+		},
+		{
+			"name": "/src/components/ui/select/SelectValue.vue",
+			"hash": "q2qbFDWOs+MsOrQPfAHOErft6xtqRZFZtBrJzOFhJ5Q=",
+			"size": 289
+		},
+		{
+			"name": "/src/components/ui/separator/index.ts",
+			"hash": "/NeDncIE3idvmLgKTM21jH10lPZDicaCMS00kOAbkCU=",
+			"size": 55
+		},
+		{
+			"name": "/src/components/ui/separator/Separator.vue",
+			"hash": "ipDJgfBMBtU/VdE65yYPJjFaYs6t8+rFqGDFzBln5Is=",
+			"size": 768
+		},
+		{
+			"name": "/src/components/ui/skeleton/index.ts",
+			"hash": "BkyDFG1MKTqwlWjDrZUKCImXi4Ddj78z66uCY1UvPT4=",
+			"size": 54
+		},
+		{
+			"name": "/src/components/ui/skeleton/Skeleton.vue",
+			"hash": "+7ZeHs6rJrPE3LlIjiU+B5CfT4YmlmHbfBf17kcHW9o=",
+			"size": 353
+		},
+		{
+			"name": "/src/components/ui/spinner/index.ts",
+			"hash": "5uxuEUAjHwCkh+RzjNJwNBRDZ4PiDz1GWWsx/kTbWIw=",
+			"size": 52
+		},
+		{
+			"name": "/src/components/ui/spinner/Spinner.vue",
+			"hash": "2TeP1ViIOHoO+AfLCT8OuEYO7kb7ogOyVQrdpjMm+N0=",
+			"size": 368
+		},
+		{
+			"name": "/src/components/ui/switch/index.ts",
+			"hash": "A6YahsS8DW0goEcVVyMwisfZGB0hAazTpLFJUZrOkls=",
+			"size": 50
+		},
+		{
+			"name": "/src/components/ui/switch/Switch.vue",
+			"hash": "HS9kWWsIrUY3dIJfPY4SThyTd+Xo+9rFn8Ssff1knqg=",
+			"size": 1550
+		},
+		{
+			"name": "/src/components/ui/table/index.ts",
+			"hash": "ORPHAow+hbZlBrcRhAl562wRs+tHiVMutZwhUio2dOI=",
+			"size": 501
+		},
+		{
+			"name": "/src/components/ui/table/Table.vue",
+			"hash": "TAWv1Ibmr72VO1291OrUiJIsnJMHjwiCY1NxoKvRZgc=",
+			"size": 516
+		},
+		{
+			"name": "/src/components/ui/table/TableBody.vue",
+			"hash": "Xd7TvFKShbxjbO1U+2DdVkfCZIr+SGJGdwvGRmfFHSQ=",
+			"size": 325
+		},
+		{
+			"name": "/src/components/ui/table/TableCaption.vue",
+			"hash": "pB63JhdXkdO1zAnKar/1JFL2Iv1lNMftyL3xxj3Bt4U=",
+			"size": 340
+		},
+		{
+			"name": "/src/components/ui/table/TableCell.vue",
+			"hash": "lKUBm3zmDGKsg/Ql/giQWM0y0e1YJWdFhePRb4cP4CM=",
+			"size": 432
+		},
+		{
+			"name": "/src/components/ui/table/TableEmpty.vue",
+			"hash": "ys9JltdAK9uiIeiZZlIlxyxXcCMzB842fMzPoayiNTY=",
+			"size": 753
+		},
+		{
+			"name": "/src/components/ui/table/TableFooter.vue",
+			"hash": "hKr83gp/Q3NiMYn1Jmhe4SUcEZtwELWcivSxR027H88=",
+			"size": 356
+		},
+		{
+			"name": "/src/components/ui/table/TableHead.vue",
+			"hash": "Cs8Vl4nQ857oqQL0pvB6vIGyPRVCw3B9UeXt+2l6skQ=",
+			"size": 439
+		},
+		{
+			"name": "/src/components/ui/table/TableHeader.vue",
+			"hash": "2UeQOXhF5KvVy2uMkmNrIPwIW9IdS0ZoR03zkurvqLs=",
+			"size": 316
+		},
+		{
+			"name": "/src/components/ui/table/TableRow.vue",
+			"hash": "Y2ZOuKYxrCbzU4u2//ljtz1QgvlSmcfkW6pL0sw16Ys=",
+			"size": 367
+		},
+		{
+			"name": "/src/components/ui/table/utils.ts",
+			"hash": "DVHOlxUiHlQSFN+tiCXTLT3Q2hbgpPYiEq4HUoq+qp0=",
+			"size": 304
+		},
+		{
+			"name": "/src/components/ui/tabs/index.ts",
+			"hash": "hnw2tmBBPnWWyxfxs1LG9EeKVMOIRbsf0cDQm49WNIY=",
+			"size": 2622
+		},
+		{
+			"name": "/src/components/ui/tabs/Tabs.vue",
+			"hash": "I40H8sh2LYqSrhBX8ddEvYrbLXQ3BzBD5OHfguFYtqw=",
+			"size": 716
+		},
+		{
+			"name": "/src/components/ui/tabs/TabsContent.vue",
+			"hash": "dQfHKKSShu9gyb8DEEE7pv2+APZsI2sRMSy1obuVGiI=",
+			"size": 560
+		},
+		{
+			"name": "/src/components/ui/tabs/TabsList.vue",
+			"hash": "8kTR0vbrulFGzySFR4OJ/Tp4go5sx/AUpPOQKOvAfQU=",
+			"size": 641
+		},
+		{
+			"name": "/src/components/ui/tabs/TabsTrigger.vue",
+			"hash": "eRakGEKRyPGie0uRaKr5Jgcpl7PSGBwfPWzShtICaBQ=",
+			"size": 1306
+		},
+		{
+			"name": "/src/components/ui/tags-input/index.ts",
+			"hash": "z3rAZI2GqL5PM/0HBpjoxh5CDiKsR044Rj+hMijRUFU=",
+			"size": 334
+		},
+		{
+			"name": "/src/components/ui/tags-input/TagsInput.vue",
+			"hash": "EAhHP0IYkZ5rjv9OA4Dq5o9+ClE5e3TqcxECDOWJWO4=",
+			"size": 1111
+		},
+		{
+			"name": "/src/components/ui/tags-input/TagsInputInput.vue",
+			"hash": "tb76ljvJKKhshDpJCZvXvu++/uGUjcd8zVBDPb7DgbE=",
+			"size": 678
+		},
+		{
+			"name": "/src/components/ui/tags-input/TagsInputItem.vue",
+			"hash": "IgwgajTng0lJa8I2Hkoq4kWfa29fe+Mtqh5375rQ9Lk=",
+			"size": 804
+		},
+		{
+			"name": "/src/components/ui/tags-input/TagsInputItemDelete.vue",
+			"hash": "hwysTKQqV5pqJUtH6U4BDkBuucNv6J3nTJXS4d2NlE0=",
+			"size": 744
+		},
+		{
+			"name": "/src/components/ui/tags-input/TagsInputItemText.vue",
+			"hash": "nZ4kbFc9vNykw0Z6SmGaVVcIWw/NCGmTKWTD1KT/154=",
+			"size": 669
+		},
+		{
+			"name": "/src/components/ui/textarea/index.ts",
+			"hash": "wuC8JRZSf8rFZyZwvWv2hfOsBYI3VAXBioicSUyLogA=",
+			"size": 54
+		},
+		{
+			"name": "/src/components/ui/textarea/Textarea.vue",
+			"hash": "8OV8lhpCshkrXSXQ8h+OfvtO9CssS12GN05LU211HvM=",
+			"size": 1530
+		},
+		{
+			"name": "/src/components/ui/tooltip/index.ts",
+			"hash": "A1W6YuoH5Kw1mIO/oLwH054RXxc1kPZREJjWaVKWDAk=",
+			"size": 203
+		},
+		{
+			"name": "/src/components/ui/tooltip/Tooltip.vue",
+			"hash": "65zrhNife1zrLB3yvHWGx0v8peIYda1Vn2V27IHOxKA=",
+			"size": 422
+		},
+		{
+			"name": "/src/components/ui/tooltip/TooltipContent.vue",
+			"hash": "+fwGjzNt/rQPFYYGfQ7tw+Wl9/GBNzMtOOhjRA9mq4k=",
+			"size": 1231
+		},
+		{
+			"name": "/src/components/UPlotChart.vue",
+			"hash": "9lmDFIKTuLYv5nhAOeig2GJm5wwmioP2sEmFkY5xpVs=",
+			"size": 11751
+		},
+		{
+			"name": "/src/components/WebTerminal.vue",
+			"hash": "eeH2952YE5LDxCXWv/UuLrS98SlSPTE4sDEPhbgPbt8=",
+			"size": 14929
+		},
+		{
+			"name": "/src/components/WorkInProcessPage.vue",
+			"hash": "IsCeFpFZ7PIJfAhsrkZ6CgEOPy0R5RvQk7PXdov8ybU=",
+			"size": 572
+		},
+		{
+			"name": "/src/composables/color.ts",
+			"hash": "RRHO4Me0eZ/Z2vXIOXSS5ZH5YKPvHrvMtR/bDS3w9Ho=",
+			"size": 334
+		},
+		{
+			"name": "/src/composables/monitoring/dynamic/useDynamicSingle.ts",
+			"hash": "IHzEBh7PSBF7rc8nV9603FaKkU++QUFoWEo8/86/U6g=",
+			"size": 1880
+		},
+		{
+			"name": "/src/composables/monitoring/dynamic/useDynamicSummaryMultiLast.ts",
+			"hash": "ZBd23PwBkI4y16H6L+i+Q5dx6m6q5tsIpFY/dkCxtmk=",
+			"size": 2769
+		},
+		{
+			"name": "/src/composables/monitoring/dynamic/useDynamicSummarySingle.ts",
+			"hash": "qbkGzDMPM1JV5DIb/xdN9MwPqzyu/1uuJua6S3XWbl4=",
+			"size": 1557
+		},
+		{
+			"name": "/src/composables/monitoring/useDynamicMonitoring.ts",
+			"hash": "UcLmJSaJFAO7wwpQlCIto2EKHCFkMnr1paMkCwdqEqQ=",
+			"size": 466
+		},
+		{
+			"name": "/src/composables/monitoring/useStaticMonitoring.ts",
+			"hash": "foSrUaonelJfeIOLIlO6+IpvLOpYMP0Pit2iTC99Arw=",
+			"size": 2270
+		},
+		{
+			"name": "/src/composables/token/tokenSecret.ts",
+			"hash": "rjyNJQs1Tpy6G6SkZbod+BJ2EPRO5b3IaZz69JYVkTA=",
+			"size": 708
+		},
+		{
+			"name": "/src/composables/token/useCreateToken.ts",
+			"hash": "7v3LVOOaB9G7WLSv8t7GcH181IELMgWAb2NrjIss1Bw=",
+			"size": 2483
+		},
+		{
+			"name": "/src/composables/token/useEditToken.ts",
+			"hash": "YUqhHCbpWD/NBMYUHa+Ccq5M2UuHSew4HEMkdhS9ZRc=",
+			"size": 2733
+		},
+		{
+			"name": "/src/composables/token/useTokenList.ts",
+			"hash": "HAfjtAPI6geWtbnYoHmQpsuqHX3kxmRfIpaOl+NqVCI=",
+			"size": 6640
+		},
+		{
+			"name": "/src/composables/useAgentConfig.ts",
+			"hash": "6jAclPkQAv6kPQz+h8G9DabO2SFSinO86zAYk9xP2jI=",
+			"size": 7829
+		},
+		{
+			"name": "/src/composables/useAgentInfo.ts",
+			"hash": "2PuJ6SXDEHjsaB6eFfZIAhfdCAm8UgSLnp1oH+7uizo=",
+			"size": 6741
+		},
+		{
+			"name": "/src/composables/useAgentStatus.ts",
+			"hash": "WSlZhSF2+PaNNBmVRtwfL2Elavz46WwNIaeNbD8/Y0E=",
+			"size": 713
+		},
+		{
+			"name": "/src/composables/useBackendExtra.ts",
+			"hash": "5qQ869AIF8j4dnKEfLfQlWtSTdk9ee18kfs0zZH0PMo=",
+			"size": 5297
+		},
+		{
+			"name": "/src/composables/useBackendStore.ts",
+			"hash": "QXiKZTVHxke9Zk1QXcvo621p67rklokWv+XP1o8iiqU=",
+			"size": 3213
+		},
+		{
+			"name": "/src/composables/useBatchExec.ts",
+			"hash": "IOzgV505qLSDlILsPAie/0YV6OqooG+ifX9bkR1xeV8=",
+			"size": 2899
+		},
+		{
+			"name": "/src/composables/useBatchNodes.ts",
+			"hash": "w98dEQMbRTFc4pVRRqwsVjjfIXqLM16xYFS/ZG6Xtus=",
+			"size": 3186
+		},
+		{
+			"name": "/src/composables/useBatchRun.ts",
+			"hash": "jrBkmS7gGja5aqdXfCjNVJ2ladmHeAjrGI7o7FOguz8=",
+			"size": 1196
+		},
+		{
+			"name": "/src/composables/useCron.ts",
+			"hash": "qPev5x54QOmBgEXzFEkJ6Jb/qUqZlgg/71rEjNZlUZQ=",
+			"size": 4454
+		},
+		{
+			"name": "/src/composables/useCronHistory.ts",
+			"hash": "A1UI5kaRM0dYhFRIOR0xisOpNQnkClsTDZS0pF0MQh8=",
+			"size": 1924
+		},
+		{
+			"name": "/src/composables/useExtensions.ts",
+			"hash": "g0rtFjvWlEkTnqrbKUkOaJH/JffgwN6xFByIijgOmNM=",
+			"size": 23480
+		},
+		{
+			"name": "/src/composables/useFileUploadParsing.ts",
+			"hash": "NhCf564U617QG83O5UVmyj3myCJ7ItIQ/H75xPvMS+E=",
+			"size": 1444
+		},
+		{
+			"name": "/src/composables/useInFlightDedupe.ts",
+			"hash": "TdwNBSXrGzGwzQWntpqCsopUYYxUSMDmaQZ+A+92DfU=",
+			"size": 878
+		},
+		{
+			"name": "/src/composables/useJsRuntime.ts",
+			"hash": "HIsT0wCW2+Alpjsh3xtvXxCkkeV9qJxqg+CB/pX6e5Y=",
+			"size": 7056
+		},
+		{
+			"name": "/src/composables/useKv.ts",
+			"hash": "9i3LDB9n793XXQf5qbNfBzyKEfKo79+wsZN2yiu9fAE=",
+			"size": 6825
+		},
+		{
+			"name": "/src/composables/useLifecycle.ts",
+			"hash": "794trzi6wT7d0hJM00LeraneJgsGpZdAH3RTe2Dq22A=",
+			"size": 7540
+		},
+		{
+			"name": "/src/composables/useLogs.ts",
+			"hash": "3+UiznCR6IyY6r/fhWy43OPASksFKg5ZokYOH6n80IE=",
+			"size": 13351
+		},
+		{
+			"name": "/src/composables/useNodeMetadata.ts",
+			"hash": "3Dgk+oXieeqNg4I0hIEhFGX48hF2ivgqlNQBdno8qqk=",
+			"size": 2330
+		},
+		{
+			"name": "/src/composables/useOverviewData.ts",
+			"hash": "3HuPy7tnuhFmpJ3iCAne1qNwIBfVlI7g8GjFJgEWkwI=",
+			"size": 8869
+		},
+		{
+			"name": "/src/composables/useScreenshot.ts",
+			"hash": "HQZOOc1A8N1TH37AxDz+ZQjC3OmfruskEt+SbiITH0g=",
+			"size": 1613
+		},
+		{
+			"name": "/src/composables/useScripts.ts",
+			"hash": "u3+xKIcF0HbSAsWZ5MMmqEP/j08+woy88a4bClX0hEk=",
+			"size": 2064
+		},
+		{
+			"name": "/src/composables/useStaticBucket.ts",
+			"hash": "/kOK7LLKK/bOFG/GmfrTIgZqcqT+43Ge7ACB5hn78Bs=",
+			"size": 3746
+		},
+		{
+			"name": "/src/composables/useStaticBucketFile.ts",
+			"hash": "2OPqI9Rv81U+CVesNV9JRAxX6av2gWz231C4LZsVlo8=",
+			"size": 5307
+		},
+		{
+			"name": "/src/composables/useTask.ts",
+			"hash": "8+APxZYqCjun1umDgG0ioPHCxPp3PoMK/CVXTbIyV9s=",
+			"size": 9792
+		},
+		{
+			"name": "/src/composables/useThemeBucketUpload.ts",
+			"hash": "LUw+oxdvmx4V1YxtZ+Bbp+fU9t+FN+yi5DasKOxT46o=",
+			"size": 3923
+		},
+		{
+			"name": "/src/composables/useThemeTokenPresets.ts",
+			"hash": "tkaGodrwdGh+qujV7pErT++8I03Rnw3/XUJB5/6TI2s=",
+			"size": 4225
+		},
+		{
+			"name": "/src/composables/useWsConnection.ts",
+			"hash": "ZzZ2GPiJF6nZVBUESD7Iw/pwMPnCnqKTtjOnD2pHr04=",
+			"size": 7573
+		},
+		{
+			"name": "/src/data/mapRegionCoords.ts",
+			"hash": "8F1gM0Y2r1Pe3htnpDx382lq1vdD0DuQFBgaJgrxbY8=",
+			"size": 18171
+		},
+		{
+			"name": "/src/data/pingNodes.ts",
+			"hash": "JQAfh+ouwF2INgkIT1t949GgrAGYoMle0/T0cNsIBqs=",
+			"size": 13638
+		},
+		{
+			"name": "/src/data/regions.ts",
+			"hash": "+k0U99a+47oxBjUGz9z4ejMV3T8m4/NM+4RsnhRsbeU=",
+			"size": 10362
+		},
+		{
+			"name": "/src/layout/components/AppMain.vue",
+			"hash": "dcEZhb+mnJBvs/oK8I08LLa0EXVbJKh9DSsFKG2cdfs=",
+			"size": 513
+		},
+		{
+			"name": "/src/layout/components/DashboardHeader.vue",
+			"hash": "g01cdLuO57tLPp84FqAu27P1LHoLy7WaHCAJvWnAGNw=",
+			"size": 5956
+		},
+		{
+			"name": "/src/layout/components/RouterViewLayout.vue",
+			"hash": "UaqIrx76zIGJ88uOXRSRr09AmXRmyANqiTMkbdRDOA0=",
+			"size": 37
+		},
+		{
+			"name": "/src/layout/components/Sidebar.vue",
+			"hash": "TJrrerFZLpHk25k0FpgeayNg0v9sGmwOP97KPC+kYSw=",
+			"size": 10405
+		},
+		{
+			"name": "/src/layout/components/SidebarItem.vue",
+			"hash": "mQzKX40Zt0FpnXs1pqOuQeHIvUAFdzAZWOBQEWoPcXk=",
+			"size": 5548
+		},
+		{
+			"name": "/src/layout/index.vue",
+			"hash": "QFW2HKV0iIeQF3QaGYarrOdbGfaknY1A/rE8J3WkqA4=",
+			"size": 1062
+		},
+		{
+			"name": "/src/lib/base64.ts",
+			"hash": "6QfvVuD2fIsL5raiL8DH+clRnQP7ApcAVfWoW21+pKM=",
+			"size": 837
+		},
+		{
+			"name": "/src/lib/Defered.ts",
+			"hash": "GunJpTvGLYBE1yVLtRo8O2VDi+a2We0lAoOll245EDs=",
+			"size": 289
+		},
+		{
+			"name": "/src/lib/delay.ts",
+			"hash": "BZMEV6comNsinWKp5tRMWCeycRpG5+heFCCXmMBeUNI=",
+			"size": 107
+		},
+		{
+			"name": "/src/lib/migration.ts",
+			"hash": "9cWUcJQftkbgnVoUtB0KCELib3sEO6fjaqIyBX9exWk=",
+			"size": 1760
+		},
+		{
+			"name": "/src/lib/password.ts",
+			"hash": "XwvJay1AVwtmjWFahkcBEili/QUHx2oyDuOlLGvxFAE=",
+			"size": 434
+		},
+		{
+			"name": "/src/lib/utils.ts",
+			"hash": "zk2agowDEs9m0BlpNOnv1QSRiH9gHcsSzNqGgxGFIOk=",
+			"size": 188
+		},
+		{
+			"name": "/src/locales/en.ts",
+			"hash": "0x4Mgs/YWVNdpg9Hm2R4IdCP0/wWF8HtDZpMQ7HD/Pc=",
+			"size": 37814
+		},
+		{
+			"name": "/src/locales/zh_cn.ts",
+			"hash": "XgYfbEdz0otkfOb8prE1q4ZCDlC4Aevk2qoaXo5M2yM=",
+			"size": 37695
+		},
+		{
+			"name": "/src/main.ts",
+			"hash": "FCgx62I3+9B+C8Lm/BA3EEQdyXT7cxULpJ734J2OQSA=",
+			"size": 1027
+		},
+		{
+			"name": "/src/pages/[...404].vue",
+			"hash": "TvBZ0UWryM3DwFd7IAY54+kqQE04ldMiUJsd927/6UY=",
+			"size": 4577
+		},
+		{
+			"name": "/src/pages/dashboard.vue",
+			"hash": "ntOc+BzRKur+R1tIF1GB8Zuf1NRuMmxhB3eYqy0dd6c=",
+			"size": 166
+		},
+		{
+			"name": "/src/pages/dashboard/__app.vue",
+			"hash": "dRuWai1Isifcj6wcmlgFIPRVRoewIEcc6O5Er8BdjTc=",
+			"size": 402
+		},
+		{
+			"name": "/src/pages/dashboard/about.vue",
+			"hash": "kuq3VY4ZiGeAqNp5v7isnT7HaLR3Pbfyvq1uGDai324=",
+			"size": 473
+		},
+		{
+			"name": "/src/pages/dashboard/agents.vue",
+			"hash": "EDb9NCtvsXy/AvLuVW+7rR8u1OvsVxB8eF6EUUEibmA=",
+			"size": 9096
+		},
+		{
+			"name": "/src/pages/dashboard/app/[extensionRoute].vue",
+			"hash": "tuTLGEhQGI4KMWrbFtr05Refks9rQ+pqIPABFidUqBM=",
+			"size": 2324
+		},
+		{
+			"name": "/src/pages/dashboard/app/__docker.vue",
+			"hash": "Qt35x7OYOBtLIpZRL8Tkq6b2EzVBq1ySldqQ4xYLmBY=",
+			"size": 288
+		},
+		{
+			"name": "/src/pages/dashboard/app/__files.vue",
+			"hash": "ELcLPYXs+QH6QRMDYNwFmcbGP3C6tckuL0Z1CKpF+rk=",
+			"size": 291
+		},
+		{
+			"name": "/src/pages/dashboard/app/__firewall.vue",
+			"hash": "9l5O/drqjCaOpk9arAJL6xRwVDIFFQjEnsOUCUS34HA=",
+			"size": 302
+		},
+		{
+			"name": "/src/pages/dashboard/app/__process.vue",
+			"hash": "JiTxrt6yKznfVgmRYk1hIpqYR6B2pVl/wpNl7O7AxPY=",
+			"size": 307
+		},
+		{
+			"name": "/src/pages/dashboard/app-panel.vue",
+			"hash": "mDy1lyVRSh6Cmq//6exI2ni9ffRmglUqODfQJsc4bgw=",
+			"size": 290
+		},
+		{
+			"name": "/src/pages/dashboard/app-panel/[id].vue",
+			"hash": "lrMiPAgD8d0imfTb4pgf5kd1wi5XBsKKdxL1vjJjAtY=",
+			"size": 2131
+		},
+		{
+			"name": "/src/pages/dashboard/app-panel/list.vue",
+			"hash": "RK1kvi+vIU2f10HNo4RFGvmUlisoR+HrJ0EbwSTi1VI=",
+			"size": 8999
+		},
+		{
+			"name": "/src/pages/dashboard/batch-exec.vue",
+			"hash": "zYJDlK2dxgHNjjisLTByqAY4uVwRhtVwEG0+2tlvY8A=",
+			"size": 2018
+		},
+		{
+			"name": "/src/pages/dashboard/bucket/[name].vue",
+			"hash": "d68w8vTYhlyVeMFUqj4bEX4eS8+9HL1wzsNdWU32KxQ=",
+			"size": 6250
+		},
+		{
+			"name": "/src/pages/dashboard/cost.vue",
+			"hash": "jWnf4ZL90GcPH1z5FUtlBFabLmosys/chC8UVWkTwbs=",
+			"size": 26377
+		},
+		{
+			"name": "/src/pages/dashboard/cron.vue",
+			"hash": "VbVTSSLt3DC9lOzOT/kCLWjLjxKpcMzChCko2gPt0uU=",
+			"size": 8123
+		},
+		{
+			"name": "/src/pages/dashboard/cron-history/[cronName].vue",
+			"hash": "li6X2HcK+DfSwOdyPHdYuPNZKf+B2m4A/szhsf2BqWE=",
+			"size": 5468
+		},
+		{
+			"name": "/src/pages/dashboard/js-runtime.vue",
+			"hash": "9DFztHFPf1iCw8uIdrCmNmOAH7Cx/LXkIEPZL2jPQA8=",
+			"size": 3449
+		},
+		{
+			"name": "/src/pages/dashboard/js-runtime/[id].vue",
+			"hash": "Z3Jr8F7unRrwWg2tLLj7sretw//tOsa6UiF6EwABLi0=",
+			"size": 71049
+		},
+		{
+			"name": "/src/pages/dashboard/kv.vue",
+			"hash": "Ezj9M9sjSjqjVYFmJCyXyZOcmLHNd/VnWyDlNBTi5To=",
+			"size": 7711
+		},
+		{
+			"name": "/src/pages/dashboard/logs.vue",
+			"hash": "bP7Utjl0Ht8R4szMSswIx+xNtACZPS8EFENxsW49wKU=",
+			"size": 885
+		},
+		{
+			"name": "/src/pages/dashboard/map.vue",
+			"hash": "QkKU9tbCsf1+pbhWFsVSErYibvPYkfKzrUsoUNhaFOw=",
+			"size": 19368
+		},
+		{
+			"name": "/src/pages/dashboard/node/[uuid].vue",
+			"hash": "pgFA1+kBE1Jg9n8jeh+LZfKwcS3Etp+2uXFBjWuwdg8=",
+			"size": 1010
+		},
+		{
+			"name": "/src/pages/dashboard/node/[uuid]/[extensionRoute].vue",
+			"hash": "7wKS8ywOxnbHPZc3nsLHLOD+fBw72uex+AAsyGXzKtE=",
+			"size": 2339
+		},
+		{
+			"name": "/src/pages/dashboard/node/[uuid]/__docker.vue",
+			"hash": "Mpd0op8X0/34lsxUuad3U/Ntz3iJOMvaSbmHz0fWiEQ=",
+			"size": 279
+		},
+		{
+			"name": "/src/pages/dashboard/node/[uuid]/__firewall.vue",
+			"hash": "jwwv/+oSyTJNSelXPl2grPgzJeuwK5o8fSabQy2802M=",
+			"size": 293
+		},
+		{
+			"name": "/src/pages/dashboard/node/[uuid]/__process.vue",
+			"hash": "sti1yg7ooaSvSeEUlKp8KB2HLIPcdwIeH8G25F5uLAw=",
+			"size": 298
+		},
+		{
+			"name": "/src/pages/dashboard/node/[uuid]/__update.vue",
+			"hash": "3JI3JZvDxSsL1Put3sd/2d06Z8kkerMqJUlSGN5Vtiw=",
+			"size": 217
+		},
+		{
+			"name": "/src/pages/dashboard/node/[uuid]/files.vue",
+			"hash": "S9W/XkP3LTYDGi4j35kqNHtrfoDNA9pa6Q0QsDK2Lhg=",
+			"size": 282
+		},
+		{
+			"name": "/src/pages/dashboard/node/[uuid]/latency.vue",
+			"hash": "fXBVm66InrimVYDfZGyjsceYZq7oKfaNswBY7In/4hk=",
+			"size": 19667
+		},
+		{
+			"name": "/src/pages/dashboard/node/[uuid]/LatencyView.vue",
+			"hash": "Ds2z6su5EalsuN9E97YANitUO/SKyxj6EhkhC2EHBZU=",
+			"size": 16758
+		},
+		{
+			"name": "/src/pages/dashboard/node/[uuid]/ping.vue",
+			"hash": "xCqBUUxtfZhdSGyRi6ZRXl9g4tp8ronrf43d3nyvNp4=",
+			"size": 463
+		},
+		{
+			"name": "/src/pages/dashboard/node/[uuid]/setting.vue",
+			"hash": "+JLt9e51qdIIs6sgSaD0xMCF+rXa3+3M+ahPzkWumt0=",
+			"size": 2441
+		},
+		{
+			"name": "/src/pages/dashboard/node/[uuid]/status.vue",
+			"hash": "9UEo6L0PHaz1LU3sx3KnDFycxuye+kvI/PTKOKPnZ9k=",
+			"size": 3610
+		},
+		{
+			"name": "/src/pages/dashboard/node/[uuid]/traffic.vue",
+			"hash": "gxq4KiudcH3HhgHwPEZofLLn/AKR+C4/rcXsU2QJPKY=",
+			"size": 9610
+		},
+		{
+			"name": "/src/pages/dashboard/node/[uuid]/webshell.vue",
+			"hash": "/m6LrVFFfFxkkVS3JX5t/hw3PhEa3zctLN+pU+OuuJA=",
+			"size": 1174
+		},
+		{
+			"name": "/src/pages/dashboard/node-manage.vue",
+			"hash": "KkD/nfzoTs0V1r2vg9mt16G9VDdB4ZBY5Gkj7Ym0Bh8=",
+			"size": 1840
+		},
+		{
+			"name": "/src/pages/dashboard/overview.vue",
+			"hash": "PnhuZ6VFQ9k0LMvGnn6iMmvIiLbG4zgzty/DkUws5VM=",
+			"size": 13818
+		},
+		{
+			"name": "/src/pages/dashboard/scripts.vue",
+			"hash": "3lSQunH1gRUPP5vR+ip3D0IaK42zWzArwKVR8ScOwmg=",
+			"size": 4257
+		},
+		{
+			"name": "/src/pages/dashboard/servers.vue",
+			"hash": "OCrIiKk0h9W6o8IyofBz8RrSmFNABKRhZ8fuyEuTA5E=",
+			"size": 6393
+		},
+		{
+			"name": "/src/pages/dashboard/servers-detail/[backendName].vue",
+			"hash": "StKCcALuRBGLNSxNNHaD49bknoOLKxrsosUMF6WjLGo=",
+			"size": 24303
+		},
+		{
+			"name": "/src/pages/dashboard/settings.vue",
+			"hash": "pQfDpRJhowzIMgW5QRPHeO1KzhvK4IFFBdFvWHuXH0I=",
+			"size": 391
+		},
+		{
+			"name": "/src/pages/dashboard/settings/general.vue",
+			"hash": "136aMOF88NqRUHDM3GDT2RGkmNXfdCD7PSOgcZLssas=",
+			"size": 6056
+		},
+		{
+			"name": "/src/pages/dashboard/settings/site.vue",
+			"hash": "uDcl3UL8heJ1lCJnWhCTP6HVlY+XLxUKFeOq1bCb93A=",
+			"size": 4937
+		},
+		{
+			"name": "/src/pages/dashboard/static-bucket.vue",
+			"hash": "XkuY9en5YtZ49aSuu9F5c9cEo1Nz+QnDS+z5vCUwSyU=",
+			"size": 6537
+		},
+		{
+			"name": "/src/pages/dashboard/theme/[name].vue",
+			"hash": "vYWiMQONFOO6nZjZ9/Znfm5TClLev8EZn8FcE2c2dNc=",
+			"size": 1393
+		},
+		{
+			"name": "/src/pages/dashboard/theme-management.vue",
+			"hash": "7uXv/vMehnnlThD3+41KRKkhuOCU9oy1jSgLJe3VdCI=",
+			"size": 13226
+		},
+		{
+			"name": "/src/pages/dashboard/token.vue",
+			"hash": "SBk8IqxgHT3T3sUxLWCQKMk12VjdSn4KQy6m46eWQ9E=",
+			"size": 2515
+		},
+		{
+			"name": "/src/pages/dashboard/tokenCeate.vue",
+			"hash": "9HEGPgdKFalq6q7u9aswbBo4t8lWbj87+4vfU0PZkqk=",
+			"size": 276
+		},
+		{
+			"name": "/src/pages/dashboard/tokenDetail.vue",
+			"hash": "5cf2h0MAIdqzwJwxuuObSJ562n80Wfkd1EudiYldTvA=",
+			"size": 276
+		},
+		{
+			"name": "/src/pages/dashboard/tokenEdit.vue",
+			"hash": "QU7a3pMx8tVEGAfUZnRmJLUtZOl2LXk9JPntdBsYils=",
+			"size": 270
+		},
+		{
+			"name": "/src/pages/dashboard/tokenImport.vue",
+			"hash": "rynabzZjXhXGdPShFVME2Xg0zfDdeJ8CEgWiVMSVc8s=",
+			"size": 276
+		},
+		{
+			"name": "/src/pages/dashboard/worker-route-preview.vue",
+			"hash": "5xOts3+Opm73aWKULlhDI41Od0KThsFuARjhjosulNc=",
+			"size": 2706
+		},
+		{
+			"name": "/src/pages/index.deprecated.vue",
+			"hash": "xaD7kzM+ssQ/uhPz9nJKCcMDRe5zoDAtL758n+eCvhA=",
+			"size": 9210
+		},
+		{
+			"name": "/src/pages/index.vue",
+			"hash": "ojgKAPuPh6uRvQ/sEvgBNzJXLJw1zi+Owd53jLpoP1U=",
+			"size": 816
+		},
+		{
+			"name": "/src/pages/server-detail/[uuid].vue",
+			"hash": "KA6fkHnqApcrDIT0xK428VFvlBWSVRXHvK1AanJUXT0=",
+			"size": 46639
+		},
+		{
+			"name": "/src/router/index.ts",
+			"hash": "z6sUqqRsS/RhwL1E88+OVGw+cO4EV7qAOrC/lRDStl0=",
+			"size": 372
+		},
+		{
+			"name": "/src/router/prefetchPlugin.ts",
+			"hash": "g1hCdkOFUM11nCzhvf8hghu+0bKiFglMRr+IkfmDFk8=",
+			"size": 28568
+		},
+		{
+			"name": "/src/stores/permission/index.ts",
+			"hash": "rFwzZAFAg5AHf2xEZNzjOlreOSY+vKv5rT6tNqS7+gM=",
+			"size": 5586
+		},
+		{
+			"name": "/src/stores/permission/types.ts",
+			"hash": "18Q9EdWemY6N26toLR6Vh3gIpHwhShiAsBT7sht+b0I=",
+			"size": 1020
+		},
+		{
+			"name": "/src/stores/permission/utils.ts",
+			"hash": "eFAJcygRf1T6nUSQ7Qlm5+CTVNKozTSOf6VViWvz8qQ=",
+			"size": 9128
+		},
+		{
+			"name": "/src/stores/systemSettings.ts",
+			"hash": "exGQTYlrKSk0E3nJHQdzsrJAGDDW404BzZiuPVny0dA=",
+			"size": 1852
+		},
+		{
+			"name": "/src/stores/theme.ts",
+			"hash": "fLTMrVXrjm2ARtJfV/HZeZZaaBGpphYEQoQzK2R7rmI=",
+			"size": 3015
+		},
+		{
+			"name": "/src/style/app.css",
+			"hash": "S+a9Mi7efCZVswIbKWAwUTIBvfgK641QGDJ1lLJ+Fb0=",
+			"size": 5513
+		},
+		{
+			"name": "/src/theme/dom.ts",
+			"hash": "Zfw0Ai7YmWzEDPAaeDrQ1HuUKB2Zz4SP4wYOjzBcLSQ=",
+			"size": 688
+		},
+		{
+			"name": "/src/theme/palettes.ts",
+			"hash": "RPHk57+GofSzBPOAPZ8vgFNwUeVwCJ3O0L4Ym/FCLQo=",
+			"size": 4675
+		},
+		{
+			"name": "/src/types/agent.ts",
+			"hash": "e9XmV2qbAqDPvo/x7aWeDxXGCbjT5kaC4VHTD/x6cw4=",
+			"size": 1113
+		},
+		{
+			"name": "/src/types/monitoring.ts",
+			"hash": "MUr76SNhENdnCfAAkZhr6635QB+8KWKYVh0xCs0aPm4=",
+			"size": 2936
+		},
+		{
+			"name": "/src/types/router.d.ts",
+			"hash": "ww9fIw/DLKapSEu/bDdYZlKavQ7lehY/wKvf4/9XlBg=",
+			"size": 394
+		},
+		{
+			"name": "/src/types/task.ts",
+			"hash": "+TulXG0Hnfp2drnPrzRCE1KY/wN6JcqUXz2QIj1B0K8=",
+			"size": 4130
+		},
+		{
+			"name": "/src/types/theme.ts",
+			"hash": "ebY4f06kWeBdZQhcozQLgZIFTj8SW4ydR0l2Jb/LdP4=",
+			"size": 86
+		},
+		{
+			"name": "/src/types/worker.ts",
+			"hash": "dshM0LOFwrH6/Qt58m6QtNNh23v0dWN6p9ok0vBP7t0=",
+			"size": 708
+		},
+		{
+			"name": "/src/utils/base64.ts",
+			"hash": "slEwv5IAjula8GoyUX4liDfzXoQftpvWTMDG898NaLY=",
+			"size": 565
+		},
+		{
+			"name": "/src/utils/cookie.ts",
+			"hash": "PsSroIWVVCdPX46P8/Xcpp9lj74DFGh4aUp03VJxLsA=",
+			"size": 560
+		},
+		{
+			"name": "/src/utils/copy.ts",
+			"hash": "0RTyn6sQv5H0FXqjasldtqHsdc5uSsvutlnfFJx0jBI=",
+			"size": 1206
+		},
+		{
+			"name": "/src/utils/costSummary.ts",
+			"hash": "YGFzu2bddI5PwcyPvZtMkzDOIWwiiprQiJzqD6wWjAQ=",
+			"size": 14093
+		},
+		{
+			"name": "/src/utils/detectUpdate.ts",
+			"hash": "5nknFnmchZBvfk1kVLj+bovR/p7X3Smu/U16S9WdKqs=",
+			"size": 808
+		},
+		{
+			"name": "/src/utils/file.ts",
+			"hash": "09V2U/uN6VYqu6FZVVhff+X8lcjq5KHw8Jl2YDH9DGo=",
+			"size": 495
+		},
+		{
+			"name": "/src/utils/format.ts",
+			"hash": "piyIwPKU56Jg5iZNuBlTNduIy1ARC0A3aM5aftAzCAc=",
+			"size": 1463
+		},
+		{
+			"name": "/src/utils/groupBy.ts",
+			"hash": "49fDpiGsQjaTUXQLqWkodXDpRQ+0+UmUtygTjs2/xVQ=",
+			"size": 337
+		},
+		{
+			"name": "/src/utils/show.ts",
+			"hash": "ILl61bBOgnVmJ8Y5U7MXKFRnYhTB8WzP/27K4b/eqR8=",
+			"size": 4949
+		},
+		{
+			"name": "/src/utils/themeConfig.ts",
+			"hash": "I9sfV4NnRmCNZeZmujHkxXsF+pZS2MLire2qw+r7ihw=",
+			"size": 1010
+		},
+		{
+			"name": "/src/views/dashboard/token/TokenCreateView.vue",
+			"hash": "ZGjE0IW7nIVR1FuZp/HnS0SM5siktXkwVYg/1geRDQc=",
+			"size": 2452
+		},
+		{
+			"name": "/src/views/dashboard/token/TokenDetailView.vue",
+			"hash": "wn1U3VXxMDfDQm/pEWGjsxepFsQEN+VTh7ITevntEn4=",
+			"size": 522
+		},
+		{
+			"name": "/src/views/dashboard/token/TokenEditView.vue",
+			"hash": "eTB57OsDASGxSE4vPnSO1s2pjlRq0IgIpDHIRCu/wLU=",
+			"size": 1136
+		},
+		{
+			"name": "/src/views/dashboard/token/TokenImportView.vue",
+			"hash": "4NKE+LL1vF1bC2pIhDh8yLHTnmvIbNDoIWVaJyt49Gw=",
+			"size": 1119
+		},
+		{
+			"name": "/src/views/dashboard/token/TokenManageView.vue",
+			"hash": "32aJP7cPKCA/xIFmfry0vMtbbAIcXRZDA8wvZWoBlts=",
+			"size": 758
+		},
+		{
+			"name": "/tests/cost-summary.test.ts",
+			"hash": "VIKbSnz+f9a9TEtwfRtcBCUg7lKcIOhzaHX4JBdQENs=",
+			"size": 8634
+		},
+		{
+			"name": "/tsconfig.app.json",
+			"hash": "OTjKmcA/y7ASCdyZkkea/ngrAP4Dyq7/tKZOQl3ZpAM=",
+			"size": 308
+		},
+		{
+			"name": "/tsconfig.json",
+			"hash": "oF3cW/VXK5TUtsDTkNXtzHOIyKNEWN7Il9gBDzLQ+No=",
+			"size": 234
+		},
+		{
+			"name": "/tsconfig.node.json",
+			"hash": "67nrTXEq6EcOZZn6QONl8N2kjDt3X6hC3yQ90KQzukg=",
+			"size": 416
+		},
+		{
+			"name": "/versionPlugin.ts",
+			"hash": "OiPWLc3ElTH1HOI/wpL+4kc6EnKWLZ4d8mwZkVyvfLk=",
+			"size": 987
+		},
+		{
+			"name": "/vite.config.ts",
+			"hash": "u1xgP4lJH3Ncgx9+Cek9rNdONhdCumpvjt1p16Sf3lg=",
+			"size": 777
+		}
+	],
+	"links": {
+		"stats": "https://data.jsdelivr.com/v1/stats/packages/gh/NodeSeekDev/NodeGet-board@main"
+	}
+}

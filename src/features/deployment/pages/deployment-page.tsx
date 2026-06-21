@@ -3,6 +3,12 @@ import { useState } from "react";
 import { toast } from "sonner";
 
 import { mockDeploymentTargets, type DeploymentTarget } from "@/features/deployment/model/mock-deployment";
+import {
+  cachePolicyBars,
+  createRuntimeSegments,
+  deliveryEffortBars,
+  deploymentScoreSeries
+} from "@/features/deployment/model/deployment-page-insights";
 import { DeploymentBoundaryPanel } from "@/features/deployment/components/deployment-boundary-panel";
 import { DeploymentInsightsPanel } from "@/features/deployment/components/deployment-insights-panel";
 import { DeploymentOverviewStats } from "@/features/deployment/components/deployment-overview-stats";
@@ -10,54 +16,9 @@ import { DeploymentTargetsPanel } from "@/features/deployment/components/deploym
 import { Button } from "@/shared/ui/button";
 import { PageHeader } from "@/shared/ui/page-header";
 
-const deploymentScoreSeries = [
-  {
-    name: "静态部署",
-    color: "var(--chart-1)",
-    values: [95, 90, 78, 72, 86]
-  },
-  {
-    name: "Nginx",
-    color: "var(--chart-2)",
-    values: [88, 96, 90, 86, 91]
-  },
-  {
-    name: "Rust 内置",
-    color: "var(--chart-3)",
-    values: [78, 84, 92, 96, 88]
-  }
-] as const;
-
-const cachePolicyBars = [
-  { label: "assets", value: 365 },
-  { label: "index", value: 1 },
-  { label: "config", value: 1 },
-  { label: "api", value: 0 }
-];
-
-const deliveryEffortBars = [
-  { label: "静态部署", value: 22 },
-  { label: "Nginx", value: 36 },
-  { label: "Rust 内置", value: 58 },
-  { label: "Headless", value: 48 },
-  { label: "容器镜像", value: 30 }
-];
-
 export function DeploymentPage() {
   const [selectedTargetId, setSelectedTargetId] = useState(mockDeploymentTargets[0]?.id ?? "");
-
-  const runtimeSegments = [
-    {
-      label: "已就绪",
-      value: mockDeploymentTargets.filter((target) => target.status === "ready").length,
-      color: "var(--chart-1)"
-    },
-    {
-      label: "规划中",
-      value: mockDeploymentTargets.filter((target) => target.status === "planned").length,
-      color: "var(--chart-3)"
-    }
-  ] as const;
+  const runtimeSegments = createRuntimeSegments(mockDeploymentTargets);
 
   const announceTarget = (target: DeploymentTarget) => {
     toast.info("已选择部署模式", {

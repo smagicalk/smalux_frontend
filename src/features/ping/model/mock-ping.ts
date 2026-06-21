@@ -175,7 +175,7 @@ export const mockPingChecks: PingCheck[] = [
   }
 ];
 
-export function createPingSummary(checks: PingCheck[]) {
+export function createPingSummary(checks: readonly PingCheck[]) {
   const enabled = checks.filter((check) => check.enabled);
   const degraded = enabled.filter((check) => check.status === "degraded").length;
   const down = enabled.filter((check) => check.status === "down").length;

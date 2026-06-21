@@ -8,58 +8,26 @@ import { ThemeGovernancePanel } from "@/features/themes/components/theme-governa
 import { ThemeLibraryPanel } from "@/features/themes/components/theme-library-panel";
 import { ThemeLifecyclePanel } from "@/features/themes/components/theme-lifecycle-panel";
 import { mockPublicThemes, type ThemeStatus } from "@/features/themes/model/mock-themes";
+import {
+  createThemeConfigTypeBars,
+  createThemeStatusSegments,
+  filterThemesByStatus,
+  packageLimitBars,
+  uploadTrend
+} from "@/features/themes/model/theme-insights";
 import { Button } from "@/shared/ui/button";
 import { PageHeader } from "@/shared/ui/page-header";
-
-const uploadTrend = [2, 3, 2, 4, 5, 4, 6, 5, 7, 6, 8, 9];
-
-const packageLimitBars = [
-  { label: "ZIP", value: 20 },
-  { label: "解压", value: 80 },
-  { label: "主题数", value: 20 },
-  { label: "参数项", value: 48 }
-];
-
-const statusColor: Record<ThemeStatus, string> = {
-  active: "var(--chart-1)",
-  preview: "var(--chart-3)",
-  draft: "var(--chart-4)"
-};
 
 export function ThemesPage() {
   const [statusFilter, setStatusFilter] = useState<ThemeStatus | "all">("all");
 
   const filteredThemes = useMemo(
-    () =>
-      mockPublicThemes.filter((theme) => statusFilter === "all" || theme.status === statusFilter),
+    () => filterThemesByStatus(mockPublicThemes, statusFilter),
     [statusFilter]
   );
 
-  const configTypeBars = useMemo(
-    () =>
-      filteredThemes
-        .flatMap((theme) => theme.configuration)
-        .reduce<Array<{ label: string; value: number }>>((items, config) => {
-          const existing = items.find((item) => item.label === config.type);
-          if (existing) {
-            existing.value += 1;
-            return items;
-          }
-
-          return [...items, { label: config.type, value: 1 }];
-        }, []),
-    [filteredThemes]
-  );
-
-  const statusSegments = (["active", "preview", "draft"] as const).map((status) => ({
-    label: {
-      active: "已启用",
-      preview: "预览中",
-      draft: "草稿"
-    }[status],
-    value: filteredThemes.filter((theme) => theme.status === status).length,
-    color: statusColor[status]
-  }));
+  const configTypeBars = useMemo(() => createThemeConfigTypeBars(filteredThemes), [filteredThemes]);
+  const statusSegments = useMemo(() => createThemeStatusSegments(filteredThemes), [filteredThemes]);
 
   return (
     <>

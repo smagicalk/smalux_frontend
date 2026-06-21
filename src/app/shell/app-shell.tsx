@@ -47,8 +47,8 @@ export function AppShell() {
   return (
     <div className="min-h-screen bg-transparent text-foreground">
       <div className="grid min-h-screen lg:grid-cols-[220px_1fr]">
-        <aside className="hidden border-r border-white/30 bg-[color:var(--surface-nav)] lg:flex lg:flex-col dark:border-white/8">
-          <div className="border-b border-white/25 px-4 py-3 dark:border-white/8">
+        <aside className="hidden border-r border-border bg-sidebar lg:flex lg:flex-col">
+          <div className="border-b border-border px-4 py-3">
             <div className="flex items-center gap-2.5">
               <div className="flex size-8 items-center justify-center rounded-md bg-primary text-primary-foreground">
                 <ActivityIcon aria-hidden />
@@ -74,9 +74,9 @@ export function AppShell() {
                       key={item.to}
                       to={item.to}
                       activeOptions={{ exact: true }}
-                      className="group flex items-center gap-2 rounded-md px-2 py-2 text-sm text-muted-foreground transition hover:bg-white/35 hover:text-foreground dark:hover:bg-white/6"
+                      className="group flex items-center gap-2 rounded-md px-2 py-1.5 text-sm text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
                       activeProps={{
-                        className: "bg-[color:var(--surface-nav-active)] text-accent-foreground"
+                        className: "bg-accent text-accent-foreground"
                       }}
                     >
                       <item.icon className="size-4 shrink-0" aria-hidden />
@@ -88,15 +88,15 @@ export function AppShell() {
             ))}
           </nav>
 
-          <div className="grid gap-1 border-t border-white/25 px-3 py-2.5 text-[11px] text-muted-foreground dark:border-white/8">
+          <div className="grid gap-1 border-t border-border px-3 py-2.5 text-[11px] text-muted-foreground">
             <span>session: HttpOnly</span>
             <span>transport: HTTPS / WSS</span>
           </div>
         </aside>
 
         <div className="flex min-w-0 flex-col">
-          <header className="sticky top-0 z-10 border-b border-white/30 bg-background/84 px-4 py-2 backdrop-blur-xl md:px-5 dark:border-white/8">
-            <div className="flex items-center justify-between gap-3 rounded-lg border border-white/30 bg-white/55 px-3 py-2 shadow-[var(--shadow-soft)] dark:border-white/8 dark:bg-white/6">
+          <header className="sticky top-0 z-10 border-b border-border bg-background/80 px-4 py-2.5 backdrop-blur-md md:px-6">
+            <div className="flex items-center justify-between gap-3">
               <div className="flex min-w-0 items-center gap-3">
                 <div className="flex size-8 items-center justify-center rounded-md bg-primary text-primary-foreground lg:hidden">
                   <ActivityIcon aria-hidden />
@@ -114,7 +114,7 @@ export function AppShell() {
               <div className="flex items-center gap-1.5">
                 <Link
                   to="/"
-                  className="hidden h-8 items-center gap-2 rounded-md border border-white/30 bg-white/45 px-2.5 text-sm font-medium text-muted-foreground transition hover:text-foreground dark:border-white/8 dark:bg-white/6 sm:flex"
+                  className="hidden h-8 items-center gap-2 rounded-md border border-border bg-transparent px-2.5 text-sm font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground sm:flex"
                 >
                   <ExternalLinkIcon className="size-4" aria-hidden />
                   状态页
@@ -153,7 +153,7 @@ export function AppShell() {
             </div>
             <div className="mt-2 flex flex-wrap items-center gap-2 text-xs text-muted-foreground md:hidden">
               <Badge variant="outline">probe-first</Badge>
-              <div className="flex items-center gap-2 rounded-full bg-[color:var(--surface-muted)] px-3 py-1.5 dark:bg-white/6">
+              <div className="flex items-center gap-2 rounded-full bg-muted px-3 py-1.5">
                 <LockKeyholeIcon className="size-3.5" aria-hidden />
                 会话隔离
               </div>
@@ -161,8 +161,8 @@ export function AppShell() {
             </div>
           </header>
 
-          <main className="min-w-0 flex-1 px-4 pb-24 pt-4 md:px-5 lg:pb-6">
-            <div className={cn("mx-auto flex w-full max-w-[1480px] flex-col gap-4")}>
+          <main className="min-w-0 flex-1 px-4 pb-24 pt-5 md:px-6 lg:pb-8">
+            <div className={cn("mx-auto flex w-full max-w-[1400px] flex-col gap-5")}>
               <QuickSearch className="md:hidden" compact />
               <Outlet />
             </div>

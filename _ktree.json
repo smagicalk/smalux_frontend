@@ -1,0 +1,486 @@
+{
+	"type": "gh",
+	"name": "komari-monitor/komari-web",
+	"version": "main",
+	"default": null,
+	"files": [
+		{
+			"name": "/.env.example",
+			"hash": "DVRTjLEyykp/NzlzmGvqoigkeUbRA01Dicy9gktMgPE=",
+			"size": 150
+		},
+		{
+			"name": "/.gitignore",
+			"hash": "D4eaK7ELlBXjgIGUDz8RGIDLySXCE0w/pK3dAH8V1R8=",
+			"size": 284
+		},
+		{
+			"name": "/aaa",
+			"hash": "47DEQpj8HBSa+/TImW+5JCeuQeRkm5NMpJWZG3hSuFU=",
+			"size": 0
+		},
+		{
+			"name": "/components.json",
+			"hash": "3L51ANGaDooIdLXNih1+cYU4MEAqdF2R3y4fqZP41Y8=",
+			"size": 426
+		},
+		{
+			"name": "/eslint.config.js",
+			"hash": "3ADH23ANA4NNBKFy6nCVk65e8bx1DrVd/FIaYNnhuqA=",
+			"size": 734
+		},
+		{
+			"name": "/index.html",
+			"hash": "25CKNvf46hsml7VPXXku3rmlJf9bjfV4VHBkGr5TF1M=",
+			"size": 366
+		},
+		{
+			"name": "/package.json",
+			"hash": "+7u2A9bg/PE9MPJwnzQ3qiTO5GV8t6hgfCiiy/+lbMs=",
+			"size": 2116
+		},
+		{
+			"name": "/package-lock.json",
+			"hash": "M0g8l3KzOp5DV7bje2q8XlZh9whbNh3HRncyYSxWz9A=",
+			"size": 278587
+		},
+		{
+			"name": "/public/vite.svg",
+			"hash": "SnSK/UQ5GLsWWRyDTEAdrjPoeGGrXbrQgRw6O0qSFPs=",
+			"size": 1497
+		},
+		{
+			"name": "/README.md",
+			"hash": "Fa5cCk66ohbqD/AAVgnXUZLhuzshnLxhlUFhxyscScc=",
+			"size": 1942
+		},
+		{
+			"name": "/src/components/chart/ConnectionsChart.tsx",
+			"hash": "xk1oa2JPZEvHNWtxd2NlNTggUgv55+43FdmzgthCK38=",
+			"size": 4473
+		},
+		{
+			"name": "/src/components/chart/CpuUsageChart.tsx",
+			"hash": "952yToiXCht9x5FeqMagAFCGbCTeUg9nBovWkjjeSuI=",
+			"size": 3915
+		},
+		{
+			"name": "/src/components/chart/DiskUsageChart.tsx",
+			"hash": "CKTDqc73LuTRVblG5j2IKp+kdtQ1crfZpsREqINzYe4=",
+			"size": 5678
+		},
+		{
+			"name": "/src/components/chart/index.ts",
+			"hash": "nw0q6lZdWNucqU1PvpF8fYCOElL27mLqk1dmnZ2ACmw=",
+			"size": 404
+		},
+		{
+			"name": "/src/components/chart/NetworkSpeedChart.tsx",
+			"hash": "JvA35nbEFhdp+9j2q5GO3F4nlm01uSpc0dmoMQW6i3E=",
+			"size": 5309
+		},
+		{
+			"name": "/src/components/chart/ProcessCountChart.tsx",
+			"hash": "fXrYwDdfpgn0SOYOa2zhQSBj6tpEBgJy+mkcfNqDsoM=",
+			"size": 4134
+		},
+		{
+			"name": "/src/components/chart/RamUsageChart.tsx",
+			"hash": "A1fxPdyZaa4nYYjaxj4lYZV+LW9+Ei5ixrvuiXiYKNw=",
+			"size": 5443
+		},
+		{
+			"name": "/src/components/ColorThemeToggle.tsx",
+			"hash": "94tpM+aXXkGttF3U8gbR86V8jmfEmKNEVmRhJRoHNEo=",
+			"size": 1568
+		},
+		{
+			"name": "/src/components/Flag.tsx",
+			"hash": "nko0DQ44jH+6UqUlXIvrhGz5eYqtRETvJc5G3sLvuz8=",
+			"size": 824
+		},
+		{
+			"name": "/src/components/LanguageSwitch.tsx",
+			"hash": "/fKFdqtkiQbx97OwABrVPUmVSoaDG98s/K8XE/jgbm4=",
+			"size": 1134
+		},
+		{
+			"name": "/src/components/LoginButton.tsx",
+			"hash": "k9Wgx3UdUOClw2+gECgO7RDtmv00eVXJydgw+HyWh4M=",
+			"size": 6452
+		},
+		{
+			"name": "/src/components/modeToggle.tsx",
+			"hash": "H38IVNPxYCMRoo21sgaAfK0fQ3siy6w6UxkfR4W8pFM=",
+			"size": 1225
+		},
+		{
+			"name": "/src/components/NodeCard.tsx",
+			"hash": "c5MpJgZo/KYHDPl5dUyhCliYnMXhRGPIX8Nfv1OQWv4=",
+			"size": 8157
+		},
+		{
+			"name": "/src/components/NodeInfoPanel.tsx",
+			"hash": "s9CMRb/d7Xks1/W/Fo8q/kK0sTvQtdNvaPE2PWPV0gc=",
+			"size": 2851
+		},
+		{
+			"name": "/src/components/session/columns.tsx",
+			"hash": "1m3iBw2mjkBLMdCdVr2KjXLgDVl9QMUMZKaU8n7WuuQ=",
+			"size": 8593
+		},
+		{
+			"name": "/src/components/session/data-table.tsx",
+			"hash": "O5iZ05Ggq1WBxNSM9Ba4KNnkhK0AH0Q/bZFf7m56rqQ=",
+			"size": 2270
+		},
+		{
+			"name": "/src/components/table/DataTableRefreshContext.ts",
+			"hash": "bGwR1PyuuoaUVm/lypDTowEIlksbfRwnABsrcUazaEg=",
+			"size": 120
+		},
+		{
+			"name": "/src/components/table/NodeDetailViewer.tsx",
+			"hash": "rjiFCzIdQ0REeKy/BSw4+069Eb+iQZpUSNFWxeIZskg=",
+			"size": 9986
+		},
+		{
+			"name": "/src/components/table/NodeEditDialog.tsx",
+			"hash": "Qt/lRRmJIr3d4KH40wagivcepHvZ2iHK3LwYYu9IMmQ=",
+			"size": 5224
+		},
+		{
+			"name": "/src/components/table/NodeFunction.tsx",
+			"hash": "nLgbnginh6rPnGTXpM9EQV6X6WmEnZ+HJZl86ZQVCV0=",
+			"size": 11192
+		},
+		{
+			"name": "/src/components/table/NodeTableDndComponents.tsx",
+			"hash": "/IVfAg4rIdnNZ2t9n0RmycqEjIaCDAn+qtxiXu+OoQI=",
+			"size": 1546
+		},
+		{
+			"name": "/src/components/ui/alert-dialog.tsx",
+			"hash": "aDz4tsOwwp+w4x826Md5TGOrW3q0MfdEHqLUeLv5/kE=",
+			"size": 3850
+		},
+		{
+			"name": "/src/components/ui/badge.tsx",
+			"hash": "9BwR/BPpofG4STSctRsTfd0n3goXxTOWdceJ1Y9VbMQ=",
+			"size": 1631
+		},
+		{
+			"name": "/src/components/ui/button.tsx",
+			"hash": "gkAyMeM/09RbER5egZ3xlM36fO+acmdwGFckpgvSCTI=",
+			"size": 2123
+		},
+		{
+			"name": "/src/components/ui/card.tsx",
+			"hash": "eM22Pf8+x+8HStpjD/IKXYAEdotsviTtE0qL+6Err7s=",
+			"size": 1989
+		},
+		{
+			"name": "/src/components/ui/chart.tsx",
+			"hash": "azgOA3V2ibkXJ30brENPC4tlkIR3hGFF21JoYK0qfms=",
+			"size": 9767
+		},
+		{
+			"name": "/src/components/ui/checkbox.tsx",
+			"hash": "mNcbuU0mTpaujmSn7UO/KroF9gbc+orzVph9lgQJPqM=",
+			"size": 1212
+		},
+		{
+			"name": "/src/components/ui/collapsible.tsx",
+			"hash": "ZhREMYYFyQ0Z5H5NISiaaLTF9/AXgr5w2vqA0/ekzQg=",
+			"size": 786
+		},
+		{
+			"name": "/src/components/ui/dialog.tsx",
+			"hash": "6sznUAUIMX47MfbQcayZog1/P438YRn/pv4O6KGUpuA=",
+			"size": 3968
+		},
+		{
+			"name": "/src/components/ui/drawer.tsx",
+			"hash": "bjX6uVXXS+9wBI1bfft/tTFnY7fhSlCl15hcgbabXhg=",
+			"size": 4058
+		},
+		{
+			"name": "/src/components/ui/dropdown-menu.tsx",
+			"hash": "ZYJmQqTmNo9xwHAXSLH70pOXI+E4A9rVDL6bkqKAONU=",
+			"size": 8270
+		},
+		{
+			"name": "/src/components/ui/input.tsx",
+			"hash": "Zijo/eIHhXuboIkQ04bu6oIT19dFtOCui5UzK1JzDbk=",
+			"size": 967
+		},
+		{
+			"name": "/src/components/ui/label.tsx",
+			"hash": "cNK5AyTlIZJqSGeM5TKURsqu0VXG5ZVKRUSZ1bZ6AUw=",
+			"size": 597
+		},
+		{
+			"name": "/src/components/ui/progress.tsx",
+			"hash": "hcq3nEt40H/N4i2EEW8FaAjl7yuSb+hTcY55eriwI50=",
+			"size": 837
+		},
+		{
+			"name": "/src/components/ui/select.tsx",
+			"hash": "VQ59Cd2m19n2dA9g2VwXjpUg/mMpFTOqVcgY55t5Zg8=",
+			"size": 6239
+		},
+		{
+			"name": "/src/components/ui/separator.tsx",
+			"hash": "6d3b2Nu8DszWgzBkgbDwu8jitg6peBdBbruf5/u73Kg=",
+			"size": 699
+		},
+		{
+			"name": "/src/components/ui/sheet.tsx",
+			"hash": "++myV/2VuYZeGrplFImJnJWe1cFsuEk/6MJzP4O5LuE=",
+			"size": 4076
+		},
+		{
+			"name": "/src/components/ui/sidebar.tsx",
+			"hash": "AcnvQXWiD20CwUNAK8kwxrQAHC6qSHzZuAcHnZSt52U=",
+			"size": 21732
+		},
+		{
+			"name": "/src/components/ui/skeleton.tsx",
+			"hash": "8q6oHYuvK2IZRTgqq6wVDj20DyDRmsGr6nr/gF8dwzw=",
+			"size": 276
+		},
+		{
+			"name": "/src/components/ui/sonner.tsx",
+			"hash": "pl/p3tiTY+xUbyhAGibK7Bo6o4xSJZ64Kc+jNyPb46U=",
+			"size": 561
+		},
+		{
+			"name": "/src/components/ui/switch.tsx",
+			"hash": "uIqRXtd41ba0eusIEUWVyYZv820r2YSPBt6Phh85oiQ=",
+			"size": 1163
+		},
+		{
+			"name": "/src/components/ui/table.tsx",
+			"hash": "e4x6lSz0nniq/l9ijDvZD34BvVYC6102UL71cnqBhtc=",
+			"size": 2448
+		},
+		{
+			"name": "/src/components/ui/textarea.tsx",
+			"hash": "3k6fsP2OjtEOouR1/+ICqSL/534/PtssUXsHgUR60bQ=",
+			"size": 759
+		},
+		{
+			"name": "/src/components/ui/toggle.tsx",
+			"hash": "sgFWPqjN7zaAo9m/Jyz8WRilq24Qedf/jWJz33/OKEk=",
+			"size": 1570
+		},
+		{
+			"name": "/src/components/ui/toggle-group.tsx",
+			"hash": "noHI6P1/IWnssRhMWEObW36EDXmzgg62MTda+SzaLvk=",
+			"size": 1911
+		},
+		{
+			"name": "/src/components/ui/tooltip.tsx",
+			"hash": "jYo2RfVHM0t1k0Ha+UogsSqLoX6N5K1uThxks4hCweM=",
+			"size": 1891
+		},
+		{
+			"name": "/src/components/ui/UsageBar.tsx",
+			"hash": "zHQMZ36F4YFM/6F8SUYbMmqFonfFcA3DKx7l/yTvDVs=",
+			"size": 975
+		},
+		{
+			"name": "/src/contexts/DataTableContext.tsx",
+			"hash": "y7QDBVZzhqK/Fc//ojpOTVBuMNOJneIe6lRUAW/O3v8=",
+			"size": 4740
+		},
+		{
+			"name": "/src/contexts/LiveNodeDataContext.tsx",
+			"hash": "p1RX9A5lfyLkbuxxLNQwb29v90Xsy9txeWkDh0LH/0M=",
+			"size": 2654
+		},
+		{
+			"name": "/src/contexts/ProtectedRoute.tsx",
+			"hash": "J5DI/X1hglDya0cjQ9O4Ts4fy78iwfD4/Mz49i4S4lA=",
+			"size": 269
+		},
+		{
+			"name": "/src/contexts/PublicInfoContext.tsx",
+			"hash": "483QrUJWF/8eBVBEYyWGLieNWr76Gn2bty4yx+DFxfE=",
+			"size": 4756
+		},
+		{
+			"name": "/src/contexts/SessionContext.tsx",
+			"hash": "lQ8EvOSVILH1Cn3qJTtLfIX1bLIhbTv5rCPALy8mxc4=",
+			"size": 4034
+		},
+		{
+			"name": "/src/contexts/SettingsContext.tsx",
+			"hash": "gZ35qFHpqy6l1Bmmw+EoEfkPKikwRxNXvJ2SvBssIy4=",
+			"size": 3113
+		},
+		{
+			"name": "/src/contexts/ThemeContext.tsx",
+			"hash": "UJqFI6QVE10tyEidXAsAm5fiHWA4FrB/VPETSe0neno=",
+			"size": 2528
+		},
+		{
+			"name": "/src/global.css",
+			"hash": "vTxbLx6qll+mB1Y9XAD5D5ydxxgv7PVez8WH9igR2gQ=",
+			"size": 23146
+		},
+		{
+			"name": "/src/hooks/use-mobile.ts",
+			"hash": "rQk2+E8d9502l7+/+cGPitWEMcHLryNZxqhTsPzJ8os=",
+			"size": 565
+		},
+		{
+			"name": "/src/hooks/useLiveData.ts",
+			"hash": "+NdaxUUnezU4SkXiDj4pANkLKop3eHEjVG7OMT04fY8=",
+			"size": 182
+		},
+		{
+			"name": "/src/i18n/config.ts",
+			"hash": "f/LjGUUGpJQeIpNgVPPN2hc02Ppou7gZfG1JSvvANqM=",
+			"size": 660
+		},
+		{
+			"name": "/src/i18n/locales/en.json",
+			"hash": "evKSoRcToHiHZMaASKoADhXncmPX5ldLaK2A8lpNlm8=",
+			"size": 7468
+		},
+		{
+			"name": "/src/i18n/locales/zh_CN.json",
+			"hash": "nRJk+5WoW3OoIxlaJv2oa42kAHfagzUD3348JfdSnfY=",
+			"size": 7314
+		},
+		{
+			"name": "/src/layout/menu.ts",
+			"hash": "yetQ68Qxp32qjOhGbJ+mi1b3MaCCrujs2I/ESf+xhL4=",
+			"size": 1329
+		},
+		{
+			"name": "/src/layout/NavBar.tsx",
+			"hash": "mFo2s8np6H9SsrbUPacGsHz5Mna3xl4Tf9gcmvaZukU=",
+			"size": 2174
+		},
+		{
+			"name": "/src/layout/Sidebar.tsx",
+			"hash": "KQOjnOF5iDJEmGqL/VXpWkqdX429pFcU9T8uJf+K6+c=",
+			"size": 5013
+		},
+		{
+			"name": "/src/lib/utils.ts",
+			"hash": "fIw9/AzdNw1Ekygo6wZ+93HI/nmWaTIh1dS5CvbVTy0=",
+			"size": 166
+		},
+		{
+			"name": "/src/main.tsx",
+			"hash": "7/KyBQyV37iYznmho9xLeyg5WpcSa/PEqsdZIB4WNtM=",
+			"size": 690
+		},
+		{
+			"name": "/src/pages/404.tsx",
+			"hash": "6zrYuqpd/nJg8BjZmE/enYp6uqNcOXaNejgVsi2FV4I=",
+			"size": 65
+		},
+		{
+			"name": "/src/pages/admin/About.tsx",
+			"hash": "9WKcJppNIsVBCkEzQET9w+/zo6y0e8cDViGcAHtkJio=",
+			"size": 654
+		},
+		{
+			"name": "/src/pages/admin/Account.tsx",
+			"hash": "4HcgOlx6/H2q9pZOluzNpIp67K9CD5oPQkWT+MTxISg=",
+			"size": 763
+		},
+		{
+			"name": "/src/pages/admin/Manage.tsx",
+			"hash": "4CsJjeK48N8n3GxO0fK4hdMEINhrXf/x/3pumSm4MM0=",
+			"size": 676
+		},
+		{
+			"name": "/src/pages/admin/ServerTable.tsx",
+			"hash": "GW5hqHahlpqbUCt/aJydsYVDRpBkHeAHzfsxPQdSJqs=",
+			"size": 11802
+		},
+		{
+			"name": "/src/pages/admin/Session.tsx",
+			"hash": "1PJipD9s0ZHxkhE8VWXslH+ICsuG933jyzJZAhnD6Yw=",
+			"size": 2547
+		},
+		{
+			"name": "/src/pages/admin/settings/General.tsx",
+			"hash": "HaV0vXNHc1x2iWv3aCU25+UryqpRz5LZAGz5Y2SGdcE=",
+			"size": 3476
+		},
+		{
+			"name": "/src/pages/admin/settings/Site.tsx",
+			"hash": "X7Dv/1tCBbDl1qV1qZdLG1nLfZWJJ3uwwRVBJz5C+/k=",
+			"size": 3598
+		},
+		{
+			"name": "/src/pages/admin/settings/Sso.tsx",
+			"hash": "SUcG/tx6pBeZ9ON9FXznUQFVLjECxKcPzYa9e1Wq98o=",
+			"size": 5211
+		},
+		{
+			"name": "/src/pages/App.tsx",
+			"hash": "czTdiy+aOrojBrlM+YG680954m9bmdC5c8Pg34gzG5I=",
+			"size": 2042
+		},
+		{
+			"name": "/src/pages/Server.tsx",
+			"hash": "N1tVOA9rERfSHgbgRps8UowLhZAeYfi452KieIDfAe8=",
+			"size": 4010
+		},
+		{
+			"name": "/src/pages/ServerDetail.tsx",
+			"hash": "oMCXlIw2XjcnzzE5SverKTP2HCRjvObpMJGUPCHDSkY=",
+			"size": 4528
+		},
+		{
+			"name": "/src/types/node.ts",
+			"hash": "UfktcZHbVXC0n1JmhbTk2HD09W2eyB8KpVh6iefCAYc=",
+			"size": 880
+		},
+		{
+			"name": "/src/types/NodeInfo.tsx",
+			"hash": "32hHS7pMUwsGQQLyEoJD1xxi6jOvcZmwbG7AMRtIcTY=",
+			"size": 2008
+		},
+		{
+			"name": "/src/utils/formatTime.tsx",
+			"hash": "XB8jpVL5LmBIHkMSyaHnjTMKQE8/7DHi0v5iyE0UJAU=",
+			"size": 1062
+		},
+		{
+			"name": "/src/vite-env.d.ts",
+			"hash": "ZZlpNvuwQpFfe3SiAPzd5+QQ8ypmmxq5WXz6pLD63bU=",
+			"size": 38
+		},
+		{
+			"name": "/tsconfig.app.json",
+			"hash": "D1qpt6fCHXrEIPNRbGXR2NWrtr7QfPvKMuB3J9+Xgt8=",
+			"size": 769
+		},
+		{
+			"name": "/tsconfig.json",
+			"hash": "o4m/sDCUVM0IKKPEp0MeVsPW9Qpw5khhP9D1GuMABXw=",
+			"size": 232
+		},
+		{
+			"name": "/tsconfig.node.json",
+			"hash": "y9UllbFdbfgwVh9lkRG6o4qJ0+MNFoPE4Ce3iSW7YD0=",
+			"size": 630
+		},
+		{
+			"name": "/vite.config.ts",
+			"hash": "wkSL8fto2I0OVsuYC5f1zPUmuWZGN8mqnuubC9vffOw=",
+			"size": 1261
+		}
+	],
+	"links": {
+		"stats": "https://data.jsdelivr.com/v1/stats/packages/gh/komari-monitor/komari-web@main"
+	}
+}
