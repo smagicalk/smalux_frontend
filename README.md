@@ -1,12 +1,12 @@
 # smalux
 
-`smalux` 是一个面向服务器与服务状态监控的现代化前端项目，目标是提供高性能、可部署灵活、主题可扩展且安全边界清晰的监控后台与公开状态页面。
+`smalux` 是一个面向服务器与服务状态监控的现代化前端项目，当前聚焦高性能、可部署灵活、主题可扩展且安全边界清晰的监控后台；公开状态页面作为后续独立能力。
 
 ## 项目定位
 
 - 优先建设后台管理界面，公开主页/主监控页放在后续阶段打磨。
 - 支持单独静态部署、Nginx 部署、Rust Web 内置三种形态。
-- 与后端交互暂定支持 HTTP、WebSocket、JSON-RPC。
+- 前端以 WebSocket + JSON-RPC 为主，HTTP POST `/rpc` 作为不支持 WebSocket 环境的兜底。
 - 后台 UI 追求清晰、性能好、实体优先，避免模板化和重型 UI 依赖。
 - 当前后台方向已经从通用 SaaS 后台收敛到更像探针监控面板的控制台布局。
 - 主题系统需要支持后台主题切换，以及公开主页主题上传。
@@ -20,7 +20,7 @@
 - 图标：lucide-react
 - 状态管理：Zustand
 - 表单与校验：React Hook Form、Zod
-- 图表：当前实现以 `src/shared/charts/*` 的轻量 SVG 图表为主；`uPlot` / `Recharts` 仍保留为后续真实监控数据接入时的候选
+- 图表：`src/shared/charts/*` 提供 ECharts/uPlot 封装与轻量趋势组件，按页面路由懒加载。
 - 测试：Vitest、Testing Library、Playwright
 
 ## 架构原则
@@ -54,17 +54,16 @@
 
 当前已具备：
 
-- 路由矩阵：`/` 公开状态页，以及 `/admin`、`/admin/nodes`、`/admin/ping`、`/admin/executions`、`/admin/notifications`、`/admin/accounts`、`/admin/logs`、`/admin/themes`、`/admin/settings`、`/admin/deployment`
-- 公开页与后台分离加载：`/` 不加载后台 Shell、后台 Provider 和后台依赖
-- 后台 Shell：左侧分组导航、移动端底部导航、快速搜索、light/dark/system 主题切换
+- 路由矩阵：`/` 重定向到 `/admin`；管理页包括 `/admin`、`/admin/servers`、`/admin/servers/:id`、`/admin/tasks`、`/admin/cron`、`/admin/ping`、`/admin/alerts`、`/admin/notifications`、`/admin/logs`、`/admin/tokens`、`/admin/accounts`、`/admin/themes`、`/admin/settings`、`/admin/deployment`
+- 公开状态页当前未接入路由；`/` 只负责进入后台总览
+- 后台 Shell：桌面侧栏、移动端底部导航、通知中心、light/dark/system 主题切换
 - 运行时配置、主题状态、HTTP / WebSocket / JSON-RPC client 骨架
-- 共享轻量图表系统：趋势图、柱图、横向条、环图、分段条，已接入总览、服务器、Ping、执行、通知、账户、日志、主题、设置、部署页面
-- 快速搜索已覆盖 Token、WSS、审批、终端、公开展示、Nginx、Rust 内置等运维关键词
-- 执行页已补充批量动作边界、审批队列、Token Scope、JSON-RPC 执行通道和 WSS Web 终端安全入口
-- 节点页已补充 Agent 接入边界、一次性注册 Token、密钥轮换、Token Scope 与区域治理视图
-- Ping 页已补充目标组、协议健康、API/WSS 健康检查和公开状态页展示边界
-- 节点页已拆分为筛选、节点列表、编队状态、运维控制、Agent 边界和 Token Scope / 区域治理组件，列表点击副作用统一回到页面层
-- 执行页已拆分为概览、图表、直接执行、模板、定时任务、记录、批量边界和终端安全入口组件
+- 共享图表系统：趋势图、柱图、横向条、环图、分段条，已接入总览、服务器、Ping、任务、通知、账户、日志、主题、设置和部署页面
+- 任务页已补充批量动作边界、审批队列、Token Scope、JSON-RPC 执行通道和终端安全入口
+- 服务器页已补充 Agent 接入边界、一次性注册 Token、密钥轮换、Token Scope 与区域治理视图
+- Ping 页已补充目标组、协议健康、API/WSS 健康检查和外联限制边界
+- 服务器页已拆分为筛选、列表、编队状态、运维控制和 Agent 边界组件，列表副作用统一回到页面层
+- 任务页已拆分为概览、图表、直接执行、模板、计划任务、记录、批量边界和终端安全入口组件
 - Ping 页已拆分为筛选、目标列表、摘要、目标边界、图表和安全限制组件，状态展示元数据下沉到 `model/ping-display.ts`
 - 通知页已拆分为概览、筛选、渠道、模板、策略、历史与静默组件，状态展示元数据下沉到 `model/notification-display.ts`
 - 账户页已拆分为概览、筛选、用户列表、角色权限和会话组件，状态展示元数据下沉到 `model/account-display.ts`
@@ -72,26 +71,25 @@
 - 总览页运维控制面已拆分为异常队列、最近事件、控制面入口和 `model/operations.ts`
 - 部署洞察已拆分为图表面板、运行时注入、Nginx 代理、Rust 内置重点和 `model/deployment-insights.ts`
 - 主题库已拆分为筛选、列表、列表项和 `model/theme-display.ts`，主题参数与回滚反馈统一由面板编排
-- 公开状态页服务区已拆分为服务列表、订阅卡、区域卡和状态徽标，页面 header 与公开状态摘要也已下沉为独立组件/模型
+- 公开状态页尚未接入当前重设计路由，相关能力暂不作为本版本验收范围
 - 部署目标面板已拆分为单目标卡片和当前方案摘要，部署页继续只负责选择状态和 toast 编排
 - 设置页安全洞察已拆分为 `SettingsSecurityInsights` 与 `model/security-insights.ts`，安全覆盖率、成熟度、风险分层和限制项风险统一由模型提供
 - 日志筛选逻辑已抽离为 `model/log-filters.ts` 并补充单元测试，日志列表点击反馈改由页面层统一处理
 - 节点、账户、通知和 Ping 的筛选逻辑已继续下沉到模型层，页面只保留筛选状态、布局和 toast 编排
-- 公开页节点快读卡已拆分为 `public-node-card` 和 `public-node-metric`，公开节点展示可复用于后续公开主页
+- 公开页节点快读卡属于后续规划，当前重设计树不加载公开页模块
 - 安全扫描已覆盖依赖审计、危险 DOM/API 搜索、远程字体请求、运行时端点 scheme 校验和主题偏好存储降级
 - 主题上传、安全边界、部署矩阵和运行时配置的前端展示
 - 页面级 mock 交互已补齐：总览刷新、总览卡片/最近事件/运维控制面、节点/Ping/日志/通知/账户/主题筛选、执行模板联动、部署方案选择、主题上传与危险操作反馈
 - 总览、Ping、执行、通知、主题和设置页的块状卡片继续补齐点击反馈，避免“看起来能点但没反应”的静态面板
 - 筛选结果会同步影响列表、摘要和部分图表；主要列表已补空状态，方便调试无匹配数据的界面表现
 - 设置页已补运行时配置校验/复制/重载反馈，限制项参数支持搜索、分组筛选、选择和保存草稿；功能/安全设计网格支持搜索和标记筛选
-- 公开状态页订阅入口已接入受控输入和 mock 订阅反馈，方便调试公开页基础交互
-- 公开状态页、主题页、部署页、日志页、节点页、执行页、Ping 页、通知页和账户页继续拆成页面级组件，页面本身只保留状态管理与布局编排
+- 主题、部署、日志、服务器、任务、Ping、通知和账户页已拆成页面级组件，页面本身主要保留状态管理与布局编排
 
 当前阶段仍然以 mock 数据和信息架构验证为主。
 
 需要明确：
 
-- 绝大多数页面数据仍直接来自 `src/features/**/model/mock-*.ts`
+- 绝大多数页面数据仍来自 `src/shared/api/mock/` 的内存 mock backend
 - mock 数据已按调试场景扩充：多区域节点、API/WSS/RPC/Ping 目标、远程执行审批/失败/计划状态、通知投递、账户锁定、主题沙箱失败和部署形态
 - 当前按钮反馈、筛选、导出、执行、上传、构建等操作仍为前端 mock 行为，通过 `sonner` toast 展示结果，不代表后端已执行
 - 真实认证、权限、远程执行、主题上传和后端联调尚未接通
@@ -100,18 +98,18 @@
 
 ## 当前性能
 
-- 主包与后台已拆分，后台通过懒加载进入单独 chunk
-- 后台 Provider 只在 `/admin` 路由树挂载
-- 服务器页已去掉页面内 `@tanstack/react-table` 依赖，节点页构建分包维持在约 `9KB`
+- 管理 Shell 和页面通过 TanStack Router 按路由懒加载；最近一次构建的入口 chunk 约 `307 KB`
+- ECharts 作为按需图表 chunk 单独加载，最近一次构建约 `1.14 MB`
+- 页面级懒加载降低了后台首次进入时的主包体积，但图表依赖仍是后续优化重点
 
 ## 当前后台方向
 
 这轮改动的重点不是“换主题”，而是让后台更像真实探针面板：
 
 - `/admin` 总览页只做总览该做的事：状态、异常、关键趋势。
-- `/admin/nodes` 以节点列表和节点状态扫描为主。
+- `/admin/servers` 以服务器列表和节点状态扫描为主。
 - `/admin/ping` 以探针/目标列表为主，同时区分目标组、协议健康、公开展示范围和外联限制。
-- `/admin/executions` 以高风险操作、模板、批量下发、终端入口和审计链路为主。
+- `/admin/tasks` 以高风险操作、模板、批量下发、终端入口和审计链路为主。
 - `/admin/notifications` 以策略、静默、渠道和投递历史为主。
 - `/admin/logs` 以审计追踪、筛选和失败回溯为主。
 - `/admin/accounts` 以角色、会话、MFA、Passkey 和权限边界为主。
@@ -151,26 +149,11 @@ pnpm test
 pnpm build
 ```
 
-当前状态：以上命令已在本地通过。
+最近一次本地验证结果：
 
-额外检查：
+- `pnpm typecheck`：通过。
+- `pnpm lint`：通过；仍有 hooks 依赖和 Fast Refresh 相关 warning。
+- `pnpm test`：通过，包含运行时配置、URL 和任务筛选回归测试。
+- `pnpm build`：通过；入口 chunk 约 `307 KB`，ECharts 按需 chunk 约 `1.14 MB`。
 
-- 已用 Playwright 对 `/admin/nodes`、`/admin/themes`、`/admin/settings`、`/admin/deployment` 做桌面截图抽样
-- 已检查移动端 `/admin/nodes`、`/admin/deployment` 布局，无横向溢出
-- 本轮已追加检查移动端 `/admin/executions`、`/admin/nodes`、`/admin/ping`，390px 视口下 `scrollWidth === innerWidth`
-- 本轮功能补全后已追加无头 Playwright 交互抽样：节点空筛选、Ping 搜索、执行模板联动、日志时间窗口、主题筛选、部署方案选择和总览刷新 toast 均通过
-- 本轮继续补齐了总览、Ping、执行、通知、主题和设置页的卡片/列表点击反馈，并在本地 dev 服务上抽样确认 toast 正常出现
-- 本轮移动端抽样已覆盖 `/admin`、`/admin/nodes`、`/admin/ping`、`/admin/executions`、`/admin/logs`、`/admin/notifications`、`/admin/accounts`、`/admin/themes`、`/admin/deployment`，390px 视口无横向溢出
-- 本轮继续完成 `executions` / `ping` 页面级组件化，并删除依赖包目录中残留的 `.claude` 目录
-- 本轮继续完成 `notifications` / `accounts` 页面级组件化，通知与账户页面入口进一步收敛到筛选状态和 toast 编排
-- 本轮继续完成 `nodes` 页面级组件化，节点列表组件不再直接触发 toast，改由页面统一处理节点检查反馈
-- 本轮继续拆分设置页限制项组件，`SettingLimitsCard` 只保留筛选状态、当前参数选择和保存草稿反馈
-- 本轮继续拆分总览运维控制面与部署洞察面板，降低首页和部署页重组件职责
-- 本轮继续拆分公开状态页、部署目标面板和设置安全洞察，并将日志筛选抽成可测试模型
-- 本轮继续抽离节点、账户、通知和 Ping 筛选模型，新增对应单元测试；公开节点快读卡继续组件化
-- 本轮继续抽离主题生命周期/参数类型洞察和设置限制项筛选模型，主题治理面板拆为上传参数卡和治理图表区
-- 本轮继续抽离执行选择摘要、失败执行统计和部署运行态分段模型，执行二次确认警示块拆为独立组件
-- 本轮将节点页“添加节点”改为“添加服务器”，新增弹窗表单，覆盖服务器名称、价格金额/货币单位、计费周期、到期/永久/自动延续、流量计算口径和额度单位
-- 本轮继续按监控后台要求简化“添加服务器”弹窗，移除摘要、说明、图标和安全提示，只保留标题、字段、错误提示和底部操作按钮
-- 本轮继续修复后台顶部栏悬浮感，去掉内层圆角/阴影容器；添加服务器弹窗的流量额度和单位改为自适应两列，避免窄宽度下重叠
-- 本轮继续压平页面标题和添加服务器弹窗：`PageHeader` 改成普通分隔标题行，弹窗高度收紧，流量字段保持紧凑且无控件重叠
+Playwright 已覆盖当前 14 个可访问路由的桌面端和 390px 移动端，共 28 次访问；均无白屏、控制台错误或横向溢出。旧版针对 `/admin/nodes`、`/admin/executions` 的截图记录不适用于当前路由矩阵。

@@ -21,7 +21,7 @@
 - TanStack Router、TanStack Query、TanStack Table、TanStack Virtual
 - Zustand 状态管理
 - Zod 边界校验
-- uPlot 作为高频监控图表方向，Recharts 用于普通统计图
+- uPlot 用于高频实时趋势，ECharts 用于普通统计和聚合图表
 - Vitest、Testing Library、Playwright
 
 ## 分层结构
@@ -35,15 +35,25 @@ src/
     shell/
     styles/
   features/
-    dashboard/
-    nodes/
+    overview/
+    servers/
+    tasks/
+    cron/
+    ping/
+    alerts/
+    notifications/
+    logs/
+    tokens/
+    accounts/
     settings/
     themes/
+    deployment/
   shared/
     api/
+      mock/
+      schemas/
+      transport/
     charts/
-    domain/
-    hooks/
     lib/
     stores/
     ui/
@@ -55,10 +65,9 @@ src/
 
 负责应用级能力：
 
-- `main.tsx`：启动入口。
-- `app.tsx`：接入 Router。
-- `providers/`：运行时配置、API clients、QueryClient、主题、Tooltip、Toast。
-- `router/`：路由定义和懒加载。
+- `main.tsx`：加载运行时配置、创建 Router 并挂载应用。
+- `providers/`：提供 `RpcClient`、QueryClient 和主题状态。
+- `router/`：代码式路由定义和页面级懒加载。
 - `shell/`：桌面侧边栏、移动底部导航、顶部栏。
 - `styles/`：全局 CSS variables 和 Tailwind v4 token。
 
@@ -69,16 +78,18 @@ src/
 示例：
 
 ```txt
-features/nodes/
+features/servers/
   pages/
   components/
-  model/
+  hooks/
+  lib/
 ```
 
 要求：
 
 - 页面只做布局编排。
-- 业务数据转换放到 `model/`。
+- 查询、变更和实时订阅放到领域 `hooks/`。
+- 展示元数据和纯转换放到 `lib/`。
 - 可跨功能复用的 UI 放到 `shared/ui`。
 - 不在页面里直接调用 `fetch` 或 `new WebSocket`。
 
@@ -86,9 +97,8 @@ features/nodes/
 
 共享能力层。
 
-- `api/`：HTTP、WebSocket、JSON-RPC 客户端和 Query keys。
-- `domain/`：跨功能领域类型。
-- `ui/`：Button、Card、Badge、Progress、PercentBar 等基础组件。
+- `api/`：RPC method 契约、Zod schema、transport、mock backend 和 Query keys。
+- `ui/`：Button、Card、Badge、Dialog、Tabs、Switch、Toaster 等基础组件。
 - `charts/`：可复用图表组件。
 - `stores/`：全局状态，例如主题模式。
 - `lib/`：格式化、class 合并、URL 拼接等纯函数。
@@ -97,26 +107,25 @@ features/nodes/
 
 当前已建立：
 
-- `HttpClient`
-- `RpcClient`
-- WebSocket URL 和 open 封装
-- `createApiClients`
-- `ApiClientsProvider`
-- `useApiClients`
-- `queryKeys`
+- `RpcClient`：统一的 `call` / `subscribe` 入口。
+- `WsTransport`：JSON-RPC 多路复用、订阅、心跳和重连。
+- `HttpTransport`：HTTP POST `/rpc` 兜底，不支持服务端推送。
+- `MockTransport`：开发期内存后端和实时采样流。
+- `methods.ts` + `schemas/`：method 名和入参/出参 Zod 契约。
+- `RpcProvider` / `useRpc` / `queryKeys`。
 
 后续要求：
 
-- 所有请求通过 `useApiClients()` 获取客户端。
-- HTTP 响应使用 Zod 校验。
-- JSON-RPC method 名集中维护。
-- WebSocket 消息类型集中定义，消息进入 store 后再更新 UI。
+- 所有业务请求通过领域 hook 获取 `RpcClient`，页面不直接调用 transport。
+- RPC 响应和推送使用对应的 Zod schema 校验。
+- JSON-RPC method 名集中维护在 `methods.ts`。
+- WebSocket 推送进入领域 store 后再更新 UI。
 
 ## 状态策略
 
 建议拆分：
 
-- TanStack Query：HTTP 查询、缓存、刷新、错误状态。
+- TanStack Query：RPC 查询、缓存、刷新和错误状态。
 - Zustand：WebSocket 实时数据、主题模式、轻量 UI 状态。
 - URL search params：分页、筛选、排序、时间范围。
 
@@ -141,13 +150,13 @@ features/nodes/
 
 - 运行时配置加载。
 - URL 拼接。
-- 总览统计模型。
+- 查询筛选条件与 TanStack Query cache key 的一致性。
 
 后续测试优先级：
 
-- API client 错误处理。
+- transport 错误处理和断线重连。
 - JSON-RPC 响应校验。
 - WebSocket 消息归一化。
 - 主题配置解析。
-- 节点列表筛选排序。
+- 服务器列表筛选排序。
 - 登录和权限守卫。

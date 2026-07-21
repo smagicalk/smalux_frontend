@@ -1,175 +1,109 @@
-import { Link, Outlet } from "@tanstack/react-router";
-import {
-  ActivityIcon,
-  BellIcon,
-  ExternalLinkIcon,
-  LockKeyholeIcon,
-  MonitorIcon,
-  MoonIcon,
-  SunIcon
-} from "lucide-react";
-import { toast } from "sonner";
+import { Monitor, Moon, Sun } from "lucide-react";
+import { Link, Outlet, useLocation } from "@tanstack/react-router";
 
-import { Badge } from "@/shared/ui/badge";
-import { Button } from "@/shared/ui/button";
 import { cn } from "@/shared/lib/utils";
-import { MobileBottomNav } from "@/app/shell/mobile-bottom-nav";
-import { navigationSections } from "@/app/shell/navigation";
-import { QuickSearch } from "@/app/shell/quick-search";
+import { Button } from "@/shared/ui/button";
+import { Toaster } from "@/shared/ui/toaster";
 import { useThemeStore, type ThemeMode } from "@/shared/stores/theme-store";
+import { navItems, isNavActive } from "./navigation";
+import { MobileBottomNav } from "./mobile-bottom-nav";
+import { NotificationCenter } from "./notification-center";
 
-const themeModes: Array<{
-  mode: ThemeMode;
-  label: string;
-  icon: typeof SunIcon;
-}> = [
-  {
-    mode: "light",
-    label: "浅色",
-    icon: SunIcon
-  },
-  {
-    mode: "dark",
-    label: "深色",
-    icon: MoonIcon
-  },
-  {
-    mode: "system",
-    label: "跟随系统",
-    icon: MonitorIcon
-  }
-];
-
+/**
+ * Admin layout: a flat sidebar (module index, not brand cards) and a thin
+ * top control bar (notifications + theme + session). Content pages
+ * render in the Outlet. On mobile the sidebar collapses to a bottom nav.
+ */
 export function AppShell() {
-  const mode = useThemeStore((state) => state.mode);
-  const setMode = useThemeStore((state) => state.setMode);
+  const location = useLocation();
+  const currentPath = location.pathname;
 
   return (
-    <div className="min-h-screen bg-transparent text-foreground">
-      <div className="grid min-h-screen lg:grid-cols-[220px_1fr]">
-        <aside className="hidden border-r border-border bg-sidebar lg:flex lg:flex-col">
-          <div className="border-b border-border px-4 py-3">
-            <div className="flex items-center gap-2.5">
-              <div className="flex size-8 items-center justify-center rounded-md bg-primary text-primary-foreground">
-                <ActivityIcon aria-hidden />
-              </div>
-              <div className="min-w-0">
-                <p className="truncate text-sm font-semibold tracking-[-0.03em]">smalux</p>
-                <p className="truncate text-[10px] uppercase tracking-[0.12em] text-muted-foreground">
-                  probe console
-                </p>
-              </div>
-            </div>
-          </div>
-
-          <nav className="flex flex-1 flex-col gap-3 overflow-y-auto px-2.5 py-3">
-            {navigationSections.map((section) => (
-              <div key={section.label} className="grid gap-0.5">
-                <p className="px-2 text-[10px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">
-                  {section.label}
-                </p>
-                <div className="grid gap-px">
-                  {section.items.map((item) => (
-                    <Link
-                      key={item.to}
-                      to={item.to}
-                      activeOptions={{ exact: true }}
-                      className="group flex items-center gap-2 rounded-md px-2 py-1.5 text-sm text-muted-foreground transition-colors hover:bg-muted hover:text-foreground"
-                      activeProps={{
-                        className: "bg-accent text-accent-foreground"
-                      }}
-                    >
-                      <item.icon className="size-4 shrink-0" aria-hidden />
-                      <span className="truncate font-medium">{item.label}</span>
-                    </Link>
-                  ))}
-                </div>
-              </div>
-            ))}
-          </nav>
-
-          <div className="grid gap-1 border-t border-border px-3 py-2.5 text-[11px] text-muted-foreground">
-            <span>session: HttpOnly</span>
-            <span>transport: HTTPS / WSS</span>
-          </div>
-        </aside>
-
-        <div className="flex min-w-0 flex-col">
-          <header className="sticky top-0 z-10 border-b border-border bg-background/80 px-4 py-2.5 backdrop-blur-md md:px-6">
-            <div className="flex items-center justify-between gap-3">
-              <div className="flex min-w-0 items-center gap-3">
-                <div className="flex size-8 items-center justify-center rounded-md bg-primary text-primary-foreground lg:hidden">
-                  <ActivityIcon aria-hidden />
-                </div>
-                <div className="min-w-0">
-                  <p className="truncate text-[10px] font-semibold uppercase tracking-[0.12em] text-muted-foreground">
-                    monitor console
-                  </p>
-                  <p className="truncate text-sm font-semibold tracking-[-0.03em]">后台监控</p>
-                </div>
-              </div>
-
-              <QuickSearch className="hidden max-w-2xl flex-1 md:block" />
-
-              <div className="flex items-center gap-1.5">
-                <Link
-                  to="/"
-                  className="hidden h-8 items-center gap-2 rounded-md border border-border bg-transparent px-2.5 text-sm font-medium text-muted-foreground transition-colors hover:bg-muted hover:text-foreground sm:flex"
-                >
-                  <ExternalLinkIcon className="size-4" aria-hidden />
-                  状态页
-                </Link>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="size-8 rounded-md"
-                  aria-label="通知"
-                  onClick={() =>
-                    toast.info("通知中心", {
-                      description: "mock: 2 条高风险审批、1 条通知投递失败。"
-                    })
-                  }
-                >
-                  <BellIcon aria-hidden />
-                </Button>
-                {themeModes.map((item) => (
-                  <Button
-                    key={item.mode}
-                    variant={mode === item.mode ? "secondary" : "ghost"}
-                    size="icon"
-                    className="size-8 rounded-md"
-                    aria-label={item.label}
-                    onClick={() => {
-                      setMode(item.mode);
-                      toast.info("主题已切换", {
-                        description: item.label
-                      });
-                    }}
-                  >
-                    <item.icon className="size-4" aria-hidden />
-                  </Button>
-                ))}
-              </div>
-            </div>
-            <div className="mt-2 flex flex-wrap items-center gap-2 text-xs text-muted-foreground md:hidden">
-              <Badge variant="outline">probe-first</Badge>
-              <div className="flex items-center gap-2 rounded-full bg-muted px-3 py-1.5">
-                <LockKeyholeIcon className="size-3.5" aria-hidden />
-                会话隔离
-              </div>
-              <Badge variant="outline">WSS-only</Badge>
-            </div>
-          </header>
-
-          <main className="min-w-0 flex-1 px-4 pb-24 pt-5 md:px-6 lg:pb-8">
-            <div className={cn("mx-auto flex w-full max-w-[1400px] flex-col gap-5")}>
-              <QuickSearch className="md:hidden" compact />
-              <Outlet />
-            </div>
-          </main>
+    <div className="flex h-full min-h-0">
+      {/* Sidebar — desktop only */}
+      <aside className="hidden w-52 shrink-0 flex-col border-r border-border bg-sidebar/80 backdrop-blur-xl md:flex">
+        <div className="flex h-12 items-center gap-2 px-4 text-sm font-semibold text-sidebar-foreground">
+          <span className="relative flex size-2.5 items-center justify-center">
+            <span className="absolute size-2.5 animate-ping rounded-full bg-primary opacity-40" />
+            <span className="size-2 rounded-full bg-primary shadow-[0_0_8px_var(--primary)]" />
+          </span>
+          <span className="tracking-tight">smalux</span>
+          <span className="ml-auto rounded bg-muted px-1.5 py-0.5 text-[10px] font-normal uppercase tracking-wider text-muted-foreground">
+            console
+          </span>
         </div>
+        <nav className="flex-1 overflow-y-auto px-2 py-2">
+          <ul className="flex flex-col gap-0.5">
+            {navItems.map((item) => {
+              const active = isNavActive(currentPath, item.path);
+              const Icon = item.icon;
+              return (
+                <li key={item.path} className="relative">
+                  {active ? (
+                    <span className="absolute left-0 top-1/2 h-5 w-0.5 -translate-y-1/2 rounded-full bg-primary shadow-[0_0_8px_var(--primary)]" />
+                  ) : null}
+                  <Link
+                    to={item.path}
+                    className={cn(
+                      "group flex items-center gap-2 rounded-md px-2.5 py-1.5 text-sm transition-all",
+                      active
+                        ? "bg-primary/10 font-medium text-foreground"
+                        : "text-muted-foreground hover:bg-muted/60 hover:text-foreground"
+                    )}
+                  >
+                    <Icon
+                      className={cn(
+                        "size-4 shrink-0 transition-colors",
+                        active ? "text-primary drop-shadow-[0_0_4px_var(--primary)]" : "text-muted-foreground/80 group-hover:text-foreground"
+                      )}
+                    />
+                    <span className="truncate">{item.label}</span>
+                    {active ? <span className="ml-auto size-1.5 rounded-full bg-primary shadow-[0_0_6px_var(--primary)]" /> : null}
+                  </Link>
+                </li>
+              );
+            })}
+          </ul>
+        </nav>
+      </aside>
+
+      <div className="flex min-w-0 flex-1 flex-col">
+        <TopBar />
+        <main className="min-h-0 flex-1 overflow-y-auto pb-16 md:pb-0">
+          <Outlet />
+        </main>
       </div>
+
       <MobileBottomNav />
+      <Toaster />
     </div>
+  );
+}
+
+function TopBar() {
+  return (
+    <header className="glass sticky top-0 z-20 flex h-12 shrink-0 items-center gap-2 border-b border-border px-3">
+      <div className="ml-auto flex items-center gap-1">
+        <ThemeToggle />
+        <NotificationCenter />
+      </div>
+    </header>
+  );
+}
+
+function ThemeToggle() {
+  const mode = useThemeStore((s) => s.mode);
+  const setMode = useThemeStore((s) => s.setMode);
+  const next: ThemeMode = mode === "light" ? "dark" : mode === "dark" ? "system" : "light";
+  const Icon = mode === "dark" ? Moon : mode === "light" ? Sun : Monitor;
+  return (
+    <Button
+      variant="ghost"
+      size="icon"
+      aria-label={`主题：${mode}（切换至 ${next}）`}
+      onClick={() => setMode(next)}
+    >
+      <Icon className="size-4" />
+    </Button>
   );
 }

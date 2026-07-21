@@ -1,100 +1,80 @@
-import { PlusIcon, RefreshCwIcon } from "lucide-react";
 import { useMemo, useState } from "react";
-import { toast } from "sonner";
+import { Activity, Plus } from "lucide-react";
 
-import { PingBoundaryPanels } from "@/features/ping/components/ping-boundary-panels";
-import { PingChartsPanel } from "@/features/ping/components/ping-charts-panel";
-import { PingFiltersPanel } from "@/features/ping/components/ping-filters-panel";
-import { PingSecurityRulesPanel } from "@/features/ping/components/ping-security-rules-panel";
-import { PingSummaryCard } from "@/features/ping/components/ping-summary-card";
-import { PingTargetsPanel } from "@/features/ping/components/ping-targets-panel";
-import { filterPingChecks } from "@/features/ping/model/ping-filters";
-import { createPingSummary, mockPingChecks, type PingStatus } from "@/features/ping/model/mock-ping";
-import type { PingProtocol } from "@/features/ping/model/mock-ping";
-import { formatLatency } from "@/shared/lib/format";
+import { usePingTargets } from "@/features/ping/hooks/use-ping";
 import { Button } from "@/shared/ui/button";
 import { PageHeader } from "@/shared/ui/page-header";
+import { FilterPills, StatTile } from "@/shared/ui/layout";
 
+import { CreatePingDialog } from "../components/create-ping-dialog";
+import { PingTargetList } from "../components/ping-target-list";
+import { ChartPanel, UptimeRing, LatencyChart, ProtocolDonut } from "../components/ping-charts";
+import { GROUP_OPTS, SORT_OPTS, type GroupFilter, type SortKey } from "../lib/ping-meta";
+import { buildPingOverview } from "../lib/ping-overview";
+
+/**
+ * The service-monitoring page. Owns the group filter + sort and derives the KPI
+ * strip; the create dialog, each table row, and each chart each live in their
+ * own component so a tick only re-renders what actually changed.
+ */
 export function PingPage() {
-  const [query, setQuery] = useState("");
-  const [statusFilter, setStatusFilter] = useState<PingStatus | "all">("all");
-  const [protocolFilter, setProtocolFilter] = useState<PingProtocol | "all">("all");
-  const filteredChecks = useMemo(
-    () => filterPingChecks(mockPingChecks, { query, statusFilter, protocolFilter }),
-    [protocolFilter, query, statusFilter]
+  const { data, isLoading } = usePingTargets();
+  const [group, setGroup] = useState<GroupFilter>("all");
+  const [sort, setSort] = useState<SortKey>("status");
+  const [createOpen, setCreateOpen] = useState(false);
+
+  const { visibleTargets, stats } = useMemo(
+    () => buildPingOverview(data?.targets ?? [], group, sort),
+    [data, group, sort]
   );
-  const summary = createPingSummary(filteredChecks);
 
   return (
-    <>
+    <div className="flex h-full flex-col">
       <PageHeader
-        eyebrow="Link Health"
-        title="Ping 监测"
-        description="优先找出异常目标和退化原因，再用趋势图解释链路质量。目标列表必须比摘要卡更抢眼。"
-        actions={
-          <>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() =>
-                toast.success("已刷新探测", {
-                  description: `${filteredChecks.length} 个目标进入 mock 探测队列。`
-                })
-              }
-            >
-              <RefreshCwIcon data-icon="inline-start" aria-hidden />
-              刷新探测
-            </Button>
-            <Button
-              size="sm"
-              onClick={() =>
-                toast.info("已打开新建监测草稿", {
-                  description: "默认启用服务端地址校验和私网目标拒绝。"
-                })
-              }
-            >
-              <PlusIcon data-icon="inline-start" aria-hidden />
-              新建监测
-            </Button>
-          </>
-        }
+        title="服务监控"
+        subtitle={`${stats.ok}/${stats.total} 健康`}
+        action={<Button size="sm" onClick={() => setCreateOpen(true)}><Plus className="size-3.5" />添加目标</Button>}
       />
+      <CreatePingDialog open={createOpen} onOpenChange={setCreateOpen} />
 
-      <PingFiltersPanel
-        query={query}
-        statusFilter={statusFilter}
-        protocolFilter={protocolFilter}
-        onQueryChange={setQuery}
-        onStatusFilterChange={setStatusFilter}
-        onProtocolFilterChange={setProtocolFilter}
-        onReset={() => {
-          setQuery("");
-          setStatusFilter("all");
-          setProtocolFilter("all");
-        }}
-      />
+      <div className="min-h-0 flex-1 space-y-3 overflow-y-auto p-4">
+        <div className="grid grid-cols-2 gap-2 sm:grid-cols-5">
+          <StatTile label="目标总数" value={stats.total} icon={<Activity className="size-4" />} />
+          <StatTile label="健康" value={stats.ok} accent="success" progress={stats.total ? stats.ok / stats.total : 0} />
+          <StatTile label="异常" value={stats.down} accent="danger" />
+          <StatTile label="平均延迟" value={`${stats.avgLatency}ms`} accent={stats.avgLatency > 80 ? "warning" : "neutral"} />
+          <StatTile label="最差延迟" value={`${stats.worstLatency}ms`} accent={stats.worstLatency > 200 ? "danger" : "warning"} />
+        </div>
 
-      <div className="grid gap-4 xl:grid-cols-[minmax(0,1fr)_260px]">
-        <PingTargetsPanel
-          checks={filteredChecks}
-          onInspect={(check) =>
-            toast.info(check.name, {
-              description: `${check.protocol} · ${check.region} · ${check.target} · ${formatLatency(check.latencyMs)}`
-            })
-          }
+        <div className="grid grid-cols-1 gap-3 lg:grid-cols-4">
+          <ChartPanel title="平均可用率" subtitle="实时">
+            <UptimeRing uptime={stats.avgUptime} />
+          </ChartPanel>
+          <ChartPanel title="延迟 Top 10 (ms)" className="lg:col-span-2">
+            <LatencyChart targets={data?.targets ?? []} />
+          </ChartPanel>
+          <ChartPanel title="协议分布">
+            <ProtocolDonut targets={data?.targets ?? []} />
+          </ChartPanel>
+        </div>
+
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <FilterPills options={GROUP_OPTS} value={group} onChange={setGroup} />
+          <select
+            value={sort}
+            onChange={(e) => setSort(e.target.value as SortKey)}
+            className="h-8 rounded-md border border-border bg-card px-2 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          >
+            {SORT_OPTS.map((o) => <option key={o.key} value={o.key}>按{o.label}</option>)}
+          </select>
+        </div>
+
+        <PingTargetList
+          targets={visibleTargets}
+          isLoading={isLoading}
+          onCreate={() => setCreateOpen(true)}
         />
-        <PingSummaryCard summary={summary} />
       </div>
-
-      <PingBoundaryPanels />
-      <PingChartsPanel />
-      <PingSecurityRulesPanel
-        onInspect={(rule) =>
-          toast.info("探测边界", {
-            description: rule
-          })
-        }
-      />
-    </>
+    </div>
   );
 }

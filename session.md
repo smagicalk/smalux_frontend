@@ -383,3 +383,93 @@ pnpm build
 
 1. 下一阶段优先把 `mock-*` 数据逐步替换为真实 HTTP / WS / JSON-RPC 数据流。
 2. 如果继续做前端体验，优先补真实表单流和危险操作反馈，而不是继续堆说明卡片。
+
+## 2026-07-20 当前会话更新
+
+> 本节是当前 `redesign` 工作树的权威状态，覆盖上文中与当前实现冲突的旧描述；上文仅作为历史记录保留。
+
+### 当前基线
+
+- 当前分支为 `redesign`，工作区包含用户已有的大规模未提交重构，本次没有回滚或覆盖这些改动。
+- `/` 当前重定向到 `/admin`，没有公开状态页路由。
+- 后台包含总览、服务器、服务器详情、任务、计划任务、Ping、告警、通知、日志、Token、账户、主题、设置和部署 14 个页面组件；Shell 与页面均按路由懒加载。
+- 数据访问以 WebSocket + JSON-RPC 为主通道，HTTP `/rpc` 为兜底；当前默认使用 `src/shared/api/mock/` 的 mock transport，真实认证、权限和后端联调尚未完成。
+
+### 本次完成
+
+- 恢复 `src/test/setup.ts`，补充任务筛选 query key 回归测试；`queryKeys.tasks` 保留为 mutation 失效前缀，列表查询改用包含筛选条件的 `queryKeys.taskList(filters)`。
+- 清理全部 ESLint error/warning；颜色数组依赖和 Fast Refresh 公共导出边界已明确处理。
+- 将集群监控节流 hook 改为每批生成不可变 Map/数组快照，避免原地 mutation 导致图表冻结，也不再需要高频原始 `tick` 绕过节流语义。
+- ECharts 从全量运行时切换为 `echarts/core` 按需注册，覆盖 Line、Bar、Pie、Radar、Scatter、Heatmap、Funnel、Gauge 及实际使用的组件。
+- 修复 `echarts-for-react/lib/core` 深层 CommonJS 默认导入在 Vite/Rolldown 生产包中被解析为对象所造成的 React #130 白屏，改用包内 `esm/core` 后通过原始浏览器反馈环。
+- 路由、架构、模块和功能文档已同步到当前 redesign 实现。
+
+### 验证结果
+
+- `pnpm typecheck`：通过。
+- `pnpm lint`：通过，0 error、0 warning。
+- `pnpm test`：3 个测试文件、9 条用例全部通过。
+- `pnpm build`：通过；主入口约 307.18 KB（gzip 96.85 KB）。
+- ECharts chunk 从约 1,138.89 KB 降至 703.20 KB（gzip 235.70 KB），减少约 38%；仍高于 Vite 默认 500 KB 阈值，因此构建保留一条大 chunk 提示。
+- Playwright 图表回归：6 个图表密集路由 × 2 个视口，共 12 次访问，所有 canvas 均为非零尺寸，无 console/page error、无横向溢出。
+- Playwright 全入口回归：13 个可直接访问的后台入口 × 2 个视口，共 26 次访问，`errors=[]`、`overflows=[]`。
+- 本次涉及文件与 `session.md` 均保持原有无 BOM UTF-8 编码，中文抽样无乱码。
+
+### 当前遗留
+
+- 真实认证、权限守卫和后端数据接入尚未实现，当前业务流程仍以 mock transport 为默认数据源。
+- ECharts 已显著减小，但共享图表运行时仍为 703.20 KB；若必须消除 500 KB 提示，需要按页面拆分注册集合或改用更轻量图表实现。
+- WebSocket 重连、消息解析和 transport 失败路径仍缺少专项自动化测试。
+
+### 下一步建议
+
+1. 为 JSON-RPC transport、WebSocket 重连和异常消息解析补集成测试。
+2. 增加认证状态与权限路由守卫，再开始真实后端联调。
+3. 依据实际首屏性能数据决定是否继续拆分 ECharts 注册集合，避免只为消除阈值提示增加维护复杂度。
+
+## 2026-07-21 通信层测试更新
+
+### 本次完成
+
+- 新增 `src/shared/api/transport/transport.test.ts`，通过 transport 公共接口覆盖 8 个关键行为：HTTP 非 2xx 错误、JSON-RPC 错误信息保留、WebSocket 请求/响应、异常通知隔离、响应 schema 校验、断线重连、连接失败转 HTTP `/rpc`、业务 `RpcError` 不触发 HTTP 兜底。
+- 修复 `RpcClient` 只按配置二选一、没有真正执行 HTTP fallback 的问题：WS 连接不可用且不是业务 `RpcError` 时，同一次调用会使用 HTTP transport；显式测试 transport、业务错误和已连接状态下的 schema 错误不会被兜底掩盖。
+- 修复 WebSocket 响应 schema 校验异常逃出 message handler、导致 RPC Promise 无法稳定结束的问题；现在 schema 不匹配会正常 reject 原调用。
+
+### 验证结果
+
+- `pnpm typecheck`：通过。
+- `pnpm lint`：通过，0 error、0 warning。
+- `pnpm test`：4 个测试文件、17 条用例全部通过，其中新增通信层测试 8 条。
+- `pnpm build`：通过；ECharts chunk 仍为 703.20 KB，只有既有的大 chunk 提示。
+- 本轮文件与 `session.md` 均保持无 BOM UTF-8 编码。
+
+### 后续重点
+
+- 通信层基础失败路径已有自动化保护；后续可补心跳超时、连续重连退避、订阅恢复和真实服务端协议契约测试。
+- 真实认证、权限守卫与后端联调仍未完成。
+
+## 2026-07-21 前端模块化拆分更新
+
+### 本次拆分
+
+- 服务器详情页新增 `hooks/use-server-detail-series.ts`，集中 CPU、内存、网络总量/上下行和磁盘 IO 序列派生；`server-detail-body` 只保留订阅、生命周期和布局编排。
+- 服务器详情页新增 `components/server-identity-strip.tsx`，封装状态、标签、系统信息、公网 IP 和最后上报时间展示。
+- 设置页新增 `components/settings-group-section.tsx`，封装单个设置分组的元数据、字段列表和草稿编辑回调；页面继续负责筛选、批量保存和 toast。
+- 日志页新增 `components/logs-filter-bar.tsx`，封装搜索、模块、结果、操作人和排序筛选；页面继续负责查询参数、统计和结果表格。
+- 服务器列表页新增 `hooks/use-sorted-servers.ts`，隔离静态排序与实时指标排序对 monitoring store 的订阅；新增 `components/server-filter-bar.tsx`，封装搜索、状态和排序控件。
+- Ping 页新增 `lib/ping-overview.ts`，集中目标筛选、排序和集群统计；新增 `components/ping-target-list.tsx`，封装加载、空状态和目标表格。
+
+### 拆分边界
+
+- 保留现有页面和组件的对外调用方式，没有把每个小 JSX 片段机械拆成文件。
+- 总览图表区暂不硬拆：多个图表共享同一批节流聚合数据，继续拆成多个文件会增加 props 搬运和重复计算；后续应先按数据域确定边界。
+- 新增模块均包含职责注释，组件通过明确 props 与回调通信，没有引入跨模块状态。
+
+### 验证
+
+- `pnpm typecheck`：通过。
+- `pnpm lint`：通过，0 error、0 warning。
+- `pnpm test`：5 个测试文件、19 条用例全部通过；新增 Ping 派生逻辑测试覆盖异常优先排序和分组筛选下的全局统计。
+- `pnpm build`：通过；主入口约 307.48 KB，ECharts chunk 703.20 KB，仍只有既有大 chunk 提示。
+- 新增/修改文件均为无 BOM UTF-8，`git diff --check` 无空白错误。
+- Playwright 抽查服务器列表/真实详情、设置、日志、Ping 的桌面和移动端；无 console/page error、无横向溢出，详情页 11 个 canvas 均可见。

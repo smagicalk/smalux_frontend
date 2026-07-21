@@ -3,7 +3,7 @@
   "private": true,
   "version": "0.1.0",
   "type": "module",
-  "packageManager": "pnpm@10.32.1",
+  "packageManager": "pnpm@11.8.0",
   "scripts": {
     "dev": "vite --host 0.0.0.0",
     "build": "tsc -b && vite build",
@@ -32,6 +32,8 @@
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "date-fns": "^4.4.0",
+    "echarts": "^6.1.0",
+    "echarts-for-react": "^3.0.6",
     "lucide-react": "^1.17.0",
     "react": "^19.2.7",
     "react-dom": "^19.2.7",
@@ -40,6 +42,7 @@
     "sonner": "^2.0.7",
     "tailwind-merge": "^3.6.0",
     "uplot": "^1.6.32",
+    "uplot-react": "^1.2.4",
     "zod": "^4.4.3",
     "zustand": "^5.0.14"
   },

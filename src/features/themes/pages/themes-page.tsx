@@ -1,72 +1,89 @@
-import { PaletteIcon } from "lucide-react";
 import { useMemo, useState } from "react";
-import { toast } from "sonner";
+import { Palette, Upload } from "lucide-react";
 
-import { ThemePackageRules } from "@/features/themes/components/theme-package-rules";
-import { ThemeUploadPanel } from "@/features/themes/components/theme-upload-panel";
-import { ThemeGovernancePanel } from "@/features/themes/components/theme-governance-panel";
-import { ThemeLibraryPanel } from "@/features/themes/components/theme-library-panel";
-import { ThemeLifecyclePanel } from "@/features/themes/components/theme-lifecycle-panel";
-import { mockPublicThemes, type ThemeStatus } from "@/features/themes/model/mock-themes";
-import {
-  createThemeConfigTypeBars,
-  createThemeStatusSegments,
-  filterThemesByStatus,
-  packageLimitBars,
-  uploadTrend
-} from "@/features/themes/model/theme-insights";
+import { useThemes } from "@/features/themes/hooks/use-themes";
 import { Button } from "@/shared/ui/button";
 import { PageHeader } from "@/shared/ui/page-header";
+import { EmptyState, FilterPills, StatTile } from "@/shared/ui/layout";
 
+import { UploadDialog } from "../components/upload-dialog";
+import { ThemeCard, ThemeSkeleton } from "../components/theme-list";
+import { StatusFunnel } from "../components/theme-charts";
+import { SORT_OPTS, STATUS_OPTS, type SortKey, type StatusFilter } from "../lib/theme-meta";
+
+/**
+ * The themes page. Owns status filter + sort + upload-open state and renders
+ * the KPI strip + status funnel; the upload dialog, each card, and the funnel
+ * each live in their own component.
+ */
 export function ThemesPage() {
-  const [statusFilter, setStatusFilter] = useState<ThemeStatus | "all">("all");
+  const { data, isLoading } = useThemes();
+  const [status, setStatus] = useState<StatusFilter>("all");
+  const [sort, setSort] = useState<SortKey>("updated");
+  const [uploadOpen, setUploadOpen] = useState(false);
 
-  const filteredThemes = useMemo(
-    () => filterThemesByStatus(mockPublicThemes, statusFilter),
-    [statusFilter]
-  );
+  const themes = useMemo(() => {
+    const list = (data?.themes ?? []).filter((t) => (status === "all" ? true : t.status === status));
+    if (sort === "name") return list.sort((a, b) => a.name.localeCompare(b.name));
+    return list.sort((a, b) => b.updatedAt - a.updatedAt);
+  }, [data, status, sort]);
 
-  const configTypeBars = useMemo(() => createThemeConfigTypeBars(filteredThemes), [filteredThemes]);
-  const statusSegments = useMemo(() => createThemeStatusSegments(filteredThemes), [filteredThemes]);
+  const stats = useMemo(() => {
+    const all = data?.themes ?? [];
+    return {
+      total: all.length,
+      published: all.filter((t) => t.status === "published").length,
+      draft: all.filter((t) => t.status === "draft").length,
+      archived: all.filter((t) => t.status === "archived").length,
+      public: all.filter((t) => t.publicVisible).length
+    };
+  }, [data]);
 
   return (
-    <>
+    <div className="flex h-full flex-col">
       <PageHeader
-        eyebrow="Theme Governance"
-        title="主题管理"
-        description="主题页不是单纯展示配色，而是公开页面交付与安全隔离的一部分。这里同时承担上传、预览、启用、回滚和风险约束职责。"
-        actions={
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() =>
-              toast.info("已打开公开页主题预览", {
-                description: `${filteredThemes[0]?.name ?? "暂无主题"} · mock preview`
-              })
-            }
-          >
-            <PaletteIcon data-icon="inline-start" aria-hidden />
-            预览主题
-          </Button>
-        }
+        title="主题"
+        subtitle={`${data?.themes.length ?? 0} 套`}
+        action={<Button size="sm" onClick={() => setUploadOpen(true)}><Upload className="size-3.5" />上传主题</Button>}
       />
+      <UploadDialog open={uploadOpen} onOpenChange={setUploadOpen} />
 
-      <div className="grid items-start gap-4 lg:grid-cols-[minmax(0,1fr)_360px]">
-        <div className="grid gap-4">
-          <ThemeUploadPanel />
-          <ThemeLibraryPanel
-            themes={filteredThemes}
-            statusFilter={statusFilter}
-            onStatusFilterChange={setStatusFilter}
-            onReset={() => setStatusFilter("all")}
-          />
+      <div className="min-h-0 flex-1 space-y-3 overflow-y-auto p-4">
+        <div className="grid grid-cols-2 gap-2 sm:grid-cols-5">
+          <StatTile label="主题总数" value={stats.total} icon={<Palette className="size-4" />} />
+          <StatTile label="已发布" value={stats.published} accent="success" />
+          <StatTile label="草稿" value={stats.draft} accent="primary" />
+          <StatTile label="已归档" value={stats.archived} accent="warning" />
+          <StatTile label="公开可见" value={stats.public} accent="primary" />
         </div>
-        <ThemePackageRules />
+
+        <div className="glass cornered relative overflow-hidden rounded-md border border-border p-2">
+          <span className="absolute inset-x-0 top-0 h-px opacity-60" style={{ background: "linear-gradient(90deg, transparent, var(--primary), transparent)" }} />
+          <div className="px-1 pb-1 text-xs text-muted-foreground">状态流转</div>
+          <StatusFunnel themes={data?.themes ?? []} />
+        </div>
+
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <FilterPills options={STATUS_OPTS} value={status} onChange={setStatus} />
+          <select
+            value={sort}
+            onChange={(e) => setSort(e.target.value as SortKey)}
+            className="h-8 rounded-md border border-border bg-card px-2 text-sm outline-none focus-visible:ring-2 focus-visible:ring-ring"
+          >
+            {SORT_OPTS.map((o) => <option key={o.key} value={o.key}>按{o.label}</option>)}
+          </select>
+        </div>
+
+        {isLoading ? (
+          <ThemeSkeleton />
+        ) : !themes.length ? (
+          <EmptyState text="没有匹配的主题。" icon={<Palette className="size-8" />} action={<Button size="sm" onClick={() => setUploadOpen(true)}><Upload className="size-3.5" />上传主题</Button>} />
+        ) : (
+          <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+            {themes.map((t) => <ThemeCard key={t.id} theme={t} />)}
+          </div>
+        )}
       </div>
-
-      <ThemeLifecyclePanel statusSegments={statusSegments} uploadTrend={uploadTrend} />
-
-      <ThemeGovernancePanel packageLimitBars={packageLimitBars} configTypeBars={configTypeBars} />
-    </>
+    </div>
   );
 }

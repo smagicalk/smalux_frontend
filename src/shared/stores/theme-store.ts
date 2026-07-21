@@ -43,6 +43,35 @@ export const useThemeStore = create<ThemeState>((set) => ({
   }
 }));
 
+const CONFIG_APPLIED_KEY = "smalux-theme-config-applied";
+
+/**
+ * Apply the runtime-config theme as the default when the user has never
+ * chosen one themselves. Idempotent: only writes on the very first boot so
+ * a later config change doesn't override an explicit user preference.
+ */
+export function initThemeFromConfig(configMode: ThemeMode) {
+  if (typeof window === "undefined") return;
+  let applied: boolean;
+  try {
+    applied = window.localStorage.getItem(CONFIG_APPLIED_KEY) === "1";
+  } catch {
+    return;
+  }
+  if (applied) return;
+  // Only seed from config if there is no stored preference yet.
+  const stored = safeReadThemeMode();
+  if (stored === null) {
+    safeWriteThemeMode(configMode);
+    useThemeStore.setState({ mode: configMode });
+  }
+  try {
+    window.localStorage.setItem(CONFIG_APPLIED_KEY, "1");
+  } catch {
+    // best-effort
+  }
+}
+
 function safeReadThemeMode() {
   try {
     return window.localStorage.getItem(storageKey);

@@ -1,48 +1,23 @@
 import type { ReactNode } from "react";
 
-import { cn } from "@/shared/lib/utils";
-
-type PageHeaderProps = {
-  title: string;
-  description?: string;
-  actions?: ReactNode;
-  eyebrow?: string;
-  className?: string;
-};
-
+/**
+ * Thin title bar: title + optional subtitle on the left, actions on the
+ * right, separated by a hairline border below. No hero header, no card.
+ */
 export function PageHeader({
   title,
-  description,
-  actions,
-  eyebrow,
-  className
-}: PageHeaderProps) {
+  subtitle,
+  action
+}: {
+  title: string;
+  subtitle?: ReactNode;
+  action?: ReactNode;
+}) {
   return (
-    <div
-      className={cn(
-        "flex flex-col gap-3 border-b border-border pb-4",
-        "md:flex-row md:items-start md:justify-between",
-        className
-      )}
-    >
-      <div className="min-w-0 max-w-3xl">
-        {eyebrow ? (
-          <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground">
-            {eyebrow}
-          </p>
-        ) : null}
-        <h1 className="mt-1 text-2xl font-semibold tracking-tight md:text-[1.625rem]">{title}</h1>
-        {description ? (
-          <p className="mt-1.5 max-w-2xl text-sm leading-6 text-muted-foreground">
-            {description}
-          </p>
-        ) : null}
-      </div>
-      {actions ? (
-        <div className="flex w-full shrink-0 flex-wrap items-center gap-2 md:w-auto md:justify-end">
-          {actions}
-        </div>
-      ) : null}
+    <div className="glass sticky top-0 z-10 flex h-12 shrink-0 items-center gap-2 border-b border-border px-4">
+      <h1 className="text-sm font-semibold tracking-tight">{title}</h1>
+      {subtitle ? <span className="text-xs text-muted-foreground">{subtitle}</span> : null}
+      <div className="ml-auto">{action}</div>
     </div>
   );
 }

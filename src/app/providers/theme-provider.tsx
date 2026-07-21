@@ -1,32 +1,44 @@
-import { useEffect, type ReactNode } from "react";
+import * as React from "react";
 
-import { resolveThemeMode, useThemeStore } from "@/shared/stores/theme-store";
+import {
+  initThemeFromConfig,
+  resolveThemeMode,
+  useThemeStore,
+  type ThemeMode
+} from "@/shared/stores/theme-store";
 
-type ThemeProviderProps = {
-  children: ReactNode;
-};
+/**
+ * Applies the resolved theme (light/dark) to <html> and reacts to system
+ * preference changes when mode is "system". State lives in theme-store; this
+ * component only syncs the DOM.
+ */
+export function ThemeProvider({
+  children,
+  initialMode
+}: {
+  children: React.ReactNode;
+  initialMode?: ThemeMode;
+}) {
+  const mode = useThemeStore((s) => s.mode);
 
-export function ThemeProvider({ children }: ThemeProviderProps) {
-  const mode = useThemeStore((state) => state.mode);
-
-  useEffect(() => {
-    const applyTheme = () => {
-      const resolvedMode = resolveThemeMode(mode);
-      document.documentElement.classList.toggle("dark", resolvedMode === "dark");
-      document.documentElement.dataset.theme = mode;
-    };
-
-    applyTheme();
-
-    if (mode !== "system") {
-      return;
+  React.useEffect(() => {
+    if (initialMode) {
+      initThemeFromConfig(initialMode);
     }
+  }, [initialMode]);
 
-    const mediaQuery = window.matchMedia("(prefers-color-scheme: dark)");
-    mediaQuery.addEventListener("change", applyTheme);
+  React.useEffect(() => {
+    const apply = () => {
+      const resolved = resolveThemeMode(mode);
+      document.documentElement.classList.toggle("dark", resolved === "dark");
+    };
+    apply();
+    if (mode === "system") {
+      const mq = window.matchMedia("(prefers-color-scheme: dark)");
+      mq.addEventListener("change", apply);
+      return () => mq.removeEventListener("change", apply);
+    }
+  }, [mode, initialMode]);
 
-    return () => mediaQuery.removeEventListener("change", applyTheme);
-  }, [mode]);
-
-  return children;
+  return <>{children}</>;
 }

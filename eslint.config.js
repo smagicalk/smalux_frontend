@@ -18,12 +18,31 @@ export default tseslint.config(
     rules: {
       ...reactHooks.configs.recommended.rules,
       "react-hooks/incompatible-library": "off",
+      "@typescript-eslint/no-unused-vars": [
+        "error",
+        {
+          argsIgnorePattern: "^_",
+          varsIgnorePattern: "^_",
+          caughtErrorsIgnorePattern: "^_"
+        }
+      ],
       "react-refresh/only-export-components": [
         "warn",
         {
           allowConstantExport: true
         }
       ]
+    }
+  },
+  {
+    files: [
+      "src/shared/charts/echart.tsx",
+      "src/shared/charts/realtime-line-chart.tsx",
+      "src/shared/ui/button.tsx",
+      "src/shared/ui/toaster.tsx"
+    ],
+    rules: {
+      "react-refresh/only-export-components": "off"
     }
   }
 );

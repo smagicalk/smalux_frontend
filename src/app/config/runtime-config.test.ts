@@ -11,6 +11,7 @@ describe("loadRuntimeConfig", () => {
           apiBaseUrl: "https://api.example.test",
           wsBaseUrl: "wss://api.example.test/ws",
           rpcBaseUrl: "https://api.example.test/rpc",
+          transport: "ws",
           theme: "dark"
         }),
         {
@@ -24,6 +25,7 @@ describe("loadRuntimeConfig", () => {
       apiBaseUrl: "https://api.example.test",
       wsBaseUrl: "wss://api.example.test/ws",
       rpcBaseUrl: "https://api.example.test/rpc",
+      transport: "ws",
       theme: "dark"
     });
   });

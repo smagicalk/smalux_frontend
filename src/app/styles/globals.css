@@ -2,157 +2,264 @@
 
 @custom-variant dark (&:is(.dark *));
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --color-card: var(--card);
-  --color-card-foreground: var(--card-foreground);
-  --color-primary: var(--primary);
-  --color-primary-foreground: var(--primary-foreground);
-  --color-secondary: var(--secondary);
-  --color-secondary-foreground: var(--secondary-foreground);
-  --color-accent: var(--accent);
-  --color-accent-foreground: var(--accent-foreground);
-  --color-muted: var(--muted);
-  --color-muted-foreground: var(--muted-foreground);
-  --color-border: var(--border);
-  --color-input: var(--input);
-  --color-ring: var(--ring);
-  --color-sidebar: var(--sidebar);
-  --color-info: var(--info);
-  --color-success: var(--success);
-  --color-warning: var(--warning);
-  --color-danger: var(--danger);
-  --color-chart-1: var(--chart-1);
-  --color-chart-2: var(--chart-2);
-  --color-chart-3: var(--chart-3);
-  --color-chart-4: var(--chart-4);
-  --radius-sm: calc(var(--radius) - 4px);
-  --radius-md: calc(var(--radius) - 2px);
-  --radius-lg: var(--radius);
-}
-
+/* ---------------------------------------------------------------------------
+   Design tokens — a "mission control" aesthetic. Deep near-black canvas with
+   a faint engineering grid, glass panels, and cyan/magenta neon accents.
+   Light mode is a restrained mirror so the same UI works in daylight.
+--------------------------------------------------------------------------- */
 :root {
   --radius: 0.625rem;
-  --background: oklch(0.985 0.002 256);
-  --foreground: oklch(0.18 0.02 256);
+
+  --background: oklch(0.985 0.004 250);
+  --foreground: oklch(0.16 0.02 258);
+  --muted: oklch(0.95 0.006 250);
+  --muted-foreground: oklch(0.5 0.02 258);
   --card: oklch(1 0 0);
-  --card-foreground: oklch(0.18 0.02 256);
-  --primary: oklch(0.55 0.22 264);
-  --primary-foreground: oklch(0.99 0.01 264);
-  --secondary: oklch(0.965 0.005 256);
-  --secondary-foreground: oklch(0.3 0.02 256);
-  --accent: oklch(0.96 0.012 264);
-  --accent-foreground: oklch(0.4 0.05 264);
-  --muted: oklch(0.965 0.005 256);
-  --muted-foreground: oklch(0.52 0.015 256);
-  --border: oklch(0.915 0.006 256);
-  --input: oklch(0.915 0.006 256);
-  --ring: oklch(0.55 0.22 264);
-  --sidebar: oklch(0.985 0.004 256);
-  --info: oklch(0.6 0.15 245);
-  --success: oklch(0.62 0.16 150);
-  --warning: oklch(0.72 0.15 70);
-  --danger: oklch(0.6 0.22 27);
-  --chart-1: oklch(0.55 0.22 264);
-  --chart-2: oklch(0.62 0.16 150);
-  --chart-3: oklch(0.72 0.15 70);
-  --chart-4: oklch(0.6 0.22 27);
-  --surface-app: oklch(0.985 0.004 256);
-  --surface-panel: oklch(1 0 0);
-  --surface-panel-strong: oklch(0.995 0.003 256);
-  --surface-muted: oklch(0.965 0.005 256);
-  --surface-nav: oklch(0.982 0.004 256);
-  --surface-nav-active: oklch(0.95 0.02 264);
-  --surface-info: oklch(0.95 0.04 245);
-  --surface-success: oklch(0.95 0.04 150);
-  --surface-warning: oklch(0.96 0.05 70);
-  --surface-danger: oklch(0.95 0.04 27);
-  --shadow-soft: 0 1px 2px rgba(15, 23, 42, 0.04), 0 1px 3px rgba(15, 23, 42, 0.06);
-  --shadow-panel: 0 4px 16px rgba(15, 23, 42, 0.08);
+  --card-foreground: oklch(0.16 0.02 258);
+  --border: oklch(0.9 0.01 250);
+  --input: oklch(0.9 0.01 250);
+  --ring: oklch(0.62 0.18 245);
+
+  --primary: oklch(0.58 0.19 245);
+  --primary-foreground: oklch(0.99 0 0);
+  --accent: oklch(0.94 0.03 250);
+  --accent-foreground: oklch(0.34 0.14 250);
+
+  --success: oklch(0.64 0.17 165);
+  --warning: oklch(0.74 0.16 75);
+  --danger: oklch(0.62 0.21 22);
+
+  --sidebar: oklch(0.975 0.005 250);
+  --sidebar-foreground: oklch(0.25 0.02 258);
+
+  --cyan: oklch(0.72 0.16 195);
+  --violet: oklch(0.6 0.22 295);
+  --magenta: oklch(0.62 0.24 350);
+  --glow: 0.62 0.19 245;
 }
 
 .dark {
-  --background: oklch(0.16 0.012 260);
-  --foreground: oklch(0.96 0.005 256);
-  --card: oklch(0.2 0.014 260);
-  --card-foreground: oklch(0.96 0.005 256);
-  --primary: oklch(0.7 0.18 264);
-  --primary-foreground: oklch(0.16 0.02 264);
-  --secondary: oklch(0.27 0.016 260);
-  --secondary-foreground: oklch(0.96 0.005 256);
-  --accent: oklch(0.27 0.018 264);
-  --accent-foreground: oklch(0.82 0.08 264);
-  --muted: oklch(0.25 0.014 260);
-  --muted-foreground: oklch(0.7 0.015 256);
-  --border: oklch(0.3 0.014 260);
-  --input: oklch(0.3 0.014 260);
-  --ring: oklch(0.7 0.18 264);
-  --sidebar: oklch(0.18 0.012 260);
-  --info: oklch(0.72 0.14 245);
-  --success: oklch(0.74 0.16 150);
-  --warning: oklch(0.82 0.15 70);
-  --danger: oklch(0.72 0.2 27);
-  --chart-1: oklch(0.7 0.18 264);
-  --chart-2: oklch(0.74 0.16 150);
-  --chart-3: oklch(0.82 0.15 70);
-  --chart-4: oklch(0.72 0.2 27);
-  --surface-app: oklch(0.16 0.012 260);
-  --surface-panel: oklch(0.2 0.014 260);
-  --surface-panel-strong: oklch(0.235 0.015 260);
-  --surface-muted: oklch(0.25 0.014 260);
-  --surface-nav: oklch(0.18 0.012 260);
-  --surface-nav-active: oklch(0.28 0.04 264);
-  --surface-info: oklch(0.28 0.05 245);
-  --surface-success: oklch(0.28 0.05 150);
-  --surface-warning: oklch(0.3 0.06 70);
-  --surface-danger: oklch(0.28 0.05 27);
-  --shadow-soft: 0 1px 2px rgba(0, 0, 0, 0.3);
-  --shadow-panel: 0 4px 16px rgba(0, 0, 0, 0.4);
+  --background: oklch(0.15 0.015 258);
+  --foreground: oklch(0.97 0.006 250);
+  --muted: oklch(0.2 0.016 258);
+  --muted-foreground: oklch(0.66 0.02 258);
+  --card: oklch(0.185 0.016 258);
+  --card-foreground: oklch(0.97 0.006 250);
+  --border: oklch(0.28 0.018 258);
+  --input: oklch(0.28 0.018 258);
+  --ring: oklch(0.7 0.17 245);
+
+  --primary: oklch(0.75 0.16 195);
+  --primary-foreground: oklch(0.14 0.02 258);
+  --accent: oklch(0.26 0.03 258);
+  --accent-foreground: oklch(0.85 0.08 250);
+
+  --success: oklch(0.73 0.16 165);
+  --warning: oklch(0.8 0.15 75);
+  --danger: oklch(0.68 0.2 22);
+
+  --sidebar: oklch(0.17 0.015 258);
+  --sidebar-foreground: oklch(0.9 0.005 250);
+
+  --cyan: oklch(0.78 0.15 195);
+  --violet: oklch(0.66 0.22 295);
+  --magenta: oklch(0.68 0.24 350);
+  --glow: 0.75 0.17 195;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-success: var(--success);
+  --color-warning: var(--warning);
+  --color-danger: var(--danger);
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-cyan: var(--cyan);
+  --color-violet: var(--violet);
+  --color-magenta: var(--magenta);
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
 }
 
 * {
   border-color: var(--border);
 }
 
-html {
-  color-scheme: light;
-}
-
-html.dark {
-  color-scheme: dark;
+html,
+body,
+#root {
+  height: 100%;
 }
 
 body {
-  min-height: 100vh;
-  background: var(--background);
+  background-color: var(--background);
   color: var(--foreground);
-  font-family:
-    ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-  letter-spacing: -0.011em;
-  text-rendering: optimizeLegibility;
+  font-feature-settings: "tnum";
+  -webkit-font-smoothing: antialiased;
 }
 
-button,
-input,
-textarea,
-select {
-  font: inherit;
+/* Mission-control canvas: ambient color washes + a faint engineering grid
+   that scrolls with the page, giving depth without distraction. */
+body {
+  background-image:
+    linear-gradient(color-mix(in oklch, var(--border) 45%, transparent) 1px, transparent 1px),
+    linear-gradient(90deg, color-mix(in oklch, var(--border) 45%, transparent) 1px, transparent 1px),
+    radial-gradient(70rem 70rem at 105% -15%, color-mix(in oklch, var(--cyan) 12%, transparent), transparent 60%),
+    radial-gradient(60rem 60rem at -15% 115%, color-mix(in oklch, var(--violet) 11%, transparent), transparent 60%);
+  background-size: 32px 32px, 32px 32px, 100% 100%, 100% 100%;
+  background-attachment: fixed;
 }
 
-::selection {
-  background: color-mix(in oklab, var(--primary) 22%, transparent);
+/* A hairline top-glow line on glass panels for the "screen" feel. */
+.glass {
+  background: color-mix(in oklch, var(--card) 72%, transparent);
+  backdrop-filter: blur(12px) saturate(140%);
+  -webkit-backdrop-filter: blur(12px) saturate(140%);
 }
 
-@layer base {
-  body {
-    @apply antialiased;
-  }
+/* ── Tech-feel flourishes ──────────────────────────────────────────────
+   A small library of decorative animations + corner/scan utilities so any
+   panel can opt into the mission-control look via a class. */
 
-  h1,
-  h2,
-  h3,
-  h4 {
-    letter-spacing: -0.03em;
-  }
+/* Corner brackets — draws an L in each corner of a `.cornered` element so a
+   panel reads as a readout frame instead of a plain box. Color follows --glow. */
+.cornered::before,
+.cornered::after {
+  content: "";
+  position: absolute;
+  width: 10px;
+  height: 10px;
+  border-color: color-mix(in oklch, var(--glow) 75%, transparent);
+  pointer-events: none;
+  opacity: 0.7;
+}
+.cornered::before {
+  top: 5px;
+  left: 5px;
+  border-top: 1px solid;
+  border-left: 1px solid;
+}
+.cornered::after {
+  bottom: 5px;
+  right: 5px;
+  border-bottom: 1px solid;
+  border-right: 1px solid;
+}
+
+/* A traveling scan line that sweeps top→bottom across any `.scanline` panel.
+   Subtle opacity so it reads as ambience, never as a flicker. */
+@keyframes scan-sweep {
+  0% { transform: translateY(-100%); opacity: 0; }
+  15% { opacity: 0.55; }
+  85% { opacity: 0.55; }
+  100% { transform: translateY(2000%); opacity: 0; }
+}
+.scanline {
+  position: relative;
+  overflow: hidden;
+}
+.scanline > .scanline__beam {
+  position: absolute;
+  inset-inline: 0;
+  top: 0;
+  height: 40%;
+  background: linear-gradient(180deg, transparent, color-mix(in oklch, var(--glow) 14%, transparent), transparent);
+  pointer-events: none;
+  animation: scan-sweep 7s linear infinite;
+}
+
+/* A drifting data-grid overlay for hero panels — denser than the page grid,
+   it scrolls diagonally to suggest a live feed. */
+@keyframes grid-drift {
+  0% { background-position: 0 0, 0 0; }
+  100% { background-position: 32px 32px, 32px 32px; }
+}
+.datagrid {
+  position: relative;
+}
+.datagrid::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  background-image:
+    linear-gradient(color-mix(in oklch, var(--glow) 16%, transparent) 1px, transparent 1px),
+    linear-gradient(90deg, color-mix(in oklch, var(--glow) 16%, transparent) 1px, transparent 1px);
+  background-size: 32px 32px, 32px 32px;
+  opacity: 0.25;
+  pointer-events: none;
+  animation: grid-drift 6s linear infinite;
+}
+
+/* A pulsing heartbeat dot — wider, softer ring than Tailwind's ping, so it
+   reads as a vital-signs blip rather than a generic "live" indicator. */
+@keyframes pulse-ring {
+  0% { transform: scale(0.6); opacity: 0.8; }
+  100% { transform: scale(2.6); opacity: 0; }
+}
+.pulse-ring {
+  position: absolute;
+  inset: 0;
+  border-radius: 9999px;
+  animation: pulse-ring 1.8s ease-out infinite;
+}
+
+/* Shimmer for skeleton blocks — a brighter sweep than plain pulse, so loading
+   reads as "data arriving" rather than a dead box. */
+@keyframes shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+.shimmer {
+  background: linear-gradient(
+    90deg,
+    color-mix(in oklch, var(--muted) 60%, transparent) 25%,
+    color-mix(in oklch, var(--glow) 18%, transparent) 50%,
+    color-mix(in oklch, var(--muted) 60%, transparent) 75%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 1.6s ease-in-out infinite;
+}
+
+/* Table headers get a subtle primary-tinted glow line under them so tables
+   read as part of the console UI rather than plain HTML. */
+thead {
+  position: relative;
+}
+thead::after {
+  content: "";
+  position: absolute;
+  inset-inline: 0;
+  bottom: 0;
+  height: 1px;
+  background: linear-gradient(90deg, transparent, color-mix(in oklch, var(--primary) 55%, transparent), transparent);
+  pointer-events: none;
+}
+tbody tr {
+  transition: background-color 0.15s ease;
+}
+
+/* Thin, flat scrollbar to match the console feel. */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+::-webkit-scrollbar-thumb {
+  background: var(--border);
+  border-radius: 4px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: color-mix(in oklch, var(--primary) 45%, var(--border));
 }

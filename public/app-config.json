@@ -3,5 +3,6 @@
   "apiBaseUrl": "/api",
   "wsBaseUrl": "/ws",
   "rpcBaseUrl": "/rpc",
+  "transport": "mock",
   "theme": "system"
 }
