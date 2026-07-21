@@ -473,3 +473,128 @@ pnpm build
 - `pnpm build`：通过；主入口约 307.48 KB，ECharts chunk 703.20 KB，仍只有既有大 chunk 提示。
 - 新增/修改文件均为无 BOM UTF-8，`git diff --check` 无空白错误。
 - Playwright 抽查服务器列表/真实详情、设置、日志、Ping 的桌面和移动端；无 console/page error、无横向溢出，详情页 11 个 canvas 均可见。
+
+## 2026-07-21 API 注释与拆分边界更新
+
+### 本次完成
+
+- 为 `methods.ts` 补充 API 组合入口说明，明确领域 schema、方法目录、JSON-RPC envelope 校验和方法级 result 校验之间的关系。
+- 为 `Transport`、`RpcClient` 和 `RpcError` 补充契约注释，明确网络错误、schema 错误与服务端业务错误的区别，以及只有 WS 不可用的非业务错误才允许 HTTP fallback。
+- 为 HTTP transport 补充无状态连接语义、请求 ID、响应 envelope、结果校验和不支持推送订阅的说明。
+- 为 WebSocket transport 补充并发建连复用、请求超时、响应路由、通知隔离、心跳、断线重连、订阅清理和 dispose 生命周期说明。
+- 为 query key 与运行时 URL 工具补充缓存前缀、过滤条件序列化和 endpoint 安全边界说明。
+- 为 mock backend 补充状态所有权说明：RPC 路由、写操作和实时指标共享服务器与 runtime 状态，当前保留单一组合根，避免为了文件体积硬拆出状态同步依赖。
+
+### 当前边界
+
+- 页面第一阶段模块化拆分已经完成；总览图表共享聚合区和 mock backend 暂不继续机械拆分。
+- API 已按 `schemas/`、`transport/`、`mock/`、`methods.ts` 分层；`methods.ts` 是稳定公共入口，领域 schema 仍各自维护。
+- WebSocket 重连会保留本地订阅映射并自动重放 `.start`；当前协议仍没有对应的 `.stop` 命令，取消订阅只清理本地路由状态。
+
+### 验证
+
+- `pnpm typecheck`：通过。
+- `pnpm lint`：通过，0 error、0 warning。
+- `pnpm test`：5 个测试文件、19 条用例全部通过。
+- `pnpm build`：通过；主入口 307.48 KB，ECharts chunk 703.20 KB，仍只有既有的大 chunk 提示。
+- `git diff --check`：通过。
+- 本轮修改保持无 BOM UTF-8，中文抽样正常。
+
+## 2026-07-21 API 测试与生命周期补强
+
+### TDD 修复
+
+- 新增“断线重连后恢复活动订阅”测试，先复现新 socket 不发送 `.start` 的失败，再让订阅记录保留原始参数，并只在非首次连接成功时重放注册。
+- 新增“首次 socket 打开前 dispose”测试，先复现调用 Promise 永久 pending 的超时，再区分连接前关闭与已建立连接断线，使前者立即 reject。
+- `.start` 是流注册控制请求，其响应不再误用推送 payload schema 校验；真正的推送数据仍在通知分发时逐条校验。
+
+### 补充覆盖
+
+- HTTP transport：覆盖非法 JSON-RPC envelope 和方法 result schema 不匹配。
+- MockTransport：覆盖调用结果校验、initialBatch、sampleBatch、坏样本隔离与 unsubscribe 停止定时器。
+- Runtime endpoint：覆盖允许的相对路径/HTTP(S)/WS(S)、危险 scheme 拒绝、路径拼接和 HTTP 到 WebSocket 协议转换。
+- 通信层测试由 8 条增加到 17 条；项目总测试由 19 条增加到 28 条。
+
+### 注释补充
+
+- MockTransport 新增异步边界、schema 一致性、初始历史顺序、批次优先级、坏样本隔离和 timer 所有权说明。
+- Runtime config 新增部署输入信任边界、无缓存加载和配置失败时原子回退默认值的说明。
+- WebSocket transport 新增订阅恢复、控制请求响应和连接前关闭处理说明。
+
+### 验证
+
+- `pnpm typecheck`：通过。
+- `pnpm lint`：通过，0 error、0 warning。
+- `pnpm test`：5 个测试文件、28 条用例全部通过。
+- `pnpm build`：通过；主入口 307.79 KB，ECharts chunk 703.20 KB，仍只有既有的大 chunk 提示。
+
+## 2026-07-21 服务器指标分项弹窗
+
+### 数据契约
+
+- `ServerMetrics` 新增可选 `cpuCores`、`networkInterfaces`、`disks` 分项；字段默认空数组，旧 Agent 只上报汇总数据时仍可正常解析和展示。
+- CPU 总占用定义为全部逻辑核心平均值；网络收发总计为网卡分项之和；磁盘容量与 IO 总计为块设备分项之和。
+- Mock telemetry 为 x86_64 节点生成 4 个逻辑核心、为 arm64 节点生成 8 个逻辑核心，并提供 `eth0`、`wg0`、`/dev/vda1`、`/dev/vdb1` 明细。
+
+### 交互
+
+- CPU 弹窗增加“趋势 / 核心明细”，固定显示“全部 CPU”总计行，再列出 `CPU 0...n`。
+- 网络总流量、网络上行和网络下行弹窗增加“趋势 / 网卡明细”，展示全部网卡总计及各接口下行、上行、合计。
+- 磁盘 IO 卡改为整卡可点击；弹窗增加“趋势 / 硬盘明细”，展示全部硬盘及各设备的挂载点、容量、读速和写速。
+- 当真实 Agent 未提供分项时，趋势仍正常显示，明细标签页明确提示仅有汇总数据，不生成虚假设备名称。
+
+### 验证
+
+- `pnpm typecheck`：通过。
+- `pnpm lint`：通过，0 error、0 warning。
+- `pnpm test`：5 个测试文件、30 条用例全部通过；新增旧 Agent 兼容和 mock 分项严格加总测试。
+- `pnpm build`：通过；服务器详情路由 chunk 30.32 KB，ECharts chunk 703.20 KB，仍只有既有的大 chunk 提示。
+- Playwright：1440x1000 与 390x844 两个视口均完成 CPU、磁盘、网络弹窗点击和分项标签切换；总计与分项可见，HTTP 200，无 console/page error、无页面横向溢出。
+
+## 2026-07-21 分项折线图更新
+
+> 本节覆盖上一节中“分项明细为当前快照表格”的交互描述；数据契约与兼容策略保持不变。
+
+### 本次调整
+
+- 新增通用 `metricBreakdownOption`，统一提供时间轴、tooltip、百分比/速率纵轴、滚动图例、系列聚焦和缺失采样断点。
+- `useServerDetailSeries` 按设备名称将每次监控采样对齐到共享时间轴；设备中途缺报使用 `null`，不会显示为错误的 0。
+- CPU 核心明细改为每个逻辑核心一条折线，图例为 `CPU 0...n`。
+- 网络总流量、上行、下行明细改为每张网卡一条折线，图例为接口名称。
+- 磁盘明细改为每块设备的读速与写速分别一条折线；图例包含设备名称和方向，过长时由 ECharts 分页。
+- 弹窗标题仍显示实时汇总值；分项标签页专注设备历史与图例，不再重复展示快照表。
+
+### 验证
+
+- `pnpm typecheck`：通过。
+- `pnpm lint`：通过，0 error、0 warning。
+- `pnpm test`：5 个测试文件、30 条用例全部通过。
+- `pnpm build`：通过；服务器详情路由 chunk 29.47 KB，ECharts chunk 703.20 KB，仍只有既有的大 chunk 提示。
+- Playwright：1440x1000 与 390x844 均完成 CPU、磁盘、网络分项标签切换；每个弹窗均有一个 320px 高的非零 canvas，HTTP 200，无 console/page error、无页面横向溢出。
+
+## 2026-07-21 监听状态与运维明细补充
+
+### 指标展示
+
+- 磁盘分项折线图将图例固定为两行：上行集中显示各设备“读”，下行集中显示对应设备“写”；设备列顺序保持一致，便于横向配对比较。
+- 实时指标网格补齐右下角空单元格，并使用与有数据指标完全相同的 `bg-card` 背景色，避免露出网格底色。
+- 服务器详情底部新增 TCP / UDP 连接数趋势和进程列表；桌面端各占一半，移动端按顺序纵向排列。
+- 进程列表支持按 CPU、内存和网络吞吐排序，同时保留三项实时数值，避免切换排序后丢失对照信息。
+
+### 数据与监听语义
+
+- `ServerMetrics` 新增可选 `processesEnabled` 与 `processes`；默认关闭并回退为空数组，旧 Agent 未提供进程采样时仍可兼容解析。
+- 连接趋势分别服从 `tcpConnectionsEnabled` 与 `udpConnectionsEnabled`；只展示真实启用的协议，不用零值伪造未监听协议的曲线。
+- 服务器详情所有图表统一使用“未监听”遮罩。遮罩只由监听能力或采样可用性决定，合法的零值仍按正常图表展示。
+- Mock telemetry 增加进程 CPU、内存、上下行网络样本，用于排序和实时刷新验证。
+
+### 验证
+
+- `pnpm typecheck`：通过。
+- `pnpm lint`：通过，0 error、0 warning。
+- `pnpm test`：5 个测试文件、30 条用例全部通过；通信层定向测试 19 条全部通过。
+- `pnpm build`：通过；服务器详情路由 chunk 32.91 KB（gzip 10.52 KB），ECharts chunk 703.20 KB（gzip 235.70 KB），仍只有既有的大 chunk 提示。
+- Playwright：1440x1000 下连接趋势与进程列表同排等宽，390x844 下纵向排列；两种视口均无横向溢出。
+- Playwright：磁盘读写图例为上下两行且设备顺序对应；CPU、内存、网络排序标签均可切换，网络排序结果随数值变化。
+- Playwright：未监听磁盘显示模块级遮罩；连接趋势 canvas 尺寸非零；页面无 console error 或 page error。
+- 实时指标空单元格与其余单元格的计算背景色均为 `oklch(1 0 0)`。

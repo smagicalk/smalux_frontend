@@ -9,10 +9,16 @@ import { z } from "zod";
  * Subscriptions use `<stream>.subscribe` and the server pushes notifications
  * with the same method name.
  *
- * Schemas live in ./schemas/* split by domain; this file re-exports them so
+ * Schemas live in ./schemas/* and are split by business domain; this file
+ * intentionally remains the public composition root. It re-exports them so
  * the public import path `@/shared/api/methods` stays a single entry point,
  * then assembles the `methods` catalog that maps each method name to its
  * params/result schema pair.
+ *
+ * Validation has two stages: a transport first validates the JSON-RPC envelope,
+ * then validates `result` with the method-specific schema below. Input schemas
+ * are exported for callers and backend adapters; `z.unknown()` means the method
+ * has no meaningful frontend parameters, not that its result is untyped.
  */
 
 export * from "./schemas/common";
@@ -93,10 +99,12 @@ import {
 // ---------------------------------------------------------------------------
 // Method catalog — maps each `<namespace>.<action>` to its params/result
 // schemas. The RPC client validates against these; the mock backend mirrors the
-// names. Mutations all return okResultSchema and pages re-fetch the list.
+// exact names. Mutations return okResultSchema and feature hooks invalidate the
+// relevant query prefix instead of treating the acknowledgement as fresh data.
 // ---------------------------------------------------------------------------
 
 export const methods = {
+  // Connection health and agent inventory/real-time telemetry.
   "system.ping": { params: z.unknown(), result: pingResultSchema },
 
   "agent.list": {
@@ -120,6 +128,7 @@ export const methods = {
     result: okResultSchema
   },
 
+  // Read models used by administrative feature modules.
   "task.list": { params: z.unknown(), result: taskListResultSchema },
   "task.template.list": { params: z.unknown(), result: taskTemplateListResultSchema },
 
@@ -143,7 +152,8 @@ export const methods = {
 
   "deployment.list": { params: z.unknown(), result: deploymentListResultSchema },
 
-  // — mutations —
+  // Commands. A successful acknowledgement is followed by query invalidation,
+  // so list/detail state continues to come from authoritative read methods.
   "task.dispatch": { params: taskDispatchParamsSchema, result: okResultSchema },
   "task.approve": { params: taskApproveParamsSchema, result: okResultSchema },
 
@@ -178,4 +188,5 @@ export const methods = {
   "deployment.switch": { params: deploymentSwitchParamsSchema, result: okResultSchema }
 } as const;
 
+/** Union of every RPC name currently supported by the frontend contract. */
 export type MethodName = keyof typeof methods;

@@ -17,7 +17,8 @@ export {
   clusterThroughputTrendOption,
   areaTrendOption,
   pingLatencyOption,
-  diskIoOption
+  diskIoOption,
+  metricBreakdownOption
 } from "./trend-options";
 export {
   gaugeOption,

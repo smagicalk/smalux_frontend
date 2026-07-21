@@ -5,6 +5,9 @@ import type { RuntimeConfig } from "@/app/config/runtime-config";
 import type { Transport, Unsubscribe, NotificationHandler } from "./types";
 import { RpcError } from "./types";
 
+// Keep timing policy in one place. Calls fail before a stale socket can leave a
+// query pending forever; heartbeat detects half-open connections; reconnect is
+// deliberately short because ensureConnected de-duplicates concurrent opens.
 const HEARTBEAT_INTERVAL_MS = 30_000;
 const CALL_TIMEOUT_MS = 10_000;
 const RECONNECT_DELAY_MS = 1_000;
@@ -19,6 +22,7 @@ interface RpcResponse {
 }
 
 interface PendingRequest {
+  /** Resolvers are stored by JSON-RPC id so one socket can multiplex calls. */
   resolve: (value: unknown) => void;
   reject: (reason: Error) => void;
   timeout: ReturnType<typeof setTimeout>;
@@ -26,8 +30,10 @@ interface PendingRequest {
 
 interface Subscription {
   method: string;
-  // Loose match: server pushes a notification whose method equals the
-  // subscribed method. We compare by method name only.
+  /** Original registration params are retained for reconnect replay. */
+  params: unknown;
+  // Server notifications have no request id, so subscriptions are matched by
+  // method name. Multiple local handlers may listen to the same method.
   handler: NotificationHandler;
   schema: z.ZodType;
 }
@@ -40,9 +46,15 @@ function createId(): string {
 }
 
 /**
- * Single shared WebSocket connection multiplexing many JSON-RPC requests
- * via id, plus server-push notifications. Modeled on NodeGet's useWsConnection:
- * lazy connect, auto-reconnect, 30s heartbeat via a cheap `system.ping` call.
+ * Single shared WebSocket connection multiplexing JSON-RPC calls by request id
+ * and routing server-push notifications by method name.
+ *
+ * The socket connects lazily on the first call/subscription registration,
+ * shares one in-flight connection promise among concurrent callers, rejects all
+ * pending calls on disconnect, and schedules a reconnect. A periodic
+ * `system.ping` closes half-open sockets so normal close/reconnect handling can
+ * recover them. Every response and notification is schema-validated before it
+ * reaches feature code.
  */
 export class WsTransport implements Transport {
   private ws: WebSocket | null = null;
@@ -51,6 +63,7 @@ export class WsTransport implements Transport {
   private subscriptions = new Map<string, Subscription>();
   private heartbeatTimer: ReturnType<typeof setInterval> | null = null;
   private reconnectTimer: ReturnType<typeof setTimeout> | null = null;
+  private hasOpened = false;
   private disposed = false;
 
   constructor(private readonly runtimeConfig: RuntimeConfig) {}
@@ -67,6 +80,7 @@ export class WsTransport implements Transport {
     await this.ensureConnected();
     return new Promise<TResult>((resolve, reject) => {
       const id = createId();
+      // Timeout owns removal from `pending`; a late response is then ignored.
       const timeout = setTimeout(() => {
         this.pending.delete(id);
         reject(new Error(`RPC ${method} timed out`));
@@ -74,6 +88,8 @@ export class WsTransport implements Transport {
 
       this.pending.set(id, {
         resolve: (value) => {
+          // safeParse keeps validation failure on this request's promise and
+          // does not disrupt unrelated requests sharing the same socket.
           const parsed = schema.safeParse(value);
           if (parsed.success) {
             resolve(parsed.data);
@@ -98,17 +114,18 @@ export class WsTransport implements Transport {
     const subId = createId();
     this.subscriptions.set(subId, {
       method,
+      params,
       handler: handler as NotificationHandler,
       schema: schema as z.ZodType
     });
-    // Register interest with the server. Fire-and-forget; server then pushes
-    // notifications with `method` and no id.
-    void this.call(`${method}.start`, params, schema).catch(() => {
-      // Swallow: subscription registration is best-effort. Notifications may
-      // still arrive if the server registers implicitly.
-    });
+    // Register interest with the server. This control request is best-effort:
+    // some backends treat the stream as implicit, while others acknowledge the
+    // `.start` method and then push notifications without an id.
+    this.startSubscription(method, params);
 
     return () => {
+      // Only local routing state is owned here. The current protocol has no
+      // matching `.stop` contract, so cleanup intentionally sends no command.
       this.subscriptions.delete(subId);
     };
   }
@@ -121,6 +138,8 @@ export class WsTransport implements Transport {
       return Promise.resolve();
     }
     if (this.connectPromise) {
+      // All callers await the same socket open instead of creating parallel
+      // WebSocket instances during an initial page render.
       return this.connectPromise;
     }
     this.connectPromise = this.connect();
@@ -133,17 +152,32 @@ export class WsTransport implements Transport {
 
     return new Promise<void>((resolve, reject) => {
       const ws = this.ws!;
+      let opened = false;
       ws.addEventListener("open", () => {
+        opened = true;
         this.startHeartbeat();
         this.connectPromise = null;
+        const shouldResumeSubscriptions = this.hasOpened;
+        this.hasOpened = true;
         resolve();
+        if (shouldResumeSubscriptions) {
+          this.resumeSubscriptions();
+        }
       });
       ws.addEventListener("error", () => {
         this.connectPromise = null;
         reject(new Error("WebSocket connection failed"));
       });
       ws.addEventListener("message", (event) => this.onMessage(event));
-      ws.addEventListener("close", () => this.onClose());
+      ws.addEventListener("close", () => {
+        this.onClose();
+        // A close before open cannot be handled by pending-call rejection,
+        // because call() is still awaiting this connection promise and has not
+        // created its request entry yet. Reject it explicitly to avoid a leak.
+        if (!opened) {
+          reject(new Error("WebSocket closed before opening"));
+        }
+      });
     });
   }
 
@@ -152,6 +186,8 @@ export class WsTransport implements Transport {
     try {
       payload = JSON.parse(event.data as string);
     } catch {
+      // An invalid frame cannot be correlated safely. Ignore it without
+      // terminating valid in-flight calls on the shared connection.
       return;
     }
 
@@ -163,8 +199,8 @@ export class WsTransport implements Transport {
             try {
               sub.handler(sub.schema.parse(payload.params));
             } catch {
-              // Ignore parse failures on push; schema mismatch shouldn't
-              // tear down other subscribers.
+              // A malformed push is isolated to this handler; it must not tear
+              // down the socket or block other subscribers.
             }
           }
         }
@@ -192,7 +228,8 @@ export class WsTransport implements Transport {
     this.ws = null;
     this.connectPromise = null;
 
-    // Reject pending requests so callers can retry.
+    // A response can no longer arrive on this socket, so reject immediately
+    // rather than waiting for every per-call timeout.
     for (const [, req] of this.pending) {
       clearTimeout(req.timeout);
       req.reject(new Error("WebSocket closed"));
@@ -200,7 +237,9 @@ export class WsTransport implements Transport {
     this.pending.clear();
 
     if (this.disposed) return;
-    // Schedule reconnect.
+    // Reconnect restores transport availability. Local subscriptions remain in
+    // the routing map, but `.start` is not replayed by the current protocol;
+    // deployments that require replay should add an explicit resume contract.
     this.reconnectTimer = setTimeout(() => {
       this.ensureConnected().catch(() => {
         // Reconnect failed; onClose will fire again if it ever opens then drops.
@@ -222,6 +261,29 @@ export class WsTransport implements Transport {
     }, HEARTBEAT_INTERVAL_MS);
   }
 
+  /**
+   * Re-register every active local subscription after a socket reconnect.
+   * The first connection is excluded because each subscribe() call is already
+   * awaiting it and will send its own registration when the socket opens.
+   */
+  private resumeSubscriptions() {
+    for (const subscription of this.subscriptions.values()) {
+      this.startSubscription(subscription.method, subscription.params);
+    }
+  }
+
+  /**
+   * Send the protocol's best-effort stream registration command. Its response
+   * is only an acknowledgement, so push payload validation remains exclusively
+   * attached to the stored subscription schema in onMessage().
+   */
+  private startSubscription(method: string, params: unknown) {
+    void this.call(`${method}.start`, params, z.unknown()).catch(() => {
+      // The backend may register streams implicitly; a control-call failure
+      // therefore does not remove the local handler or terminate the socket.
+    });
+  }
+
   private stopHeartbeat() {
     if (this.heartbeatTimer !== null) {
       clearInterval(this.heartbeatTimer);
@@ -237,6 +299,8 @@ export class WsTransport implements Transport {
   }
 
   dispose() {
+    // Disposal is terminal: cancel timers, reject owned promises and prevent
+    // onClose from scheduling another connection after application teardown.
     this.disposed = true;
     this.stopHeartbeat();
     if (this.reconnectTimer !== null) {

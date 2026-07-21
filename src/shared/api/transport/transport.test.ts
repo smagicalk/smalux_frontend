@@ -2,7 +2,11 @@ import { afterEach, describe, expect, it, vi } from "vitest";
 import { z } from "zod";
 
 import { defaultRuntimeConfig } from "@/app/config/runtime-config";
+import { createMockBackend, type MockBackend } from "@/shared/api/mock/mock-backend";
+import { serverMetricsSchema } from "@/shared/api/methods";
+import { createWebSocketUrl, isSafeRuntimeEndpoint, joinUrl } from "@/shared/api/url";
 import { HttpTransport } from "./http-transport";
+import { MockTransport } from "./mock-transport";
 import { RpcClient } from "./rpc-client";
 import { RpcError } from "./types";
 import { WsTransport } from "./ws-transport";
@@ -97,6 +101,85 @@ describe("HttpTransport", () => {
     expect(error).toBeInstanceOf(RpcError);
     expect(error).toMatchObject({ code: -32001, message: "permission denied", data: { scope: "admin" } });
   });
+
+  it("rejects a malformed JSON-RPC envelope before parsing the result", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue({
+        ok: true,
+        json: async () => ({ jsonrpc: "1.0", result: { ok: true } })
+      })
+    );
+    const transport = new HttpTransport({ ...defaultRuntimeConfig, transport: "http" });
+
+    await expect(
+      transport.call("system.health", {}, z.object({ ok: z.boolean() }))
+    ).rejects.toBeInstanceOf(z.ZodError);
+  });
+
+  it("rejects a valid envelope whose result violates the method schema", async () => {
+    vi.stubGlobal(
+      "fetch",
+      vi.fn().mockResolvedValue({
+        ok: true,
+        json: async () => ({ jsonrpc: "2.0", id: "request-2", result: { ok: "yes" } })
+      })
+    );
+    const transport = new HttpTransport({ ...defaultRuntimeConfig, transport: "http" });
+
+    await expect(
+      transport.call("system.health", {}, z.object({ ok: z.boolean() }))
+    ).rejects.toBeInstanceOf(z.ZodError);
+  });
+});
+
+describe("MockTransport", () => {
+  it("validates calls through the same result contract as real transports", async () => {
+    const backend: MockBackend = {
+      handle: async () => ({ ok: "yes" }),
+      subscribe: () => null
+    };
+    const transport = new MockTransport(defaultRuntimeConfig, backend);
+
+    await expect(
+      transport.call("system.health", {}, z.object({ ok: z.boolean() }))
+    ).rejects.toBeInstanceOf(z.ZodError);
+
+    transport.dispose();
+  });
+
+  it("delivers valid stream batches and stops after unsubscribe", async () => {
+    vi.useFakeTimers();
+    const backend: MockBackend = {
+      handle: async () => ({ ok: true }),
+      subscribe: () => ({
+        intervalMs: 100,
+        initialBatch: () => [{ cpu: 0.1 }, { cpu: "invalid" }],
+        sampleBatch: () => [{ cpu: 0.2 }, { cpu: "invalid" }]
+      })
+    };
+    const transport = new MockTransport(defaultRuntimeConfig, backend);
+    const handler = vi.fn();
+
+    const unsubscribe = transport.subscribe(
+      "monitoring.sample",
+      {},
+      z.object({ cpu: z.number() }),
+      handler
+    );
+    expect(handler).toHaveBeenCalledOnce();
+    expect(handler).toHaveBeenLastCalledWith({ cpu: 0.1 });
+
+    await vi.advanceTimersByTimeAsync(100);
+    expect(handler).toHaveBeenCalledTimes(2);
+    expect(handler).toHaveBeenLastCalledWith({ cpu: 0.2 });
+
+    unsubscribe();
+    await vi.advanceTimersByTimeAsync(200);
+    expect(handler).toHaveBeenCalledTimes(2);
+
+    transport.dispose();
+  });
 });
 
 describe("WsTransport", () => {
@@ -185,6 +268,53 @@ describe("WsTransport", () => {
 
     transport.dispose();
   });
+
+  it("restores active subscriptions after reconnecting", async () => {
+    vi.useFakeTimers();
+    FakeWebSocket.instances = [];
+    vi.stubGlobal("WebSocket", Object.assign(FakeWebSocket, { OPEN: 1, CLOSED: 3 }));
+    const transport = new WsTransport(wsRuntimeConfig);
+
+    transport.subscribe(
+      "monitoring.sample",
+      { serverIds: ["server-1"] },
+      z.object({ cpu: z.number() }),
+      vi.fn()
+    );
+    const firstSocket = FakeWebSocket.instances[0];
+    firstSocket.open();
+    await Promise.resolve();
+    expect(JSON.parse(firstSocket.sent[0])).toMatchObject({
+      method: "monitoring.sample.start",
+      params: { serverIds: ["server-1"] }
+    });
+
+    firstSocket.close();
+    await vi.advanceTimersByTimeAsync(1_000);
+    const secondSocket = FakeWebSocket.instances[1];
+    secondSocket.open();
+    await Promise.resolve();
+
+    expect(secondSocket.sent.map((message) => JSON.parse(message))).toContainEqual(
+      expect.objectContaining({
+        method: "monitoring.sample.start",
+        params: { serverIds: ["server-1"] }
+      })
+    );
+
+    transport.dispose();
+  });
+
+  it("rejects a call when disposed before the initial socket opens", async () => {
+    FakeWebSocket.instances = [];
+    vi.stubGlobal("WebSocket", Object.assign(FakeWebSocket, { OPEN: 1, CLOSED: 3 }));
+    const transport = new WsTransport(wsRuntimeConfig);
+
+    const resultPromise = transport.call("system.health", {}, z.unknown());
+    transport.dispose();
+
+    await expect(resultPromise).rejects.toThrow("WebSocket closed before opening");
+  });
 });
 
 describe("RpcClient", () => {
@@ -236,5 +366,74 @@ describe("RpcClient", () => {
     expect(fetchMock).not.toHaveBeenCalled();
 
     client.dispose();
+  });
+});
+
+describe("RPC endpoint URLs", () => {
+  it("accepts supported endpoints and rejects unsafe schemes", () => {
+    expect(isSafeRuntimeEndpoint("/rpc")).toBe(true);
+    expect(isSafeRuntimeEndpoint("https://api.example.com/rpc")).toBe(true);
+    expect(isSafeRuntimeEndpoint("wss://api.example.com/ws")).toBe(true);
+    expect(isSafeRuntimeEndpoint("//untrusted.example.com/rpc")).toBe(false);
+    expect(isSafeRuntimeEndpoint("javascript:alert(1)")).toBe(false);
+    expect(isSafeRuntimeEndpoint("data:text/plain,rpc")).toBe(false);
+  });
+
+  it("joins endpoint paths without duplicate separators", () => {
+    expect(joinUrl("https://api.example.com/", "/rpc")).toBe(
+      "https://api.example.com/rpc"
+    );
+    expect(joinUrl("", "")).toBe("/");
+  });
+
+  it("upgrades HTTP origins to their WebSocket equivalents", () => {
+    expect(createWebSocketUrl("https://api.example.com/", "/ws")).toBe(
+      "wss://api.example.com/ws"
+    );
+    expect(createWebSocketUrl("http://api.example.com", "stream")).toBe(
+      "ws://api.example.com/stream"
+    );
+  });
+});
+
+describe("Server metric breakdown contract", () => {
+  it("keeps older aggregate-only agent samples compatible", () => {
+    const metrics = serverMetricsSchema.parse({
+      serverId: "legacy-server",
+      cpuUsage: 0.25,
+      memUsed: 1024,
+      memTotal: 4096,
+      ts: 1
+    });
+
+    expect(metrics.cpuCores).toEqual([]);
+    expect(metrics.networkInterfaces).toEqual([]);
+    expect(metrics.disks).toEqual([]);
+    expect(metrics.processesEnabled).toBe(false);
+    expect(metrics.processes).toEqual([]);
+  });
+
+  it("produces mock device breakdowns that add up to their totals", () => {
+    const backend = createMockBackend();
+    const stream = backend.subscribe("agent.summary.subscribe", { serverIds: ["srv-hkg-01"] });
+    const metrics = serverMetricsSchema.parse(stream?.sampleBatch?.()[0]);
+
+    expect(metrics.cpuCores.length).toBeGreaterThan(0);
+    expect(metrics.processesEnabled).toBe(true);
+    expect(metrics.processes.length).toBeGreaterThan(0);
+    expect(metrics.cpuCores.reduce((sum, core) => sum + core.usage, 0) / metrics.cpuCores.length)
+      .toBeCloseTo(metrics.cpuUsage);
+    expect(metrics.networkInterfaces.reduce((sum, item) => sum + item.rxSpeed, 0))
+      .toBeCloseTo(metrics.netRxSpeed);
+    expect(metrics.networkInterfaces.reduce((sum, item) => sum + item.txSpeed, 0))
+      .toBeCloseTo(metrics.netTxSpeed);
+    expect(metrics.disks.reduce((sum, disk) => sum + disk.used, 0))
+      .toBeCloseTo(metrics.diskUsed);
+    expect(metrics.disks.reduce((sum, disk) => sum + disk.total, 0))
+      .toBeCloseTo(metrics.diskTotal);
+    expect(metrics.disks.reduce((sum, disk) => sum + (disk.readSpeed ?? 0), 0))
+      .toBeCloseTo(metrics.diskIo?.readSpeed ?? 0);
+    expect(metrics.disks.reduce((sum, disk) => sum + (disk.writeSpeed ?? 0), 0))
+      .toBeCloseTo(metrics.diskIo?.writeSpeed ?? 0);
   });
 });

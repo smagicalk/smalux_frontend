@@ -29,9 +29,49 @@ export const serverSchema = z.object({
 });
 export type Server = z.infer<typeof serverSchema>;
 
+/**
+ * Optional resource breakdowns reported by newer agents. Aggregate fields on
+ * ServerMetrics remain authoritative and backward compatible; these arrays
+ * explain which logical CPU, network interface or block device contributes to
+ * the total shown by the overview cards.
+ */
+const cpuCoreMetricSchema = z.object({
+  name: z.string(),
+  usage: z.number()
+});
+
+const networkInterfaceMetricSchema = z.object({
+  name: z.string(),
+  rxSpeed: z.number(),
+  txSpeed: z.number(),
+  rxTotal: z.number().optional().default(0),
+  txTotal: z.number().optional().default(0)
+});
+
+const diskMetricSchema = z.object({
+  name: z.string(),
+  mountPoint: z.string().optional(),
+  used: z.number(),
+  total: z.number(),
+  readSpeed: z.number().nullable().optional().default(null),
+  writeSpeed: z.number().nullable().optional().default(null)
+});
+
+const processMetricSchema = z.object({
+  pid: z.number(),
+  name: z.string(),
+  cpuUsage: z.number(),
+  memUsed: z.number(),
+  netRxSpeed: z.number().optional().default(0),
+  netTxSpeed: z.number().optional().default(0)
+});
+
 export const serverMetricsSchema = z.object({
   serverId: z.string(),
   cpuUsage: z.number(),
+  // cpuUsage is the all-core average, not the sum of percentages. Agents that
+  // support per-core reporting populate cpuCores; older agents parse to [].
+  cpuCores: z.array(cpuCoreMetricSchema).optional().default([]),
   memUsed: z.number(),
   memTotal: z.number(),
   swapUsed: z.number().optional().default(0),
@@ -45,8 +85,16 @@ export const serverMetricsSchema = z.object({
   netTxSpeed: z.number().optional().default(0),
   netRxTotal: z.number().optional().default(0),
   netTxTotal: z.number().optional().default(0),
+  // Aggregate network counters above equal the sum of these interfaces when
+  // the agent exposes interface-level telemetry.
+  networkInterfaces: z.array(networkInterfaceMetricSchema).optional().default([]),
   uptime: z.number().optional().default(0),
   processCount: z.number().optional().default(0),
+  // Process details are opt-in because collecting per-process CPU/memory/network
+  // can be expensive. Older agents default to disabled rather than presenting
+  // an empty list as a legitimate zero-process host.
+  processesEnabled: z.boolean().optional().default(false),
+  processes: z.array(processMetricSchema).optional().default([]),
   // TCP / UDP connection counts and disk IO are each behind a collection
   // switch. `*Enabled` is the switch; the value is null when collection is
   // off so the UI can show "关闭统计" instead of a misleading 0. TCP used to
@@ -60,6 +108,9 @@ export const serverMetricsSchema = z.object({
     .object({ readSpeed: z.number(), writeSpeed: z.number() })
     .nullable()
     .default(null),
+  // Disk occupancy and IO contribution per block device/mount. IO values may
+  // be null even when occupancy exists because collection can be disabled.
+  disks: z.array(diskMetricSchema).optional().default([]),
   ts: z.number()
 });
 export type ServerMetrics = z.infer<typeof serverMetricsSchema>;

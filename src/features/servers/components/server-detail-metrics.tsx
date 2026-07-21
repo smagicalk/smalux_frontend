@@ -5,7 +5,7 @@ import { radarOption } from "@/shared/charts/chart-options";
 import { formatBytes, formatPercent, formatRate, formatUptime } from "@/shared/lib/utils";
 import type { ServerMetrics } from "@/shared/api/methods";
 
-import { ChartCard, MetricCell } from "./server-detail-cards";
+import { ChartCard, MetricCell, MonitoringOverlay } from "./server-detail-cards";
 
 /**
  * A switchable metric (TCP/UDP/disk IO) cell with three display states:
@@ -71,9 +71,9 @@ export function NodeProfile({ serverName, metrics }: { serverName: string; metri
   return (
     <div className="grid grid-cols-1 gap-3 lg:grid-cols-3">
       <ChartCard title="节点画像" subtitle="CPU · 内存 · 磁盘 · 负载 · 网络" className="lg:col-span-1">
-        {radarOpt ? <EChart option={radarOpt} height={210} /> : (
-          <div className="flex h-[210px] items-center justify-center text-xs text-muted-foreground">等待实时数据…</div>
-        )}
+        <MonitoringOverlay monitored={!!metrics}>
+          {radarOpt ? <EChart option={radarOpt} height={210} /> : <div className="h-[210px]" />}
+        </MonitoringOverlay>
       </ChartCard>
       <div className="lg:col-span-2">
         <div className="glass rounded-md border border-border">
@@ -118,6 +118,10 @@ export function NodeProfile({ serverName, metrics }: { serverName: string; metri
               value={metrics && metrics.swapTotal ? formatPercent(metrics.swapUsed / metrics.swapTotal) : "-"}
               hint={metrics && metrics.swapTotal ? `${formatBytes(metrics.swapUsed)} / ${formatBytes(metrics.swapTotal)}` : "未启用"}
             />
+            {/* Fifteen metrics leave one slot in the four-column final row.
+                Fill it with the same card surface instead of exposing the
+                grid's border-colored background as a dark empty block. */}
+            <div className="bg-card" aria-hidden="true" />
           </div>
         </div>
       </div>

@@ -54,7 +54,13 @@ export interface MockStream {
  * method is not a stream).
  */
 export interface MockBackend {
+  /**
+   * Execute one method against in-memory fixtures. Params remain unknown at
+   * this boundary because MockTransport owns the same schema-validation step as
+   * real transports; the implementation narrows only after method dispatch.
+   */
   handle(method: string, params: unknown): Promise<unknown>;
+  /** Return a timed push source for stream methods, otherwise null. */
   subscribe(method: string, params: unknown): MockStream | null;
 }
 
@@ -104,6 +110,16 @@ function seedRuntimes(servers: Server[]): Map<string, ServerRuntime> {
 // Implementation
 // ---------------------------------------------------------------------------
 
+/**
+ * Stateful local implementation of the public RPC contract.
+ *
+ * Request routing, mutations and telemetry simulation deliberately share this
+ * owner because live samples depend on the same server list and runtime maps as
+ * administrative commands. Splitting each switch branch into separate service
+ * objects before isolating that state would add synchronization and constructor
+ * plumbing without creating a real module boundary. Domain fixtures and schemas
+ * are already split; this class remains the small in-process composition root.
+ */
 class MockBackendImpl implements MockBackend {
   private servers: Server[];
   private runtimes: Map<string, ServerRuntime>;
@@ -115,6 +131,10 @@ class MockBackendImpl implements MockBackend {
   }
 
   async handle(method: string, params: unknown): Promise<unknown> {
+    // Keep method names aligned with `methods.ts`. Each branch narrows its own
+    // params after dispatch, mutates shared fixtures when it represents a
+    // command, and returns raw data for MockTransport to validate. Unknown
+    // methods fail fast so contract drift is visible during local development.
     switch (method) {
       case "system.ping":
         return { ok: true };
@@ -501,6 +521,9 @@ class MockBackendImpl implements MockBackend {
   }
 
   subscribe(method: string, params: unknown): MockStream | null {
+    // Only methods with real server-push equivalents belong here. Read methods
+    // stay in handle(), which keeps hook behavior identical across mock and real
+    // transports instead of introducing mock-only polling semantics.
     if (method === "agent.summary.subscribe") {
       const p = (params ?? {}) as { serverIds?: string[] };
       const targetIds = p.serverIds ?? this.servers.map((s) => s.id);
@@ -691,10 +714,93 @@ class MockBackendImpl implements MockBackend {
 
     const memTotal = 8 * 1024 ** 3; // 8 GiB
     const diskTotal = 100 * 1024 ** 3; // 100 GiB
+    const diskIoEnabled = server.id !== "srv-sha-01";
+    const diskIo = diskIoEnabled
+      ? {
+          readSpeed: Math.random() * 50 * 1024 * 1024,
+          writeSpeed: Math.random() * 30 * 1024 * 1024
+        }
+      : null;
+
+    // Per-core values oscillate around cpuUsage. CPU total is an average across
+    // logical cores, whereas network and disk totals below are additive sums.
+    const cpuCoreCount = server.arch === "arm64" ? 8 : 4;
+    const coreWave = Array.from(
+      { length: cpuCoreCount },
+      (_, index) => Math.sin(ts / 4_000 + index)
+    );
+    const waveMean = coreWave.reduce((sum, value) => sum + value, 0) / cpuCoreCount;
+    const maxDelta = Math.max(...coreWave.map((value) => Math.abs(value - waveMean)), 1);
+    // Center and scale the wave before adding it to the aggregate. Centering
+    // makes the core average exactly cpuUsage; limiting amplitude by distance
+    // to 0/1 keeps every individual core inside the valid ratio range.
+    const coreAmplitude = Math.max(0, Math.min(0.12, rt.cpu - 0.01, 1 - rt.cpu));
+    const cpuCores = coreWave.map((value, index) => ({
+      name: `CPU ${index}`,
+      usage: rt.cpu + ((value - waveMean) / maxDelta) * coreAmplitude
+    }));
+    const primaryNetworkRatio = 0.82;
+    const networkInterfaces = [
+      {
+        name: "eth0",
+        rxSpeed: rt.netRx * primaryNetworkRatio,
+        txSpeed: rt.netTx * primaryNetworkRatio,
+        rxTotal: rt.netRx * 60 * primaryNetworkRatio,
+        txTotal: rt.netTx * 60 * primaryNetworkRatio
+      },
+      {
+        name: "wg0",
+        rxSpeed: rt.netRx * (1 - primaryNetworkRatio),
+        txSpeed: rt.netTx * (1 - primaryNetworkRatio),
+        rxTotal: rt.netRx * 60 * (1 - primaryNetworkRatio),
+        txTotal: rt.netTx * 60 * (1 - primaryNetworkRatio)
+      }
+    ];
+    const disks = [
+      {
+        name: "/dev/vda1",
+        mountPoint: "/",
+        used: 22 * 1024 ** 3,
+        total: 40 * 1024 ** 3,
+        readSpeed: diskIo ? diskIo.readSpeed * 0.7 : null,
+        writeSpeed: diskIo ? diskIo.writeSpeed * 0.7 : null
+      },
+      {
+        name: "/dev/vdb1",
+        mountPoint: "/data",
+        used: 18 * 1024 ** 3,
+        total: 60 * 1024 ** 3,
+        readSpeed: diskIo ? diskIo.readSpeed * 0.3 : null,
+        writeSpeed: diskIo ? diskIo.writeSpeed * 0.3 : null
+      }
+    ];
+    // Representative process snapshot for the sortable detail panel. Values
+    // change on every metrics tick, while pid/name stay stable so rows do not
+    // visually jump unless the selected sort metric genuinely changes rank.
+    const processSeeds = [
+      { pid: 812, name: "smalux-agent", cpu: 0.08, mem: 96, net: 0.18 },
+      { pid: 1042, name: "postgres", cpu: 0.16, mem: 640, net: 0.28 },
+      { pid: 1180, name: "nginx", cpu: 0.11, mem: 84, net: 0.38 },
+      { pid: 1328, name: "redis-server", cpu: 0.07, mem: 256, net: 0.09 },
+      { pid: 1464, name: "node", cpu: 0.13, mem: 384, net: 0.22 },
+      { pid: 1, name: "systemd", cpu: 0.01, mem: 32, net: 0.01 }
+    ];
+    const processes = processSeeds.map((process, index) => {
+      const activity = 0.75 + Math.abs(Math.sin(ts / 5_000 + index)) * 0.5;
+      return {
+        pid: process.pid,
+        name: process.name,
+        cpuUsage: clamp(process.cpu * activity, 0, 1),
+        memUsed: process.mem * activity * 1024 ** 2,
+        netRxSpeed: rt.netRx * process.net * activity,
+        netTxSpeed: rt.netTx * process.net * activity
+      };
+    });
 
     return {
       serverId,
       cpuUsage: rt.cpu,
+      cpuCores,
       memUsed: rt.memUsedRatio * memTotal,
       memTotal,
       swapUsed: 0,
@@ -708,8 +814,11 @@ class MockBackendImpl implements MockBackend {
       netTxSpeed: rt.netTx,
       netRxTotal: rt.netRx * 60,
       netTxTotal: rt.netTx * 60,
+      networkInterfaces,
       uptime: rt.uptime,
       processCount: 80 + Math.floor(Math.random() * 60),
+      processesEnabled: true,
+      processes,
       // The switchable metrics: each is gated by its own flag. A couple of
       // nodes turn collection off (UDP on sgp-02, disk IO + TCP on sha-01)
       // so the "关闭统计" empty state has live data to render against. The
@@ -719,11 +828,9 @@ class MockBackendImpl implements MockBackend {
       tcpConnections: server.id === "srv-sha-01" ? null : 20 + Math.floor(Math.random() * 200),
       udpEnabled: server.id !== "srv-sgp-02",
       udpConnections: server.id === "srv-sgp-02" ? null : 5 + Math.floor(Math.random() * 80),
-      diskIoEnabled: server.id !== "srv-sha-01",
-      diskIo:
-        server.id === "srv-sha-01"
-          ? null
-          : { readSpeed: Math.random() * 50 * 1024 * 1024, writeSpeed: Math.random() * 30 * 1024 * 1024 },
+      diskIoEnabled,
+      diskIo,
+      disks,
       ts
     };
   }
@@ -734,5 +841,7 @@ function clamp(v: number, min: number, max: number): number {
 }
 
 export function createMockBackend(): MockBackend {
+  // Runtime metrics and deployment selection are scoped to this backend
+  // instance. Imported fixture collections remain the shared demo data source.
   return new MockBackendImpl();
 }

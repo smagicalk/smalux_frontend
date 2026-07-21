@@ -60,3 +60,24 @@ export function MetricCell({ label, value, hint, disabled }: { label: string; va
     </div>
   );
 }
+
+/**
+ * Preserve a chart's geometry while making collection state unmistakable.
+ * A missing listener is different from a valid zero, so the chart remains in
+ * place under a semantic surface overlay instead of rendering a fake flat line.
+ */
+export function MonitoringOverlay({ monitored, children }: { monitored: boolean; children: ReactNode }) {
+  return (
+    <div className="relative">
+      {children}
+      {!monitored ? (
+        <div
+          className="absolute inset-0 flex items-center justify-center bg-card/80 text-sm font-medium text-muted-foreground backdrop-blur-[1px]"
+          role="status"
+        >
+          未监听
+        </div>
+      ) : null}
+    </div>
+  );
+}

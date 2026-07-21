@@ -5,6 +5,8 @@ import { joinUrl } from "@/shared/api/url";
 import type { Transport, Unsubscribe, NotificationHandler } from "./types";
 import { RpcError } from "./types";
 
+// Validate the JSON-RPC envelope before a method-specific schema validates
+// `result`. This separates protocol corruption from domain contract failures.
 const rpcResponseSchema = z.object({
   jsonrpc: z.literal("2.0"),
   id: z.union([z.string(), z.number(), z.null()]).optional(),
@@ -19,6 +21,8 @@ const rpcResponseSchema = z.object({
 });
 
 function createId(): string {
+  // randomUUID is preferred for traceability. The fallback only needs to be
+  // unique enough to correlate a stateless request with its response.
   if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") {
     return crypto.randomUUID();
   }
@@ -26,9 +30,14 @@ function createId(): string {
 }
 
 /**
- * Fallback transport: each call is one HTTP POST to the RPC endpoint.
- * Used when WebSocket is unavailable. Notifications/subscriptions are not
- * supported over HTTP — subscribe() is a no-op that returns immediately.
+ * Stateless transport: each call is one HTTP POST to the configured RPC
+ * endpoint. It is used directly in HTTP mode and as the WS client's restricted
+ * fallback when the socket is unavailable.
+ *
+ * `connected` is always true because fetch has no persistent connection to
+ * inspect. It does not claim that the remote service is healthy; call failures
+ * still reject normally. Notifications are unsupported, so subscribe() returns
+ * a no-op cleanup and real-time hooks must use polling when appropriate.
  */
 export class HttpTransport implements Transport {
   readonly connected = true;
@@ -48,6 +57,8 @@ export class HttpTransport implements Transport {
       body: JSON.stringify({ jsonrpc: "2.0", id: createId(), method, params })
     });
 
+    // HTTP failures are transport errors. A valid JSON-RPC error below is an
+    // RpcError so callers can distinguish server decisions from connectivity.
     if (!response.ok) {
       throw new Error(`RPC HTTP ${response.status}: ${response.statusText}`);
     }
@@ -56,6 +67,7 @@ export class HttpTransport implements Transport {
     if (payload.error) {
       throw new RpcError(payload.error.code, payload.error.message, payload.error.data);
     }
+    // Never let an unvalidated API result enter the query cache.
     return schema.parse(payload.result);
   }
 

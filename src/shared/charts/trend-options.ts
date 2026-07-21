@@ -230,3 +230,65 @@ export function diskIoOption(
     }))
   });
 }
+
+/**
+ * Multi-series resource breakdown used by server-detail popouts. Every legend
+ * item is one logical core, network interface, or disk direction. The shared
+ * timestamp axis keeps device lines directly comparable, while null values
+ * preserve gaps when an agent did not report one device for a sample.
+ */
+export function metricBreakdownOption(
+  timestamps: number[],
+  series: { name: string; values: (number | null)[] }[],
+  unit: "percent" | "rate" | "count",
+  options: { legendRows?: string[][] } = {}
+): EChartsOption {
+  const palette = chartPalette();
+  const ramp = chartRamp(palette);
+  const formatValue = (value: number) => unit === "percent"
+    ? formatCpuPercent(value)
+    : unit === "rate"
+      ? formatRate(value)
+      : `${Math.round(value)}`;
+  const legend = options.legendRows?.length
+    ? options.legendRows.map((data, index) => ({
+        top: index * 20,
+        left: "center",
+        type: "scroll" as const,
+        icon: "circle",
+        itemWidth: 8,
+        itemHeight: 8,
+        textStyle: { color: palette.muted, fontSize: 11 },
+        data
+      }))
+    : { top: 0, type: "scroll" as const, icon: "circle", itemWidth: 8, itemHeight: 8, textStyle: { color: palette.muted, fontSize: 11 } };
+
+  return withTheme({
+    ...S,
+    tooltip: { trigger: "axis", valueFormatter: (value) => value == null ? "-" : formatValue(Number(value)) },
+    legend,
+    grid: { left: 8, right: 16, top: options.legendRows?.length ? 54 : 34, bottom: 8, containLabel: true },
+    xAxis: { type: "time", axisLine: { lineStyle: { color: palette.border } }, axisLabel: { color: palette.muted, fontSize: 10, hideOverlap: true } },
+    yAxis: {
+      type: "value",
+      min: 0,
+      max: unit === "percent" ? 1 : undefined,
+      axisLabel: { color: palette.muted, fontSize: 10, formatter: (value: number) => formatValue(value) },
+      splitLine: { lineStyle: { color: palette.border, type: "dashed" } }
+    },
+    series: series.map((item, index) => {
+      const color = ramp[index % ramp.length];
+      return {
+        name: item.name,
+        type: "line",
+        showSymbol: false,
+        smooth: false,
+        connectNulls: false,
+        lineStyle: { width: 2, color, shadowColor: color, shadowBlur: 5 },
+        itemStyle: { color },
+        emphasis: { focus: "series", lineStyle: { width: 3, shadowBlur: 10 } },
+        data: timestamps.map((timestamp, pointIndex) => [timestamp, item.values[pointIndex] ?? null])
+      };
+    })
+  });
+}

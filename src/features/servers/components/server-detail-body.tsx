@@ -4,7 +4,7 @@ import { useServerPing } from "@/features/servers/hooks/use-server-ping";
 import type { Server } from "@/shared/api/methods";
 
 import { useServerDetailSeries } from "../hooks/use-server-detail-series";
-import { DiskIoStrip, LiveStrip, NetworkSplit, PingStrip, ResourceStrip } from "./server-detail-charts";
+import { ConnectionAndProcessRow, DiskIoStrip, LiveStrip, NetworkSplit, PingStrip, ResourceStrip } from "./server-detail-charts";
 import { ServerIdentityStrip } from "./server-identity-strip";
 import { NodeProfile } from "./server-detail-metrics";
 
@@ -28,11 +28,35 @@ export function ServerDetailBody({ server }: { server: Server }) {
       <ServerIdentityStrip server={server} />
 
       <ResourceStrip metrics={metrics} />
-      <DiskIoStrip metrics={metrics} read={series.diskRead} write={series.diskWrite} />
-      <LiveStrip metrics={metrics} cpu={series.cpu} mem={series.memory} net={series.networkTotal} />
+      <DiskIoStrip
+        metrics={metrics}
+        read={series.diskRead}
+        write={series.diskWrite}
+        deviceRead={series.diskDevicesRead}
+        deviceWrite={series.diskDevicesWrite}
+      />
+      <LiveStrip
+        metrics={metrics}
+        cpu={series.cpu}
+        mem={series.memory}
+        net={series.networkTotal}
+        cpuCores={series.cpuCores}
+        networkInterfaces={series.networkInterfacesTotal}
+      />
       <NodeProfile serverName={server.name} metrics={metrics} />
-      <NetworkSplit metrics={metrics} tx={series.networkTx} rx={series.networkRx} />
+      <NetworkSplit
+        metrics={metrics}
+        tx={series.networkTx}
+        rx={series.networkRx}
+        interfaceTx={series.networkInterfacesTx}
+        interfaceRx={series.networkInterfacesRx}
+      />
       <PingStrip serverId={server.id} />
+      <ConnectionAndProcessRow
+        metrics={metrics}
+        tcp={series.tcpConnections}
+        udp={series.udpConnections}
+      />
     </div>
   );
 }
