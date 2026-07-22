@@ -359,6 +359,7 @@ export function ConnectionAndProcessRow({
   tcp: Point[];
   udp: Point[];
 }) {
+  const [connectionOpen, setConnectionOpen] = useState(false);
   const connectionMonitored = !!metrics && (!!metrics.tcpEnabled || !!metrics.udpEnabled);
   const connectionOption = useMemo(() => {
     const timestamps = tcp.map((point) => point.ts);
@@ -374,15 +375,39 @@ export function ConnectionAndProcessRow({
     ? `TCP ${metrics.tcpConnections ?? "-"} · UDP ${metrics.udpConnections ?? "-"}`
     : "-";
 
+  const connectionPoints = tcp.length > 0 ? tcp : udp;
+
   return (
-    <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
-      <ChartCard title="连接数趋势" subtitle="TCP / UDP" value={connectionValue}>
+    <>
+      <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
+        <ChartCard
+          title="连接数趋势"
+          subtitle="TCP / UDP"
+          value={connectionValue}
+          onExpand={() => setConnectionOpen(true)}
+        >
+          <MonitoringOverlay monitored={connectionMonitored}>
+            {connectionOption ? <EChart option={connectionOption} height={240} /> : <div className="h-[240px]" />}
+          </MonitoringOverlay>
+        </ChartCard>
+        <ProcessList metrics={metrics} />
+      </div>
+
+      {/* Reuse the exact inline option so TCP/UDP colors, enabled protocols and
+          null gaps stay identical between the compact card and enlarged view. */}
+      <ChartPopout
+        title="连接数趋势"
+        subtitle="TCP / UDP"
+        value={connectionValue}
+        open={connectionOpen}
+        onOpenChange={setConnectionOpen}
+        footer={connectionPoints.length > 0 ? sampleContext(connectionPoints) : undefined}
+      >
         <MonitoringOverlay monitored={connectionMonitored}>
-          {connectionOption ? <EChart option={connectionOption} height={240} /> : <div className="h-[240px]" />}
+          {connectionOption ? <EChart option={connectionOption} height={340} /> : <div className="h-[340px]" />}
         </MonitoringOverlay>
-      </ChartCard>
-      <ProcessList metrics={metrics} />
-    </div>
+      </ChartPopout>
+    </>
   );
 }
 
@@ -547,6 +572,10 @@ export function PingStrip({ serverId }: { serverId: string }) {
         title="延迟检测"
         subtitle={subtitle}
         value={hasProbes ? formatLatency(latestMean) : "-"}
+        // Range and smoothing controls must not open the dialog, so the card
+        // keeps its chart-only click handler while still advertising that the
+        // visualization is interactive when the pointer enters the panel.
+        className="cursor-pointer [&_canvas]:cursor-pointer"
       >
         <div className="mb-2 flex flex-wrap items-center gap-1">
           {PING_RANGES.map((r) => (

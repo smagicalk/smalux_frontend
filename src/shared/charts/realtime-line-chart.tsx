@@ -138,7 +138,12 @@ export function RealtimeLineChart({
       grid: { show: detailed },
       legend: { show: detailed },
       cursor: { show: detailed },
-      padding: (detailed ? [8, 8, 0, 4] : [0, 0, 0, 0]) as [number, number, number, number]
+      // Keep the drawable plot a few pixels away from the canvas boundary.
+      // Network throughput is legitimately allowed to reach zero; without
+      // bottom padding uPlot maps that value onto the final canvas row, where
+      // half of the stroked line is clipped and a zero-valued segment appears
+      // to disappear. The inset is geometry only and does not alter the scale.
+      padding: (detailed ? [8, 8, 4, 4] : [3, 2, 3, 2]) as [number, number, number, number]
     }),
     [width, height, stroke, label, domain, yMin, yMax, detailed, fmt]
   );

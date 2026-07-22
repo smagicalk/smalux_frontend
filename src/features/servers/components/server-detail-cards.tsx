@@ -27,7 +27,11 @@ export function ChartCard({
     <div
       className={cn(
         "glass group overflow-hidden rounded-md border border-border transition-colors",
-        expandable && "cursor-pointer hover:border-primary/50",
+        // Chart libraries apply their own cursor rule to the canvas, so a
+        // pointer set only on the card is not inherited at the place users
+        // actually hover. Target the canvas explicitly for every card whose
+        // complete surface opens a popout.
+        expandable && "cursor-pointer hover:border-primary/50 [&_canvas]:cursor-pointer",
         className
       )}
       onClick={expandable ? onExpand : undefined}

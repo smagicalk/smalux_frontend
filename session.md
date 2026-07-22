@@ -598,3 +598,26 @@ pnpm build
 - Playwright：磁盘读写图例为上下两行且设备顺序对应；CPU、内存、网络排序标签均可切换，网络排序结果随数值变化。
 - Playwright：未监听磁盘显示模块级遮罩；连接趋势 canvas 尺寸非零；页面无 console error 或 page error。
 - 实时指标空单元格与其余单元格的计算背景色均为 `oklch(1 0 0)`。
+
+## 2026-07-22 连接趋势弹窗与网络折线边界修复
+
+### 交互调整
+
+- 连接数趋势卡片复用现有 `ChartPopout`，点击整卡可打开 TCP / UDP 放大折线图；弹窗沿用当前协议启用状态、图例颜色、缺失采样断点和“未监听”遮罩。
+- 连接数趋势卡片通过统一的 `ChartCard` 可展开状态提供键盘按钮语义和放大图标；同时显式覆盖图表 canvas 的默认光标，保证鼠标落在折线上时仍显示手型。
+- 延迟检测保留“仅点击图表打开弹窗”的行为，避免时间范围和平滑开关误触弹窗；卡片及其 canvas 均显式显示手型光标，明确提示图表可交互。
+
+### 裁切修复
+
+- 网络吞吐 mock 数据允许合法零值；uPlot 无坐标轴迷你图此前使用零内边距，零值会映射到 canvas 最后一行，部分线宽落在画布外而视觉消失。
+- `RealtimeLineChart` 为迷你图加入上下 3px、左右 2px 的绘图区内边距；详细图同步保留底部 4px。该调整只改变绘制几何，不改变数据范围或指标值。
+
+### 验证
+
+- `pnpm typecheck`：通过。
+- `pnpm lint`：通过，0 error、0 warning。
+- `pnpm test`：5 个测试文件、30 条用例全部通过。
+- `pnpm build`：通过；服务器详情路由 chunk 33.28 KB（gzip 10.57 KB），ECharts chunk 703.20 KB（gzip 235.70 KB），仍只有既有的大 chunk 提示。
+- Playwright：分别在连接趋势和延迟检测的标题及 canvas 实际命中点取样，计算光标均为 `pointer`；连接趋势卡片具备 `button` 语义，可打开标题正确且 canvas 为 620×340 的桌面弹窗。
+- Playwright：连续 8 次采样网络上下行 canvas，最底部 3 行均无绘制像素，原始底边裁切现象不再复现。
+- Playwright：390×844 视口下弹窗宽 390px、canvas 为 338×340，无横向溢出、console error 或 page error。
