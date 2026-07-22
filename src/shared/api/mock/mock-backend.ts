@@ -180,7 +180,7 @@ class MockBackendImpl implements MockBackend {
       case "agent.register": {
         const p = (params ?? {}) as {
           name: string;
-          region: string;
+          region?: string;
           note?: string;
           publicVisible?: boolean;
           tags?: string[];
@@ -192,7 +192,9 @@ class MockBackendImpl implements MockBackend {
         const server: Server = {
           id,
           name: p.name,
-          region: p.region,
+          // The server read model still exposes a displayable region string.
+          // Real Agents replace this placeholder with discovered metadata.
+          region: p.region?.trim() || "未分组",
           note: p.note ?? "",
           status: "online",
           publicVisible: p.publicVisible ?? true,
@@ -216,6 +218,31 @@ class MockBackendImpl implements MockBackend {
           // chart shows "未配置探测点" until the operator configures some.
           ping: new Map()
         });
+        return { ok: true };
+      }
+
+      case "agent.update": {
+        const p = (params ?? {}) as {
+          serverId: string;
+          price: number | null;
+          currency: string;
+          expiresAt: number | null;
+          billingCycle: Server["billingCycle"];
+        };
+        const current = this.servers.find((server) => server.id === p.serverId);
+        if (!current) throw new Error(`mock: server not found ${p.serverId}`);
+
+        // Replace only operator-owned commercial fields. Agent-discovered
+        // identity and live status remain authoritative and untouched.
+        this.servers = this.servers.map((server) => server.id === p.serverId
+          ? {
+              ...server,
+              price: p.price,
+              currency: p.currency,
+              expiresAt: p.expiresAt,
+              billingCycle: p.billingCycle
+            }
+          : server);
         return { ok: true };
       }
 

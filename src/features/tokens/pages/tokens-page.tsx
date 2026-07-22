@@ -49,6 +49,7 @@ export function TokensPage() {
     <div className="flex h-full flex-col">
       <PageHeader
         title="Token / 权限"
+        tone="primary"
         subtitle={`${data?.tokens.length ?? 0} 个`}
         action={<Button size="sm" onClick={() => setCreateOpen(true)}><Plus className="size-3.5" />签发 Token</Button>}
       />
@@ -56,7 +57,7 @@ export function TokensPage() {
 
       <div className="min-h-0 flex-1 space-y-3 overflow-y-auto p-4">
         <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
-          <StatTile label="Token 总数" value={stats.total} icon={<KeyRound className="size-4" />} />
+          <StatTile label="Token 总数" value={stats.total} accent="violet" icon={<KeyRound className="size-4" />} />
           <StatTile label="有效" value={stats.active} accent="success" progress={stats.total ? stats.active / stats.total : 0} />
           <StatTile label="即将过期" value={stats.expiringSoon} accent="warning" />
           <StatTile label="已吊销" value={stats.revoked} accent="danger" />

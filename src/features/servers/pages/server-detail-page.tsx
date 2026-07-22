@@ -23,7 +23,7 @@ export function ServerDetailPage() {
   if (data && !server) {
     return (
       <div className="flex h-full flex-col">
-        <PageHeader title="服务器未找到" />
+        <PageHeader title="服务器未找到" tone="danger" />
         <div className="flex flex-1 items-center justify-center text-sm text-muted-foreground">
           <Link to="/admin/servers" className="text-primary hover:underline">
             返回服务器列表
@@ -37,6 +37,7 @@ export function ServerDetailPage() {
     <div className="flex h-full flex-col">
       <PageHeader
         title={server?.name ?? "服务器"}
+        tone="cyan"
         subtitle={server?.region}
         action={
           <Link

@@ -6,6 +6,16 @@ import { Sparkline } from "@/shared/charts/sparkline";
 import { EChart } from "@/shared/charts/echart";
 import { regionDistributionOption, statusDistributionOption } from "@/shared/charts/chart-options";
 import type { Server } from "@/shared/api/methods";
+import { cn } from "@/shared/lib/utils";
+
+type DistTone = "primary" | "success" | "violet" | "cyan";
+
+const DIST_TONE_CLASSES: Record<DistTone, { panel: string; header: string }> = {
+  primary: { panel: "border-primary/25 bg-primary/5", header: "border-primary/15 bg-primary/5" },
+  success: { panel: "border-success/25 bg-success/5", header: "border-success/15 bg-success/5" },
+  violet: { panel: "border-violet/25 bg-violet/5", header: "border-violet/15 bg-violet/5" },
+  cyan: { panel: "border-cyan/25 bg-cyan/5", header: "border-cyan/15 bg-cyan/5" }
+};
 
 /**
  * Top distribution band: region rose + status water-level + an OS/arch breakdown
@@ -52,19 +62,19 @@ export function DistributionRow({ servers, serverIds }: { servers: Server[]; ser
 
   return (
     <div className="grid grid-cols-1 gap-3 px-4 py-3 lg:grid-cols-4">
-      <DistCard title="区域分布" icon={<Globe2 className="size-3.5" />} accent="var(--primary)">
+      <DistCard title="区域分布" icon={<Globe2 className="size-3.5" />} accent="var(--primary)" tone="primary">
         <EChart option={regionOption} height={150} />
       </DistCard>
-      <DistCard title="状态水位" icon={<CheckCircle2 className="size-3.5" />} accent="var(--success)">
+      <DistCard title="状态水位" icon={<CheckCircle2 className="size-3.5" />} accent="var(--success)" tone="success">
         <EChart option={statusOption} height={150} />
       </DistCard>
-      <DistCard title="系统 / 架构" icon={<Cpu className="size-3.5" />} accent="var(--violet)">
+      <DistCard title="系统 / 架构" icon={<Cpu className="size-3.5" />} accent="var(--violet)" tone="violet">
         <div className="flex h-[150px] flex-col justify-center gap-3 p-2 text-xs">
           <BreakdownList label="OS" entries={osBreakdown} />
           <BreakdownList label="架构" entries={archBreakdown} />
         </div>
       </DistCard>
-      <DistCard title="集群 CPU" icon={<AlertTriangle className="size-3.5" />} accent="var(--cyan)">
+      <DistCard title="集群 CPU" icon={<AlertTriangle className="size-3.5" />} accent="var(--cyan)" tone="cyan">
         <div className="flex h-[150px] flex-col justify-center gap-1 p-2">
           {cpuSpark.length > 1 ? (
             <Sparkline points={cpuSpark} color="var(--cyan)" height={48} domain={[0, 1]} />
@@ -83,17 +93,20 @@ function DistCard({
   title,
   icon,
   accent,
+  tone,
   children
 }: {
   title: string;
   icon: ReactNode;
   accent: string;
+  tone: DistTone;
   children: ReactNode;
 }) {
+  const toneClasses = DIST_TONE_CLASSES[tone];
   return (
-    <div className="glass cornered relative overflow-hidden rounded-md border border-border">
+    <div className={cn("glass cornered relative overflow-hidden rounded-md border transition-colors", toneClasses.panel)}>
       <span className="absolute inset-x-0 top-0 h-px opacity-60" style={{ background: `linear-gradient(90deg, transparent, ${accent}, transparent)` }} />
-      <div className="flex items-center gap-1.5 border-b border-border px-3 py-1.5 text-xs font-semibold">
+      <div className={cn("flex items-center gap-1.5 border-b px-3 py-1.5 text-xs font-semibold", toneClasses.header)}>
         <span style={{ color: accent }}>{icon}</span>
         {title}
       </div>

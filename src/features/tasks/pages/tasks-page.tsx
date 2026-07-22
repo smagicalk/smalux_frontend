@@ -35,6 +35,7 @@ export function TasksPage() {
     <div className="flex h-full flex-col">
       <PageHeader
         title="远程执行"
+        tone="violet"
         subtitle="命令下发 · 模板 · 审批"
         action={
           <Button size="sm" onClick={() => openDispatch()}>

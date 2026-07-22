@@ -7,6 +7,17 @@ import { z } from "zod";
 export const serverStatusSchema = z.enum(["online", "warning", "offline"]);
 export type ServerStatus = z.infer<typeof serverStatusSchema>;
 
+export const billingCycleSchema = z.enum([
+  "monthly",
+  "quarterly",
+  "semiannual",
+  "yearly",
+  "biennial",
+  "triennial",
+  "one_time"
+]);
+export type BillingCycle = z.infer<typeof billingCycleSchema>;
+
 export const serverSchema = z.object({
   id: z.string(),
   name: z.string(),
@@ -25,7 +36,13 @@ export const serverSchema = z.object({
   // shows "关闭统计" rather than a redacted/blank address.
   publicIpEnabled: z.boolean().default(true),
   publicIp: z.string().nullable().default(null),
-  lastSeenAt: z.number().optional()
+  lastSeenAt: z.number().optional(),
+  // Commercial metadata is operator-owned and independent of Agent
+  // telemetry. Optional fields keep older backend responses compatible.
+  price: z.number().nonnegative().nullable().optional(),
+  currency: z.string().min(1).optional(),
+  expiresAt: z.number().nullable().optional(),
+  billingCycle: billingCycleSchema.nullable().optional()
 });
 export type Server = z.infer<typeof serverSchema>;
 

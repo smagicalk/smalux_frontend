@@ -1,6 +1,10 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
-import { methods, type AgentRegisterParams } from "@/shared/api/methods";
+import {
+  methods,
+  type AgentRegisterParams,
+  type AgentUpdateParams
+} from "@/shared/api/methods";
 import { queryKeys } from "@/shared/api/query-keys";
 import { useRpc } from "@/app/providers/rpc-context";
 
@@ -38,6 +42,19 @@ export function useRegisterServer() {
   return useMutation({
     mutationFn: (params: AgentRegisterParams) =>
       client.call("agent.register", params, methods["agent.register"].result),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["servers"] });
+    }
+  });
+}
+
+/** Persist operator-owned billing metadata and refresh every server list. */
+export function useUpdateServer() {
+  const { client } = useRpc();
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (params: AgentUpdateParams) =>
+      client.call("agent.update", params, methods["agent.update"].result),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: ["servers"] });
     }

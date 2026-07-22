@@ -40,16 +40,17 @@ export function NotificationsPage() {
     <div className="flex h-full flex-col">
       <PageHeader
         title="通知"
+        tone="warning"
         action={<Button size="sm" onClick={() => setCreateOpen(true)}><Plus className="size-3.5" />添加渠道</Button>}
       />
       <CreateChannelDialog open={createOpen} onOpenChange={setCreateOpen} />
 
       <div className="min-h-0 flex-1 space-y-3 overflow-y-auto p-4">
         <div className="grid grid-cols-2 gap-2 sm:grid-cols-5">
-          <StatTile label="渠道总数" value={stats.channels} icon={<Bell className="size-4" />} />
+          <StatTile label="渠道总数" value={stats.channels} accent="violet" icon={<Bell className="size-4" />} />
           <StatTile label="启用中" value={stats.enabled} accent="success" progress={stats.channels ? stats.enabled / stats.channels : 0} />
           <StatTile label="投递失败渠道" value={stats.failing} accent="danger" />
-          <StatTile label="投递总数" value={stats.delivered} accent="primary" />
+          <StatTile label="投递总数" value={stats.delivered} accent="cyan" />
           <StatTile label="投递成功率" value={`${(stats.successRate * 100).toFixed(0)}%`} accent={stats.successRate > 0.9 ? "success" : "warning"} />
         </div>
 

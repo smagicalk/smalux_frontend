@@ -21,6 +21,10 @@ export const mockServers: Server[] = [
     ipv6: "2001:db8::10",
     publicIpEnabled: true,
     publicIp: "203.0.113.10",
+    price: 45,
+    currency: "CNY",
+    expiresAt: Date.UTC(2027, 2, 15),
+    billingCycle: "biennial",
     lastSeenAt: Date.now() - 2000
   },
   {
@@ -37,6 +41,10 @@ export const mockServers: Server[] = [
     ipv4: "203.0.113.11",
     publicIpEnabled: true,
     publicIp: "203.0.113.11",
+    price: 120,
+    currency: "CNY",
+    expiresAt: Date.UTC(2027, 5, 30),
+    billingCycle: "triennial",
     lastSeenAt: Date.now() - 1500
   },
   {
@@ -53,6 +61,10 @@ export const mockServers: Server[] = [
     ipv4: "203.0.113.20",
     publicIpEnabled: true,
     publicIp: "203.0.113.20",
+    price: 980,
+    currency: "JPY",
+    expiresAt: Date.UTC(2027, 0, 20),
+    billingCycle: "monthly",
     lastSeenAt: Date.now() - 8000
   },
   {
@@ -69,6 +81,10 @@ export const mockServers: Server[] = [
     ipv4: "203.0.113.30",
     publicIpEnabled: true,
     publicIp: "203.0.113.30",
+    price: 12,
+    currency: "USD",
+    expiresAt: Date.UTC(2027, 3, 1),
+    billingCycle: "monthly",
     lastSeenAt: Date.now() - 1000
   },
   {

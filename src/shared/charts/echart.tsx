@@ -1,6 +1,6 @@
-import { useEffect, useRef } from "react";
-import ReactEChartsCore from "echarts-for-react/esm/core";
+import { memo, useEffect, useRef } from "react";
 import * as echarts from "echarts/core";
+import type { EChartsType } from "echarts/core";
 import {
   BarChart,
   FunnelChart,
@@ -53,9 +53,9 @@ export interface EChartProps {
 }
 
 /**
- * echarts-for-react core wrapper with project-used charts/components registered.
- * The wrapper owns instance
- * lifecycle (init/setOption/dispose/resize); we just hand it options.
+ * ECharts core adapter with only project-used charts/components registered.
+ * It owns init/setOption/dispose/resize directly, keeping the public component
+ * small and avoiding a second React lifecycle wrapper around every canvas.
  *
  * On top of the wrapper's own ResizeObserver we attach a second guard: the
  * instances are sometimes initialized before their grid cell is laid out
@@ -64,23 +64,24 @@ export interface EChartProps {
  * gains a real width — so charts that render inside CSS grids (the overview
  * page is full of them) paint on first paint instead of staying blank.
  */
-export function EChart({ option, height = 220, className }: EChartProps) {
-  const ref = useRef<ReactEChartsCore>(null);
+export const EChart = memo(function EChart({ option, height = 220, className }: EChartProps) {
+  const containerRef = useRef<HTMLDivElement>(null);
+  const chartRef = useRef<EChartsType | null>(null);
+
   useEffect(() => {
-    const instance = ref.current;
-    const el = instance?.ele;
-    if (!instance || !el) return;
-    // Resolve the echarts instance lazily inside the callback: the wrapper
-    // creates it asynchronously in componentDidMount, so it may not exist
-    // when this effect first runs. Reading it on each resize (and on a short
-    // mount-time nudge) catches it as soon as it's ready.
+    const el = containerRef.current;
+    if (!el) return;
+    const chart = echarts.init(el, undefined, { renderer: "canvas" });
+    chartRef.current = chart;
+
+    // ResizeObserver can emit several records during one layout pass. Collapse
+    // them into one animation-frame resize to avoid repeated canvas work while
+    // a responsive grid or dialog is settling.
+    let resizeFrame = 0;
     const resizeNow = () => {
-      const node = instance.getEchartsInstance();
-      if (node) node.resize();
+      window.cancelAnimationFrame(resizeFrame);
+      resizeFrame = window.requestAnimationFrame(() => chart.resize());
     };
-    // Nudge a resize shortly after mount — by then the async instance is up
-    // and the grid cell has a real width, so charts paint instead of staying
-    // collapsed at their init-time (often 0px) width.
     const boot = window.setTimeout(resizeNow, 80);
     let ro: ResizeObserver | undefined;
     if (typeof ResizeObserver !== "undefined") {
@@ -89,25 +90,21 @@ export function EChart({ option, height = 220, className }: EChartProps) {
     }
     return () => {
       window.clearTimeout(boot);
+      window.cancelAnimationFrame(resizeFrame);
       ro?.disconnect();
+      chartRef.current = null;
+      chart.dispose();
     };
   }, []);
+
+  useEffect(() => {
+    chartRef.current?.setOption(option, { notMerge: false, lazyUpdate: false });
+  }, [option]);
+
   return (
-    <ReactEChartsCore
-      ref={ref}
-      echarts={echarts}
-      option={option}
-      notMerge={false}
-      // No `lazyUpdate`: that defers setOption to the next animation frame and
-      // coalesces bursts, which is fine for static charts but can drop the
-      // per-second refresh of a live trend chart (the cluster CPU line looked
-      // frozen even though its data was advancing). Forcing a synchronous
-      // setOption keeps the rolling time-series visibly moving.
-      style={{ width: "100%", height }}
-      className={className}
-    />
+    <div ref={containerRef} style={{ width: "100%", height }} className={className} />
   );
-}
+});
 
 /**
  * Resolve a single CSS custom property to a concrete `#rrggbb` hex color.

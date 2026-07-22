@@ -32,6 +32,7 @@ export function PingPage() {
     <div className="flex h-full flex-col">
       <PageHeader
         title="服务监控"
+        tone="cyan"
         subtitle={`${stats.ok}/${stats.total} 健康`}
         action={<Button size="sm" onClick={() => setCreateOpen(true)}><Plus className="size-3.5" />添加目标</Button>}
       />
@@ -39,10 +40,10 @@ export function PingPage() {
 
       <div className="min-h-0 flex-1 space-y-3 overflow-y-auto p-4">
         <div className="grid grid-cols-2 gap-2 sm:grid-cols-5">
-          <StatTile label="目标总数" value={stats.total} icon={<Activity className="size-4" />} />
+          <StatTile label="目标总数" value={stats.total} accent="cyan" icon={<Activity className="size-4" />} />
           <StatTile label="健康" value={stats.ok} accent="success" progress={stats.total ? stats.ok / stats.total : 0} />
           <StatTile label="异常" value={stats.down} accent="danger" />
-          <StatTile label="平均延迟" value={`${stats.avgLatency}ms`} accent={stats.avgLatency > 80 ? "warning" : "neutral"} />
+          <StatTile label="平均延迟" value={`${stats.avgLatency}ms`} accent={stats.avgLatency > 80 ? "warning" : "violet"} />
           <StatTile label="最差延迟" value={`${stats.worstLatency}ms`} accent={stats.worstLatency > 200 ? "danger" : "warning"} />
         </div>
 

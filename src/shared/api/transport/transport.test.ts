@@ -3,7 +3,12 @@ import { z } from "zod";
 
 import { defaultRuntimeConfig } from "@/app/config/runtime-config";
 import { createMockBackend, type MockBackend } from "@/shared/api/mock/mock-backend";
-import { serverMetricsSchema } from "@/shared/api/methods";
+import {
+  agentListResultSchema,
+  agentRegisterParamsSchema,
+  billingCycleSchema,
+  serverMetricsSchema
+} from "@/shared/api/methods";
 import { createWebSocketUrl, isSafeRuntimeEndpoint, joinUrl } from "@/shared/api/url";
 import { HttpTransport } from "./http-transport";
 import { MockTransport } from "./mock-transport";
@@ -393,6 +398,63 @@ describe("RPC endpoint URLs", () => {
     expect(createWebSocketUrl("http://api.example.com", "stream")).toBe(
       "ws://api.example.com/stream"
     );
+  });
+});
+
+describe("Server registration contract", () => {
+  it("registers a server without operator-supplied discovery metadata", async () => {
+    // Region, IP, OS and architecture are discovered by the Agent rather than
+    // operator input. Keeping this request minimal prevents stale guessed
+    // metadata from becoming part of the server's initial identity.
+    const params = agentRegisterParamsSchema.parse({
+      name: "fresh-node",
+      note: "edge worker",
+      tags: ["edge"]
+    });
+    const backend = createMockBackend();
+
+    await expect(backend.handle("agent.register", params)).resolves.toEqual({ ok: true });
+    const result = agentListResultSchema.parse(
+      await backend.handle("agent.list", { search: "fresh-node" })
+    );
+
+    expect(result.servers).toHaveLength(1);
+    expect(result.servers[0]).toMatchObject({
+      name: "fresh-node",
+      region: "未分组",
+      note: "edge worker",
+      tags: ["edge"]
+    });
+    expect(result.servers[0].ipv4).toBeUndefined();
+    expect(result.servers[0].os).toBeUndefined();
+    expect(result.servers[0].arch).toBeUndefined();
+  });
+
+  it("persists multi-year server billing metadata through the update command", async () => {
+    const backend = createMockBackend();
+    const expiresAt = Date.UTC(2027, 0, 31);
+
+    await expect(backend.handle("agent.update", {
+      serverId: "srv-hkg-01",
+      price: 45,
+      currency: "CNY",
+      expiresAt,
+      billingCycle: "biennial"
+    })).resolves.toEqual({ ok: true });
+
+    const result = agentListResultSchema.parse(
+      await backend.handle("agent.list", { search: "edge-hkg-01" })
+    );
+    expect(result.servers[0]).toMatchObject({
+      price: 45,
+      currency: "CNY",
+      expiresAt,
+      billingCycle: "biennial"
+    });
+
+    // Three-year billing must use the same shared schema as RPC responses and
+    // form values, otherwise the select can render an option the API rejects.
+    expect(billingCycleSchema.parse("triennial")).toBe("triennial");
   });
 });
 

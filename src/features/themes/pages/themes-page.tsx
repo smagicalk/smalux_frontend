@@ -43,6 +43,7 @@ export function ThemesPage() {
     <div className="flex h-full flex-col">
       <PageHeader
         title="主题"
+        tone="magenta"
         subtitle={`${data?.themes.length ?? 0} 套`}
         action={<Button size="sm" onClick={() => setUploadOpen(true)}><Upload className="size-3.5" />上传主题</Button>}
       />
@@ -50,11 +51,11 @@ export function ThemesPage() {
 
       <div className="min-h-0 flex-1 space-y-3 overflow-y-auto p-4">
         <div className="grid grid-cols-2 gap-2 sm:grid-cols-5">
-          <StatTile label="主题总数" value={stats.total} icon={<Palette className="size-4" />} />
+          <StatTile label="主题总数" value={stats.total} accent="magenta" icon={<Palette className="size-4" />} />
           <StatTile label="已发布" value={stats.published} accent="success" />
-          <StatTile label="草稿" value={stats.draft} accent="primary" />
+          <StatTile label="草稿" value={stats.draft} accent="violet" />
           <StatTile label="已归档" value={stats.archived} accent="warning" />
-          <StatTile label="公开可见" value={stats.public} accent="primary" />
+          <StatTile label="公开可见" value={stats.public} accent="cyan" />
         </div>
 
         <div className="glass cornered relative overflow-hidden rounded-md border border-border p-2">

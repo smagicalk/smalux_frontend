@@ -39,6 +39,7 @@ export function AccountsPage() {
     <div className="flex h-full flex-col">
       <PageHeader
         title="账户"
+        tone="success"
         subtitle={`${data?.total ?? 0} 个`}
         action={<Button size="sm" onClick={() => setInviteOpen(true)}><Plus className="size-3.5" />邀请用户</Button>}
       />
@@ -46,9 +47,9 @@ export function AccountsPage() {
 
       <div className="min-h-0 flex-1 space-y-3 overflow-y-auto p-4">
         <div className="grid grid-cols-2 gap-2 sm:grid-cols-5">
-          <StatTile label="用户总数" value={stats.total} icon={<UserCog className="size-4" />} />
+          <StatTile label="用户总数" value={stats.total} accent="violet" icon={<UserCog className="size-4" />} />
           <StatTile label="MFA 启用" value={stats.mfa} accent="success" icon={<ShieldCheck className="size-4" />} progress={stats.total ? stats.mfa / stats.total : 0} />
-          <StatTile label="Passkey" value={stats.passkey} accent="primary" icon={<KeyRound className="size-4" />} />
+          <StatTile label="Passkey" value={stats.passkey} accent="cyan" icon={<KeyRound className="size-4" />} />
           <StatTile label="待接受邀请" value={stats.invited} accent="warning" />
           <StatTile label="已锁定" value={stats.locked} accent="danger" />
         </div>

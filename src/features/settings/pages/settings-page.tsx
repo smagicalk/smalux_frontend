@@ -64,6 +64,7 @@ export function SettingsPage() {
     <div className="flex h-full flex-col">
       <PageHeader
         title="设置"
+        tone="warning"
         action={
           dirty ? (
             <div className="flex gap-2">

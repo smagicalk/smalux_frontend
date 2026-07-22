@@ -1,5 +1,5 @@
 import { useMemo, useState } from "react";
-import { AlertTriangle, CheckCircle2, Globe2, Plus, XCircle } from "lucide-react";
+import { AlertTriangle, CheckCircle2, Globe2, Plus, Server as ServerIcon, XCircle } from "lucide-react";
 
 import { useServers } from "@/features/servers/hooks/use-servers";
 import { useMonitoring } from "@/features/servers/hooks/use-monitoring";
@@ -49,6 +49,7 @@ export function ServersPage() {
     <div className="flex h-full flex-col">
       <PageHeader
         title="服务器"
+        tone="primary"
         subtitle={`${data?.total ?? 0} 台`}
         action={<Button size="sm" onClick={() => setAddOpen(true)}><Plus className="size-3.5" />添加服务器</Button>}
       />
@@ -59,7 +60,7 @@ export function ServersPage() {
           bar is sticky within the scroller so it stays reachable while scrolling. */}
       <div className="min-h-0 flex-1 overflow-y-auto pb-4">
         <div className="grid grid-cols-2 gap-2 px-4 pt-3 sm:grid-cols-4">
-          <StatTile label="总数" value={counts.total} />
+          <StatTile label="总数" value={counts.total} accent="primary" icon={<ServerIcon className="size-4" />} progress={counts.total ? 1 : 0} />
           <StatTile label="在线" value={counts.online} accent="success" icon={<CheckCircle2 className="size-4" />} progress={counts.total ? counts.online / counts.total : 0} />
           <StatTile label="预警" value={counts.warning} accent="warning" icon={<AlertTriangle className="size-4" />} />
           <StatTile label="离线" value={counts.offline} accent="danger" icon={<XCircle className="size-4" />} />

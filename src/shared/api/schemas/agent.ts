@@ -1,6 +1,11 @@
 import { z } from "zod";
 
-import { serverMetricsSchema, serverSchema, serverStatusSchema } from "./common";
+import {
+  billingCycleSchema,
+  serverMetricsSchema,
+  serverSchema,
+  serverStatusSchema
+} from "./common";
 
 // agent.* — server list, live metric stream subscription, registration.
 
@@ -74,8 +79,11 @@ export type PingHistoryResult = z.infer<typeof pingHistoryResultSchema>;
 
 
 export const agentRegisterParamsSchema = z.object({
-  name: z.string(),
-  region: z.string(),
+  name: z.string().trim().min(1),
+  // Discovery metadata is optional at registration time. The Agent reports
+  // region/IP/platform facts after it connects, so the operator should not be
+  // forced to guess values that may immediately become stale.
+  region: z.string().trim().min(1).optional(),
   note: z.string().optional(),
   publicVisible: z.boolean().optional(),
   tags: z.array(z.string()).optional(),
@@ -84,3 +92,12 @@ export const agentRegisterParamsSchema = z.object({
   arch: z.string().optional()
 });
 export type AgentRegisterParams = z.infer<typeof agentRegisterParamsSchema>;
+
+export const agentUpdateParamsSchema = z.object({
+  serverId: z.string(),
+  price: z.number().nonnegative().nullable(),
+  currency: z.string().trim().min(1),
+  expiresAt: z.number().nullable(),
+  billingCycle: billingCycleSchema.nullable()
+});
+export type AgentUpdateParams = z.infer<typeof agentUpdateParamsSchema>;

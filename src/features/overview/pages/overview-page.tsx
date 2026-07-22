@@ -44,7 +44,7 @@ export function OverviewPage() {
 
   return (
     <div className="flex h-full flex-col">
-      <PageHeader title="总览" subtitle="值班台" />
+      <PageHeader title="总览" subtitle="值班台" tone="cyan" />
 
       <HeartbeatBar online={counts.online} total={counts.total} />
 

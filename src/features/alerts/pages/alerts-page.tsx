@@ -42,6 +42,7 @@ export function AlertsPage() {
     <div className="flex h-full flex-col">
       <PageHeader
         title="告警"
+        tone="danger"
         subtitle={`${active.length} 未恢复`}
         action={<Button size="sm" onClick={() => setCreateOpen(true)}><Plus className="size-3.5" />新建规则</Button>}
       />
@@ -49,11 +50,11 @@ export function AlertsPage() {
 
       <div className="min-h-0 flex-1 space-y-3 overflow-y-auto p-4">
         <div className="grid grid-cols-2 gap-2 sm:grid-cols-5">
-          <StatTile label="规则总数" value={rules.length} />
+          <StatTile label="规则总数" value={rules.length} accent="magenta" />
           <StatTile label="启用中" value={rules.filter((r) => r.enabled).length} accent="success" progress={rules.length ? rules.filter((r) => r.enabled).length / rules.length : 0} />
           <StatTile label="严重·未恢复" value={sevBreakdown.critical} accent="danger" />
           <StatTile label="警告·未恢复" value={sevBreakdown.warning} accent="warning" />
-          <StatTile label="已静默" value={rules.filter((r) => r.silenced).length} accent="primary" />
+          <StatTile label="已静默" value={rules.filter((r) => r.silenced).length} accent="violet" />
         </div>
 
         <div className="grid grid-cols-1 gap-3 lg:grid-cols-4">

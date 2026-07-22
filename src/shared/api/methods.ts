@@ -41,6 +41,7 @@ import {
   agentListResultSchema,
   agentPingSubscribeParamsSchema,
   agentRegisterParamsSchema,
+  agentUpdateParamsSchema,
   agentSummarySampleSchema,
   agentSummarySubscribeParamsSchema,
   pingHistoryParamsSchema,
@@ -125,6 +126,10 @@ export const methods = {
   },
   "agent.register": {
     params: agentRegisterParamsSchema,
+    result: okResultSchema
+  },
+  "agent.update": {
+    params: agentUpdateParamsSchema,
     result: okResultSchema
   },
 

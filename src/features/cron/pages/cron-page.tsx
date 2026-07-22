@@ -67,13 +67,13 @@ export function CronPage() {
 
   return (
     <div className="flex h-full flex-col">
-      <PageHeader title="计划任务" subtitle={`${data?.total ?? 0} 条`} action={<CreateCronButton />} />
+      <PageHeader title="计划任务" subtitle={`${data?.total ?? 0} 条`} tone="magenta" action={<CreateCronButton />} />
 
       <div className="min-h-0 flex-1 space-y-3 overflow-y-auto p-4">
         <div className="grid grid-cols-2 gap-2 sm:grid-cols-5">
-          <StatTile label="任务总数" value={stats.total} icon={<Clock className="size-4" />} />
+          <StatTile label="任务总数" value={stats.total} accent="magenta" icon={<Clock className="size-4" />} />
           <StatTile label="启用中" value={stats.enabled} accent="success" progress={stats.total ? stats.enabled / stats.total : 0} />
-          <StatTile label="最近成功" value={stats.success} accent="primary" />
+          <StatTile label="最近成功" value={stats.success} accent="cyan" />
           <StatTile label="执行中" value={stats.running} accent="warning" />
           <StatTile label="最近失败" value={stats.failed} accent="danger" />
         </div>

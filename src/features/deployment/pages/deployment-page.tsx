@@ -39,7 +39,7 @@ export function DeploymentPage() {
 
   return (
     <div className="flex h-full flex-col">
-      <PageHeader title="部署" subtitle="交付策略 · 运行时注入" />
+      <PageHeader title="部署" subtitle="交付策略 · 运行时注入" tone="success" />
 
       <div className="min-h-0 flex-1 space-y-3 overflow-y-auto p-4">
         {isLoading ? (
@@ -47,7 +47,7 @@ export function DeploymentPage() {
         ) : (
           <div className="mx-auto max-w-3xl space-y-4">
             <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
-              <StatTile label="交付模式" value={stats.total} icon={<Rocket className="size-4" />} />
+              <StatTile label="交付模式" value={stats.total} accent="violet" icon={<Rocket className="size-4" />} />
               <StatTile label="就绪" value={stats.ready} accent="success" icon={<CheckCircle2 className="size-4" />} />
               <StatTile label="构建中" value={stats.building} accent="warning" icon={<Loader2 className="size-4 animate-spin" />} />
               <StatTile label="失败" value={stats.failed} accent="danger" icon={<XCircle className="size-4" />} />
