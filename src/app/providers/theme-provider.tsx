@@ -7,11 +7,6 @@ import {
   type ThemeMode
 } from "@/shared/stores/theme-store";
 
-/**
- * Applies the resolved theme (light/dark) to <html> and reacts to system
- * preference changes when mode is "system". State lives in theme-store; this
- * component only syncs the DOM.
- */
 export function ThemeProvider({
   children,
   initialMode
@@ -20,6 +15,7 @@ export function ThemeProvider({
   initialMode?: ThemeMode;
 }) {
   const mode = useThemeStore((s) => s.mode);
+  const accent = useThemeStore((s) => s.accent);
 
   React.useEffect(() => {
     if (initialMode) {
@@ -31,6 +27,7 @@ export function ThemeProvider({
     const apply = () => {
       const resolved = resolveThemeMode(mode);
       document.documentElement.classList.toggle("dark", resolved === "dark");
+      document.documentElement.setAttribute("data-accent", accent);
     };
     apply();
     if (mode === "system") {
@@ -38,7 +35,7 @@ export function ThemeProvider({
       mq.addEventListener("change", apply);
       return () => mq.removeEventListener("change", apply);
     }
-  }, [mode, initialMode]);
+  }, [mode, accent, initialMode]);
 
   return <>{children}</>;
 }

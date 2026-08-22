@@ -15,6 +15,7 @@ import {
   GraphicComponent,
   GridComponent,
   LegendComponent,
+  LegendScrollComponent,
   MarkLineComponent,
   PolarComponent,
   RadarComponent,
@@ -36,6 +37,7 @@ echarts.use([
   GraphicComponent,
   GridComponent,
   LegendComponent,
+  LegendScrollComponent,
   MarkLineComponent,
   PolarComponent,
   RadarComponent,
@@ -50,29 +52,48 @@ export interface EChartProps {
   option: EChartsOption;
   height?: number;
   className?: string;
+  notMerge?: boolean;
+  onLegendChange?: (selected: Record<string, boolean>) => void;
+  onChartReady?: (chart: EChartsType) => void;
 }
 
 /**
  * ECharts core adapter with only project-used charts/components registered.
  * It owns init/setOption/dispose/resize directly, keeping the public component
  * small and avoiding a second React lifecycle wrapper around every canvas.
- *
- * On top of the wrapper's own ResizeObserver we attach a second guard: the
- * instances are sometimes initialized before their grid cell is laid out
- * (parent clientWidth is 0 at mount), which leaves them collapsed until a
- * later resize. We observe the container ourselves and force a resize once it
- * gains a real width — so charts that render inside CSS grids (the overview
- * page is full of them) paint on first paint instead of staying blank.
  */
-export const EChart = memo(function EChart({ option, height = 220, className }: EChartProps) {
+export const EChart = memo(function EChart({
+  option,
+  height = 220,
+  className,
+  notMerge = false,
+  onLegendChange,
+  onChartReady
+}: EChartProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const chartRef = useRef<EChartsType | null>(null);
+  const legendSelectionRef = useRef<Record<string, boolean>>({});
+  const onLegendChangeRef = useRef(onLegendChange);
+  onLegendChangeRef.current = onLegendChange;
+  const onChartReadyRef = useRef(onChartReady);
+  onChartReadyRef.current = onChartReady;
 
   useEffect(() => {
     const el = containerRef.current;
     if (!el) return;
     const chart = echarts.init(el, undefined, { renderer: "canvas" });
     chartRef.current = chart;
+
+    const handleLegendSelectChanged = (params: unknown) => {
+      const p = params as { selected?: Record<string, boolean> };
+      if (p && p.selected) {
+        legendSelectionRef.current = { ...p.selected };
+        onLegendChangeRef.current?.(p.selected);
+      }
+    };
+    chart.on("legendselectchanged", handleLegendSelectChanged);
+
+    onChartReadyRef.current?.(chart);
 
     // ResizeObserver can emit several records during one layout pass. Collapse
     // them into one animation-frame resize to avoid repeated canvas work while
@@ -92,14 +113,48 @@ export const EChart = memo(function EChart({ option, height = 220, className }: 
       window.clearTimeout(boot);
       window.cancelAnimationFrame(resizeFrame);
       ro?.disconnect();
+      chart.off("legendselectchanged", handleLegendSelectChanged);
       chartRef.current = null;
       chart.dispose();
     };
   }, []);
 
   useEffect(() => {
-    chartRef.current?.setOption(option, { notMerge: false, lazyUpdate: false });
-  }, [option]);
+    if (!chartRef.current) return;
+
+    let finalOption = option;
+    if (option && option.legend && Object.keys(legendSelectionRef.current).length > 0) {
+      if (Array.isArray(option.legend)) {
+        finalOption = {
+          ...option,
+          legend: option.legend.map((leg) => {
+            const legSelected =
+              typeof leg === "object" && leg && "selected" in leg && typeof leg.selected === "object" && leg.selected
+                ? (leg.selected as Record<string, boolean>)
+                : {};
+            return {
+              ...leg,
+              selected: { ...legendSelectionRef.current, ...legSelected }
+            };
+          })
+        };
+      } else if (typeof option.legend === "object") {
+        const currentLegend = option.legend as { selected?: Record<string, boolean> };
+        finalOption = {
+          ...option,
+          legend: {
+            ...option.legend,
+            selected: {
+              ...legendSelectionRef.current,
+              ...(currentLegend.selected || {})
+            }
+          }
+        };
+      }
+    }
+
+    chartRef.current.setOption(finalOption, { notMerge, lazyUpdate: false });
+  }, [option, notMerge]);
 
   return (
     <div ref={containerRef} style={{ width: "100%", height }} className={className} />

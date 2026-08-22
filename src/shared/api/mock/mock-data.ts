@@ -52,6 +52,7 @@ export const mockCrons: Cron[] = [
 ];
 
 export const mockPingTargets: PingTarget[] = [
+  { id: "p-pending", name: "新机房骨干专线测试 (Pending)", address: "18.176.99.100", protocol: "icmp", group: "private", enabled: true, latencyMs: undefined, uptime: undefined as unknown as number, lastCheckAt: 0, lastOk: true },
   { id: "p1", name: "主站 HTTPS", address: "https://smalux.example.com", protocol: "http", group: "public", enabled: true, latencyMs: 45, uptime: 0.999, lastCheckAt: now - 30_000, lastOk: true },
   { id: "p2", name: "API 网关", address: "https://api.smalux.example.com/health", protocol: "http", group: "control", enabled: true, latencyMs: 82, uptime: 0.995, lastCheckAt: now - 30_000, lastOk: true },
   { id: "p3", name: "WSS 终端", address: "wss://api.smalux.example.com/ws", protocol: "wss", group: "control", enabled: true, latencyMs: 120, uptime: 0.998, lastCheckAt: now - 30_000, lastOk: true },

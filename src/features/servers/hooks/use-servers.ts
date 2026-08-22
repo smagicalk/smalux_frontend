@@ -2,17 +2,14 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 
 import {
   methods,
+  type AgentListParams,
   type AgentRegisterParams,
   type AgentUpdateParams
 } from "@/shared/api/methods";
 import { queryKeys } from "@/shared/api/query-keys";
 import { useRpc } from "@/app/providers/rpc-context";
 
-export interface ServerListFilters {
-  region?: string;
-  status?: "online" | "warning" | "offline";
-  search?: string;
-}
+export type ServerListFilters = AgentListParams;
 
 /**
  * Fetch the server fleet. Wraps the `agent.list` RPC in a TanStack Query so

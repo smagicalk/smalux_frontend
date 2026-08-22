@@ -13,14 +13,26 @@ export const agentListParamsSchema = z
   .object({
     region: z.string().optional(),
     status: serverStatusSchema.optional(),
-    search: z.string().optional()
+    search: z.string().optional(),
+    group: z.string().optional(),
+    page: z.number().optional(),
+    limit: z.number().optional(),
+    sortBy: z.string().optional(),
+    sortOrder: z.enum(["asc", "desc"]).optional()
   })
   .default({});
 
 export const agentListResultSchema = z.object({
   servers: z.array(serverSchema),
-  total: z.number()
+  total: z.number(),
+  page: z.number().optional(),
+  limit: z.number().optional(),
+  totalPages: z.number().optional(),
+  availableGroups: z.array(z.object({ group: z.string(), count: z.number() })).optional()
 });
+
+export type AgentListParams = z.infer<typeof agentListParamsSchema>;
+export type AgentListResult = z.infer<typeof agentListResultSchema>;
 
 export const agentSummarySubscribeParamsSchema = z
   .object({ serverIds: z.array(z.string()).optional() })

@@ -34,8 +34,10 @@ export * from "./schemas/accounts";
 export * from "./schemas/themes";
 export * from "./schemas/settings";
 export * from "./schemas/deployment";
+export * from "./schemas/overview";
 
 import { okResultSchema, pingResultSchema } from "./schemas/common";
+import { overviewStatsResultSchema } from "./schemas/overview";
 import {
   agentListParamsSchema,
   agentListResultSchema,
@@ -134,6 +136,7 @@ export const methods = {
   },
 
   // Read models used by administrative feature modules.
+  "overview.stats": { params: z.unknown(), result: overviewStatsResultSchema },
   "task.list": { params: z.unknown(), result: taskListResultSchema },
   "task.template.list": { params: z.unknown(), result: taskTemplateListResultSchema },
 

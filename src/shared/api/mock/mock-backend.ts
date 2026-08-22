@@ -139,11 +139,58 @@ class MockBackendImpl implements MockBackend {
       case "system.ping":
         return { ok: true };
 
+      case "overview.stats": {
+        let totalCpu = 0;
+        let totalMem = 0;
+        let totalDisk = 0;
+        let totalThroughput = 0;
+        const total = this.servers.length;
+        const onlineCount = this.servers.filter((s) => s.status === "online").length;
+        const warningCount = this.servers.filter((s) => s.status === "warning").length;
+
+        for (const s of this.servers) {
+          const rt = this.runtimes.get(s.id);
+          const cpu = rt ? Math.round(rt.cpu * 100) : 24;
+          const mem = rt ? Math.round(rt.memUsedRatio * 100) : 52;
+          const disk = 42;
+          totalCpu += cpu;
+          totalMem += mem;
+          totalDisk += disk;
+          totalThroughput += (rt?.netRx || 500000) + (rt?.netTx || 300000);
+        }
+
+        const avgCpu = total > 0 ? Math.round(totalCpu / total) : 28;
+        const avgMemory = total > 0 ? Math.round(totalMem / total) : 54;
+        const avgDisk = total > 0 ? Math.round(totalDisk / total) : 42;
+        const throughputGb = (totalThroughput / 1_000_000_000).toFixed(2);
+        const healthScore = total > 0 ? +((onlineCount / total) * 100 - (warningCount > 0 ? warningCount * 1.5 : 0)).toFixed(1) : 98.5;
+        const sla = total > 0 ? +(100 - (total - onlineCount) * 0.05).toFixed(2) : 99.98;
+
+        return {
+          healthScore,
+          sla,
+          onlineCount,
+          totalCount: total,
+          onlineRate: total > 0 ? Math.round((onlineCount / total) * 100) : 100,
+          throughput: `${throughputGb} GB/s`,
+          activeConnections: `${(total * 68 + avgCpu * 14).toLocaleString()} 活跃`,
+          avgCpu,
+          avgMemory,
+          avgDisk,
+          activeAlertsCount: warningCount + 1
+        };
+      }
+
       case "agent.list": {
         const p = (params ?? {}) as {
           region?: string;
           status?: ServerStatus;
           search?: string;
+          group?: string;
+          page?: number;
+          limit?: number;
+          sortBy?: string;
+          sortOrder?: "asc" | "desc";
         };
         let servers = this.servers;
         if (p.region) {
@@ -152,16 +199,49 @@ class MockBackendImpl implements MockBackend {
         if (p.status) {
           servers = servers.filter((s) => s.status === p.status);
         }
+        if (p.group && p.group !== "all") {
+          servers = servers.filter((s) => s.tags.includes(p.group!) || (s.tags?.[0] || "默认分组") === p.group);
+        }
         if (p.search) {
           const q = p.search.toLowerCase();
           servers = servers.filter(
             (s) =>
+              s.id.toLowerCase().includes(q) ||
               s.name.toLowerCase().includes(q) ||
               s.region.toLowerCase().includes(q) ||
+              (s.publicIp && s.publicIp.includes(q)) ||
+              (s.ipv4 && s.ipv4.includes(q)) ||
               s.tags.some((t) => t.toLowerCase().includes(q))
           );
         }
-        return { servers, total: servers.length };
+
+        if (p.sortBy) {
+          const order = p.sortOrder === "desc" ? -1 : 1;
+          servers = [...servers].sort((a, b) => {
+            if (p.sortBy === "id") return a.id.localeCompare(b.id) * order;
+            if (p.sortBy === "name") return a.name.localeCompare(b.name) * order;
+            const ra = this.runtimes.get(a.id);
+            const rb = this.runtimes.get(b.id);
+            if (p.sortBy === "cpu") return ((ra?.cpu ?? 0) - (rb?.cpu ?? 0)) * order;
+            if (p.sortBy === "memory") return ((ra?.memUsedRatio ?? 0) - (rb?.memUsedRatio ?? 0)) * order;
+            return 0;
+          });
+        }
+
+        const total = servers.length;
+        const page = Math.max(1, p.page || 1);
+        const limit = Math.max(1, p.limit || 12);
+        const totalPages = Math.ceil(total / limit) || 1;
+        const start = (page - 1) * limit;
+        const paginated = servers.slice(start, start + limit);
+
+        return {
+          servers: paginated,
+          total,
+          page,
+          limit,
+          totalPages
+        };
       }
 
       case "agent.summary.subscribe":

@@ -14,64 +14,27 @@ const OverviewPage = lazyRouteComponent(
   () => import("@/features/overview/pages/overview-page"),
   "OverviewPage"
 );
-const ServersPage = lazyRouteComponent(
-  () => import("@/features/servers/pages/servers-page"),
-  "ServersPage"
+const InfrastructurePage = lazyRouteComponent(
+  () => import("@/features/infrastructure/pages/infrastructure-page"),
+  "InfrastructurePage"
 );
 const ServerDetailPage = lazyRouteComponent(
-  () => import("@/features/servers/pages/server-detail-page"),
+  () => import("@/features/infrastructure/pages/server-detail-page"),
   "ServerDetailPage"
 );
-const TasksPage = lazyRouteComponent(
-  () => import("@/features/tasks/pages/tasks-page"),
-  "TasksPage"
-);
-const CronPage = lazyRouteComponent(
-  () => import("@/features/cron/pages/cron-page"),
-  "CronPage"
-);
-const PingPage = lazyRouteComponent(
-  () => import("@/features/ping/pages/ping-page"),
-  "PingPage"
+const AutomationPage = lazyRouteComponent(
+  () => import("@/features/automation/pages/automation-page"),
+  "AutomationPage"
 );
 const AlertsPage = lazyRouteComponent(
   () => import("@/features/alerts/pages/alerts-page"),
   "AlertsPage"
 );
-const NotificationsPage = lazyRouteComponent(
-  () => import("@/features/notifications/pages/notifications-page"),
-  "NotificationsPage"
-);
-const LogsPage = lazyRouteComponent(
-  () => import("@/features/logs/pages/logs-page"),
-  "LogsPage"
-);
-const TokensPage = lazyRouteComponent(
-  () => import("@/features/tokens/pages/tokens-page"),
-  "TokensPage"
-);
-const AccountsPage = lazyRouteComponent(
-  () => import("@/features/accounts/pages/accounts-page"),
-  "AccountsPage"
-);
-const ThemesPage = lazyRouteComponent(
-  () => import("@/features/themes/pages/themes-page"),
-  "ThemesPage"
-);
 const SettingsPage = lazyRouteComponent(
   () => import("@/features/settings/pages/settings-page"),
   "SettingsPage"
 );
-const DeploymentPage = lazyRouteComponent(
-  () => import("@/features/deployment/pages/deployment-page"),
-  "DeploymentPage"
-);
 
-/**
- * Code-based route tree. The admin shell wraps every /admin/* route so the
- * sidebar/topbar persist across navigation. Public page (/) is intentionally
- * not built in this round and redirects to /admin for now.
- */
 export interface RouterContext {
   config: RuntimeConfig;
 }
@@ -84,20 +47,25 @@ function buildRouteTree() {
   return rootRoute.addChildren([
     indexRoute,
     adminRoute.addChildren([
+      overviewIndexRoute,
       overviewRoute,
-      serversRoute,
-      serverDetailRoute,
-      tasksRoute,
-      cronRoute,
-      pingRoute,
+      infrastructureRoute,
+      infrastructureServerDetailRoute,
+      automationRoute,
       alertsRoute,
-      notificationsRoute,
-      logsRoute,
-      tokensRoute,
-      accountsRoute,
-      themesRoute,
       settingsRoute,
-      deploymentRoute
+      // Legacy redirects to cohesive modules
+      serversRedirectRoute,
+      serversIdRedirectRoute,
+      pingRedirectRoute,
+      tasksRedirectRoute,
+      cronRedirectRoute,
+      notificationsRedirectRoute,
+      logsRedirectRoute,
+      tokensRedirectRoute,
+      accountsRedirectRoute,
+      themesRedirectRoute,
+      deploymentRedirectRoute
     ])
   ]);
 }
@@ -106,7 +74,7 @@ const indexRoute = createRoute({
   getParentRoute: () => rootRoute,
   path: "/",
   beforeLoad: () => {
-    throw redirect({ to: "/admin" });
+    throw redirect({ to: "/admin/overview" });
   }
 });
 
@@ -116,40 +84,34 @@ const adminRoute = createRoute({
   component: AppShell
 });
 
-const overviewRoute = createRoute({
+const overviewIndexRoute = createRoute({
   getParentRoute: () => adminRoute,
   path: "/",
   component: OverviewPage
 });
 
-const serversRoute = createRoute({
+const overviewRoute = createRoute({
   getParentRoute: () => adminRoute,
-  path: "servers",
-  component: ServersPage
+  path: "overview",
+  component: OverviewPage
 });
 
-const serverDetailRoute = createRoute({
+const infrastructureRoute = createRoute({
   getParentRoute: () => adminRoute,
-  path: "servers/$id",
+  path: "infrastructure",
+  component: InfrastructurePage
+});
+
+const infrastructureServerDetailRoute = createRoute({
+  getParentRoute: () => adminRoute,
+  path: "infrastructure/servers/$serverId",
   component: ServerDetailPage
 });
 
-const tasksRoute = createRoute({
+const automationRoute = createRoute({
   getParentRoute: () => adminRoute,
-  path: "tasks",
-  component: TasksPage
-});
-
-const cronRoute = createRoute({
-  getParentRoute: () => adminRoute,
-  path: "cron",
-  component: CronPage
-});
-
-const pingRoute = createRoute({
-  getParentRoute: () => adminRoute,
-  path: "ping",
-  component: PingPage
+  path: "automation",
+  component: AutomationPage
 });
 
 const alertsRoute = createRoute({
@@ -158,46 +120,67 @@ const alertsRoute = createRoute({
   component: AlertsPage
 });
 
-const notificationsRoute = createRoute({
-  getParentRoute: () => adminRoute,
-  path: "notifications",
-  component: NotificationsPage
-});
-
-const logsRoute = createRoute({
-  getParentRoute: () => adminRoute,
-  path: "logs",
-  component: LogsPage
-});
-
-const tokensRoute = createRoute({
-  getParentRoute: () => adminRoute,
-  path: "tokens",
-  component: TokensPage
-});
-
-const accountsRoute = createRoute({
-  getParentRoute: () => adminRoute,
-  path: "accounts",
-  component: AccountsPage
-});
-
-const themesRoute = createRoute({
-  getParentRoute: () => adminRoute,
-  path: "themes",
-  component: ThemesPage
-});
-
 const settingsRoute = createRoute({
   getParentRoute: () => adminRoute,
   path: "settings",
   component: SettingsPage
 });
 
-const deploymentRoute = createRoute({
+// Legacy redirects
+const serversRedirectRoute = createRoute({
+  getParentRoute: () => adminRoute,
+  path: "servers",
+  beforeLoad: () => { throw redirect({ to: "/admin/infrastructure" }); }
+});
+const serversIdRedirectRoute = createRoute({
+  getParentRoute: () => adminRoute,
+  path: "servers/$serverId",
+  beforeLoad: ({ params }) => { throw redirect({ to: `/admin/infrastructure/servers/${params.serverId}` }); }
+});
+const pingRedirectRoute = createRoute({
+  getParentRoute: () => adminRoute,
+  path: "ping",
+  beforeLoad: () => { throw redirect({ to: "/admin/infrastructure" }); }
+});
+const tasksRedirectRoute = createRoute({
+  getParentRoute: () => adminRoute,
+  path: "tasks",
+  beforeLoad: () => { throw redirect({ to: "/admin/automation" }); }
+});
+const cronRedirectRoute = createRoute({
+  getParentRoute: () => adminRoute,
+  path: "cron",
+  beforeLoad: () => { throw redirect({ to: "/admin/automation" }); }
+});
+const notificationsRedirectRoute = createRoute({
+  getParentRoute: () => adminRoute,
+  path: "notifications",
+  beforeLoad: () => { throw redirect({ to: "/admin/alerts" }); }
+});
+const logsRedirectRoute = createRoute({
+  getParentRoute: () => adminRoute,
+  path: "logs",
+  beforeLoad: () => { throw redirect({ to: "/admin/settings" }); }
+});
+const tokensRedirectRoute = createRoute({
+  getParentRoute: () => adminRoute,
+  path: "tokens",
+  beforeLoad: () => { throw redirect({ to: "/admin/settings" }); }
+});
+const accountsRedirectRoute = createRoute({
+  getParentRoute: () => adminRoute,
+  path: "accounts",
+  beforeLoad: () => { throw redirect({ to: "/admin/settings" }); }
+});
+const themesRedirectRoute = createRoute({
+  getParentRoute: () => adminRoute,
+  path: "themes",
+  beforeLoad: () => { throw redirect({ to: "/admin/settings" }); }
+});
+const deploymentRedirectRoute = createRoute({
   getParentRoute: () => adminRoute,
   path: "deployment",
-  component: DeploymentPage
+  beforeLoad: () => { throw redirect({ to: "/admin/settings" }); }
 });
 
 export function createAppRouter(context: RouterContext) {

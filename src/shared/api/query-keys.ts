@@ -9,7 +9,8 @@
  * Query hashes their values as part of cache identity.
  */
 export const queryKeys = {
-  servers: (params?: { region?: string; status?: string; search?: string }) =>
+  overviewStats: ["overview-stats"] as const,
+  servers: (params?: Record<string, unknown>) =>
     ["servers", params ?? {}] as const,
   server: (id: string) => ["server", id] as const,
   tokens: ["tokens"] as const,

@@ -1,18 +1,15 @@
-import { LayoutGrid, Server, TerminalSquare, Bell } from "lucide-react";
+import { LayoutDashboard, Server, Terminal, BellRing, Settings } from "lucide-react";
 import { Link, useLocation } from "@tanstack/react-router";
 
 import { cn } from "@/shared/lib/utils";
 import { isNavActive } from "./navigation";
 
-/**
- * Mobile bottom nav: only the four most-used destinations. The full sidebar
- * is desktop-only; mobile users get a compact dock plus the rest via search.
- */
 const mobileNav = [
-  { label: "总览", path: "/admin", icon: LayoutGrid },
-  { label: "服务器", path: "/admin/servers", icon: Server },
-  { label: "执行", path: "/admin/tasks", icon: TerminalSquare },
-  { label: "通知", path: "/admin/notifications", icon: Bell }
+  { label: "总览", path: "/admin/overview", icon: LayoutDashboard },
+  { label: "基建", path: "/admin/infrastructure", icon: Server },
+  { label: "运维", path: "/admin/automation", icon: Terminal },
+  { label: "告警", path: "/admin/alerts", icon: BellRing },
+  { label: "设置", path: "/admin/settings", icon: Settings }
 ];
 
 export function MobileBottomNav() {
@@ -20,7 +17,7 @@ export function MobileBottomNav() {
   const currentPath = location.pathname;
 
   return (
-    <nav className="glass fixed inset-x-0 bottom-0 z-40 flex h-14 border-t border-border md:hidden">
+    <nav className="glass fixed inset-x-0 bottom-0 z-40 flex h-14 border-t border-border/80 md:hidden">
       {mobileNav.map((item) => {
         const active = isNavActive(currentPath, item.path);
         const Icon = item.icon;
@@ -29,19 +26,14 @@ export function MobileBottomNav() {
             key={item.path}
             to={item.path}
             className={cn(
-              "relative flex flex-1 flex-col items-center justify-center gap-0.5 text-[10px] transition-colors",
-              active ? "text-foreground" : "text-muted-foreground"
+              "relative flex flex-1 flex-col items-center justify-center gap-1 text-[10px] font-medium transition-colors",
+              active ? "text-primary" : "text-muted-foreground hover:text-foreground"
             )}
           >
-            {active ? (
-              <span className="absolute top-0 h-0.5 w-8 rounded-full bg-primary shadow-[0_0_8px_var(--primary)]" />
-            ) : null}
-            <Icon
-              className={cn(
-                "size-5 transition-all",
-                active ? "text-primary drop-shadow-[0_0_4px_var(--primary)]" : ""
-              )}
-            />
+            {active && (
+              <span className="absolute top-0 h-0.5 w-6 rounded-full bg-primary" />
+            )}
+            <Icon className="size-4.5" />
             {item.label}
           </Link>
         );

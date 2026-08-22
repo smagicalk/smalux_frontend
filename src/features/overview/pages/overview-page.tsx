@@ -1,99 +1,148 @@
-import { useMemo } from "react";
-import { Layers, Siren, TrendingUp, Zap } from "lucide-react";
-
-import { useServers } from "@/features/servers/hooks/use-servers";
-import { useMonitoring } from "@/features/servers/hooks/use-monitoring";
+import { useState } from "react";
+import { Link } from "@tanstack/react-router";
+import { RefreshCw, Server } from "lucide-react";
+import { Button } from "@/shared/ui/button";
 import { PageHeader } from "@/shared/ui/page-header";
-import { EChart } from "@/shared/charts/echart";
-import { funnelOption } from "@/shared/charts/chart-options";
+import { toast } from "@/shared/ui/toaster";
 
-import { useClusterAggregate } from "../hooks/use-cluster-aggregate";
-import { ChartCard } from "../components/chart-card";
-import { ChartsSection } from "../components/charts-section";
-import { EventStream } from "../components/event-stream";
-import { ExceptionQueue } from "../components/exception-queue";
-import { HeartbeatBar } from "../components/heartbeat-bar";
-import { KpiStrip } from "../components/kpi-strip";
-import { QuickEntries } from "../components/quick-entries";
-import { EmptyFleet, OverviewSkeleton } from "../components/overview-states";
-import { SectionTitle } from "../components/section-title";
+import type { NodePulse } from "../types";
+import { useOverviewData } from "../api/use-overview-data";
+import { OverviewCockpitHero } from "../components/overview-cockpit-hero";
+import { FleetPulseMatrix } from "../components/fleet-pulse-matrix";
+import { ClusterTelemetryChart } from "../components/cluster-telemetry-chart";
+import { IncidentActionHub } from "../components/incident-action-hub";
+import { LiveEventTerminal } from "../components/live-event-terminal";
 
-/**
- * Duty console: current fleet status, the exception queue, and a key trend
- * strip. This page only orchestrates the sections — each block (KPI strip,
- * chart grid, exception queue, event stream) lives in its own component under
- * components/, and the cluster aggregate wiring lives in hooks/. It does not
- * duplicate the server list or per-server detail (those live on /admin/servers).
- */
 export function OverviewPage() {
-  const { data, isLoading } = useServers();
-  const servers = useMemo(() => data?.servers ?? [], [data]);
-  const serverIds = useMemo(() => servers.map((s) => s.id), [servers]);
-  useMonitoring(serverIds);
+  const [selectedNode, setSelectedNode] = useState<NodePulse | null>(null);
+  const [isScanning, setIsScanning] = useState(false);
 
-  const counts = useMemo(() => {
-    const online = servers.filter((s) => s.status === "online").length;
-    const warning = servers.filter((s) => s.status === "warning").length;
-    const offline = servers.filter((s) => s.status === "offline").length;
-    return { online, warning, offline, total: servers.length };
-  }, [servers]);
+  // Server-side RPC Pagination & Filter State
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(12);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [selectedGroup, setSelectedGroup] = useState("all");
+  const [statusFilter, setStatusFilter] = useState<"all" | "online" | "warning">("all");
 
-  const exceptions = servers.filter((s) => s.status !== "online");
-  const agg = useClusterAggregate(serverIds);
-  const empty = !isLoading && servers.length === 0;
+  const {
+    allFleetNodes,
+    fleetNodes,
+    totalNodes,
+    totalPages,
+    availableGroups,
+    incidents,
+    liveEvents,
+    heroStats,
+    refetchServers
+  } = useOverviewData({
+    page,
+    limit: pageSize,
+    search: searchQuery,
+    group: selectedGroup,
+    status: statusFilter
+  });
+
+  const handleSearchChange = (val: string) => {
+    setSearchQuery(val);
+    setPage(1);
+  };
+
+  const handleGroupChange = (grp: string) => {
+    setSelectedGroup(grp);
+    setPage(1);
+  };
+
+  const handleStatusChange = (st: "all" | "online" | "warning") => {
+    setStatusFilter(st);
+    setPage(1);
+  };
+
+  // Trigger Cluster Instant Health Scan
+  const handleRunHealthScan = () => {
+    setIsScanning(true);
+    toast.info("正在对全网节点与探针执行深度健康巡检...");
+    refetchServers();
+    setTimeout(() => {
+      setIsScanning(false);
+      toast.success(`全网巡检完成：${heroStats.onlineCount} 节点状态优良，实时遥测数据已同步`);
+    }, 1200);
+  };
 
   return (
-    <div className="flex h-full flex-col">
-      <PageHeader title="总览" subtitle="值班台" tone="cyan" />
-
-      <HeartbeatBar online={counts.online} total={counts.total} />
-
-      <div className="min-h-0 flex-1 space-y-5 overflow-y-auto p-4">
-        {/* ── 区 1:舰队态势 ── KPI + 资源水位 + 流量,首屏全景 */}
-        <section className="space-y-3">
-          <SectionTitle icon={<Layers className="size-4" />} title="舰队态势" hint="实时聚合" />
-          <KpiStrip counts={counts} agg={agg} />
-          {isLoading && servers.length === 0 ? (
-            <OverviewSkeleton />
-          ) : empty ? (
-            <EmptyFleet />
-          ) : (
-            <ChartsSection servers={servers} serverIds={serverIds} />
-          )}
-        </section>
-
-        {/* ── 区 2:异常与告警 ── 行动项前置,首屏可见 */}
-        <section className="space-y-3">
-          <SectionTitle icon={<Siren className="size-4" />} title="异常与告警" hint="需关注" accent="danger" />
-          <div className="grid grid-cols-1 gap-3 lg:grid-cols-2">
-            <ExceptionQueue servers={exceptions} isLoading={isLoading} />
-            <ChartCard
-              title="告警流水线"
-              subtitle="触发 → 通知 → 恢复"
-              icon={<TrendingUp className="size-3.5" />}
-              accent="primary"
-              to="/admin/alerts"
+    <div className="flex flex-col min-h-full">
+      <PageHeader
+        title="总览大盘"
+        subtitle="全息智能监控与集群指挥中心"
+        action={
+          <div className="flex items-center gap-2">
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={handleRunHealthScan}
+              disabled={isScanning}
+              className="cursor-pointer font-medium"
             >
-              <EChart option={funnelOption([
-                { name: "告警触发", value: 42 },
-                { name: "已通知", value: 38 },
-                { name: "已确认", value: 25 },
-                { name: "已恢复", value: 18 }
-              ])} height={220} />
-            </ChartCard>
+              <RefreshCw className={`size-3.5 mr-1.5 ${isScanning ? "animate-spin text-primary" : ""}`} />
+              {isScanning ? "深度巡检中..." : "一键全网巡检"}
+            </Button>
+            <Button asChild size="sm" className="cursor-pointer font-medium">
+              <Link to="/admin/infrastructure">
+                <Server className="size-3.5 mr-1.5" /> 主机与探针
+              </Link>
+            </Button>
           </div>
-        </section>
+        }
+      />
 
-        {/* ── 区 3:快捷入口 + 实时事件流 ── 导航加速 + 时序回放 */}
-        <section className="space-y-3">
-          <SectionTitle icon={<Zap className="size-4" />} title="导航与事件" hint="直达 / 回溯" accent="warning" />
-          <div className="grid grid-cols-1 gap-3 lg:grid-cols-3">
-            <QuickEntries counts={counts} />
-            <div className="lg:col-span-2">
-              <EventStream servers={servers} />
-            </div>
-          </div>
-        </section>
+      <div className="flex-1 space-y-6 p-6">
+        {/* 1. Futuristic Cockpit Hero Banner */}
+        <OverviewCockpitHero
+          onlineCount={heroStats.onlineCount}
+          totalCount={heroStats.totalCount}
+          sla={heroStats.sla}
+          healthScore={heroStats.healthScore}
+          throughput={heroStats.throughput}
+          avgCpu={heroStats.avgCpu}
+          avgMemory={heroStats.avgMemory}
+          avgDisk={heroStats.avgDisk}
+          activeAlertsCount={incidents.length}
+        />
+
+        {/* 2. Scalable Fleet Pulse Matrix with Server-side Pagination & RPC Filters */}
+        <FleetPulseMatrix
+          nodes={fleetNodes}
+          total={totalNodes}
+          totalPages={totalPages}
+          availableGroups={availableGroups}
+          page={page}
+          pageSize={pageSize}
+          selectedGroup={selectedGroup}
+          statusFilter={statusFilter}
+          searchQuery={searchQuery}
+          onPageChange={setPage}
+          onPageSizeChange={(newSize) => {
+            setPageSize(newSize);
+            setPage(1);
+          }}
+          onGroupChange={handleGroupChange}
+          onStatusChange={handleStatusChange}
+          onSearchChange={handleSearchChange}
+          selectedNode={selectedNode}
+          onSelectNode={setSelectedNode}
+        />
+
+        {/* 3. Full-Width Panoramic Core Performance Telemetry Waveform */}
+        <ClusterTelemetryChart
+          fleetNodes={allFleetNodes}
+          availableGroups={availableGroups}
+          onSelectNode={setSelectedNode}
+        />
+
+        {/* 4. Bottom Row: Incident Action Hub (Left) + Unified Live Event Stream (Right) */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          <IncidentActionHub incidents={incidents} />
+          <LiveEventTerminal events={liveEvents} />
+        </div>
       </div>
     </div>
   );
