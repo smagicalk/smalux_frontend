@@ -88,16 +88,19 @@ export interface MetricSeries<T = number> {
 
 export interface ServerProcessItem {
   pid: number;
+  ppid?: number;
   name: string;
   command?: string;
   user: string;
   cpu: number;
   mem: number;
-  resMb?: number;
+  resKb?: number | string;
+  resMb?: number | string;
   threads?: number;
   status?: "R" | "S" | "D" | "Z" | "T";
   ioReadMb?: number;
   ioWriteMb?: number;
+  children?: ServerProcessItem[];
 }
 
 export interface ServerTelemetryResponse {

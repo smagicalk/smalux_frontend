@@ -1643,18 +1643,39 @@ export function getMockServerProcesses(server: HostServer | null): import("../ty
   const baseMem = server.memory || 50;
 
   return [
-    { pid: 1420, name: "nginx: worker process", command: "nginx: worker process (nginx -g 'daemon off;') --master", user: "www-data", cpu: +(4.2 + (baseCpu % 5)).toFixed(1), mem: 1.8, resMb: 85, threads: 4, status: "S", ioReadMb: 12.4, ioWriteMb: 4.8 },
-    { pid: 2884, name: "mysqld --defaults-file", command: "/usr/sbin/mysqld --defaults-file=/etc/mysql/my.cnf --daemonize", user: "mysql", cpu: +(12.4 + (baseCpu % 8)).toFixed(1), mem: +(28.5 + (baseMem % 10)).toFixed(1), resMb: 1420, threads: 32, status: "S", ioReadMb: 45.2, ioWriteMb: 28.6 },
-    { pid: 3102, name: "redis-server *:6379", command: "/usr/bin/redis-server 127.0.0.1:6379 --protected-mode yes", user: "redis", cpu: 2.1, mem: 8.4, resMb: 412, threads: 6, status: "S", ioReadMb: 0.8, ioWriteMb: 2.1 },
-    { pid: 4890, name: "node /app/server.js", command: "node --max-old-space-size=2048 /app/dist/server.js --cluster", user: "node", cpu: +(8.5 + (baseCpu % 6)).toFixed(1), mem: 14.2, resMb: 680, threads: 12, status: "R", ioReadMb: 5.6, ioWriteMb: 1.2 },
-    { pid: 6112, name: "smalux-agent-daemon", command: "/usr/local/bin/smalux-agent --config /etc/smalux/agent.yaml", user: "root", cpu: 0.4, mem: 0.8, resMb: 36, threads: 8, status: "S", ioReadMb: 0.1, ioWriteMb: 0.1 },
-    { pid: 1042, name: "systemd-journald", command: "/usr/lib/systemd/systemd-journald", user: "root", cpu: 0.2, mem: 0.6, resMb: 28, threads: 1, status: "S", ioReadMb: 0.2, ioWriteMb: 1.5 },
-    { pid: 1098, name: "dockerd -H fd://", command: "/usr/bin/dockerd -H fd:// --containerd=/run/containerd/containerd.sock", user: "root", cpu: 1.5, mem: 3.2, resMb: 164, threads: 18, status: "S", ioReadMb: 2.4, ioWriteMb: 4.1 },
-    { pid: 1145, name: "containerd", command: "/usr/bin/containerd --config /etc/containerd/config.toml", user: "root", cpu: 0.8, mem: 2.1, resMb: 98, threads: 14, status: "S", ioReadMb: 1.1, ioWriteMb: 2.2 },
-    { pid: 5540, name: "prometheus-node-exporter", command: "/usr/local/bin/node_exporter --collector.systemd", user: "prometheus", cpu: 0.3, mem: 0.5, resMb: 24, threads: 4, status: "S", ioReadMb: 0.0, ioWriteMb: 0.0 },
-    { pid: 7820, name: "vector --config /etc/vector", command: "/usr/bin/vector --config /etc/vector/vector.toml --watch-config", user: "vector", cpu: 2.8, mem: 4.5, resMb: 215, threads: 16, status: "R", ioReadMb: 18.2, ioWriteMb: 15.4 },
-    { pid: 8891, name: "sshd: root@pts/0", command: "sshd: root@pts/0 [priv] (sshd: active session)", user: "root", cpu: 0.1, mem: 0.3, resMb: 14, threads: 1, status: "S", ioReadMb: 0.0, ioWriteMb: 0.0 },
-    { pid: 9912, name: "cron -f", command: "/usr/sbin/cron -f -L 15", user: "root", cpu: 0.0, mem: 0.1, resMb: 8, threads: 1, status: "S", ioReadMb: 0.0, ioWriteMb: 0.0 }
+    { pid: 1, ppid: 0, name: "systemd", command: "/sbin/init splash", user: "root", cpu: 0.1, mem: 0.4, resKb: 12400, resMb: 12, threads: 1, status: "S" },
+    
+    // Nginx master & workers
+    { pid: 1419, ppid: 1, name: "nginx: master process", command: "nginx: master process /usr/sbin/nginx -g 'daemon off;'", user: "root", cpu: 0.2, mem: 0.5, resKb: 18000, resMb: 18, threads: 1, status: "S" },
+    { pid: 1420, ppid: 1419, name: "nginx: worker process", command: "nginx: worker process (worker 0)", user: "www-data", cpu: +(4.2 + (baseCpu % 5)).toFixed(1), mem: 1.8, resKb: 85000, resMb: 85, threads: 4, status: "S", ioReadMb: 12.4, ioWriteMb: 4.8 },
+    { pid: 1421, ppid: 1419, name: "nginx: worker process", command: "nginx: worker process (worker 1)", user: "www-data", cpu: +(3.8 + (baseCpu % 4)).toFixed(1), mem: 1.7, resKb: 82000, resMb: 82, threads: 4, status: "S", ioReadMb: 10.2, ioWriteMb: 3.9 },
+
+    // MySQL Database
+    { pid: 2884, ppid: 1, name: "mysqld --defaults-file", command: "/usr/sbin/mysqld --defaults-file=/etc/mysql/my.cnf --daemonize", user: "mysql", cpu: +(12.4 + (baseCpu % 8)).toFixed(1), mem: +(28.5 + (baseMem % 10)).toFixed(1), resKb: 1450000, resMb: 1420, threads: 32, status: "S", ioReadMb: 45.2, ioWriteMb: 28.6 },
+
+    // Redis
+    { pid: 3102, ppid: 1, name: "redis-server *:6379", command: "/usr/bin/redis-server 127.0.0.1:6379 --protected-mode yes", user: "redis", cpu: 2.1, mem: 8.4, resKb: 420000, resMb: 412, threads: 6, status: "S", ioReadMb: 0.8, ioWriteMb: 2.1 },
+
+    // Node.js Cluster (Master & Workers)
+    { pid: 4889, ppid: 1, name: "node /app/server.js (master)", command: "node /app/dist/server.js --cluster-master", user: "node", cpu: 1.2, mem: 4.5, resKb: 142000, resMb: 140, threads: 4, status: "S" },
+    { pid: 4890, ppid: 4889, name: "node /app/server.js (worker 1)", command: "node --max-old-space-size=2048 /app/dist/server.js --cluster-worker=1", user: "node", cpu: +(8.5 + (baseCpu % 6)).toFixed(1), mem: 14.2, resKb: 695000, resMb: 680, threads: 12, status: "R", ioReadMb: 5.6, ioWriteMb: 1.2 },
+    { pid: 4891, ppid: 4889, name: "node /app/server.js (worker 2)", command: "node --max-old-space-size=2048 /app/dist/server.js --cluster-worker=2", user: "node", cpu: +(6.2 + (baseCpu % 4)).toFixed(1), mem: 12.8, resKb: 580000, resMb: 566, threads: 12, status: "S", ioReadMb: 4.1, ioWriteMb: 0.9 },
+
+    // Docker & Containerd
+    { pid: 1098, ppid: 1, name: "dockerd -H fd://", command: "/usr/bin/dockerd -H fd:// --containerd=/run/containerd/containerd.sock", user: "root", cpu: 1.5, mem: 3.2, resKb: 168000, resMb: 164, threads: 18, status: "S", ioReadMb: 2.4, ioWriteMb: 4.1 },
+    { pid: 1145, ppid: 1098, name: "containerd", command: "/usr/bin/containerd --config /etc/containerd/config.toml", user: "root", cpu: 0.8, mem: 2.1, resKb: 98000, resMb: 98, threads: 14, status: "S", ioReadMb: 1.1, ioWriteMb: 2.2 },
+
+    // SSHd & User Session
+    { pid: 892, ppid: 1, name: "sshd: /usr/sbin/sshd -D", command: "/usr/sbin/sshd -D", user: "root", cpu: 0.1, mem: 0.2, resKb: 9500, resMb: 9.5, threads: 1, status: "S" },
+    { pid: 8891, ppid: 892, name: "sshd: root@pts/0", command: "sshd: root@pts/0 [priv] (sshd: active session)", user: "root", cpu: 0.1, mem: 0.3, resKb: 14000, resMb: 14, threads: 1, status: "S", ioReadMb: 0.0, ioWriteMb: 0.0 },
+    { pid: 8895, ppid: 8891, name: "-bash", command: "-bash", user: "root", cpu: 0.0, mem: 0.2, resKb: 6200, resMb: 6, threads: 1, status: "S" },
+
+    // Monitoring & Daemons
+    { pid: 6112, ppid: 1, name: "smalux-agent-daemon", command: "/usr/local/bin/smalux-agent --config /etc/smalux/agent.yaml", user: "root", cpu: 0.4, mem: 0.8, resKb: 36000, resMb: 36, threads: 8, status: "S", ioReadMb: 0.1, ioWriteMb: 0.1 },
+    { pid: 1042, ppid: 1, name: "systemd-journald", command: "/usr/lib/systemd/systemd-journald", user: "root", cpu: 0.2, mem: 0.6, resKb: 28000, resMb: 28, threads: 1, status: "S", ioReadMb: 0.2, ioWriteMb: 1.5 },
+    { pid: 5540, ppid: 1, name: "prometheus-node-exporter", command: "/usr/local/bin/node_exporter --collector.systemd", user: "prometheus", cpu: 0.3, mem: 0.5, resKb: 24000, resMb: 24, threads: 4, status: "S", ioReadMb: 0.0, ioWriteMb: 0.0 },
+    { pid: 7820, ppid: 1, name: "vector --config /etc/vector", command: "/usr/bin/vector --config /etc/vector/vector.toml --watch-config", user: "vector", cpu: 2.8, mem: 4.5, resKb: 220000, resMb: 215, threads: 16, status: "R", ioReadMb: 18.2, ioWriteMb: 15.4 },
+    { pid: 9912, ppid: 1, name: "cron -f", command: "/usr/sbin/cron -f -L 15", user: "root", cpu: 0.0, mem: 0.1, resKb: 820, resMb: 0.8, threads: 1, status: "S", ioReadMb: 0.0, ioWriteMb: 0.0 }
   ];
 }
 
