@@ -133,7 +133,7 @@ export function ServerDetailDrawer({ server, onClose }: ServerDetailDrawerProps)
         heartbeatInterval: "2s"
       });
     }
-  }, [server]);
+  }, [server?.id]);
 
   // Terminal State & Commands
   const [termInput, setTermInput] = useState("");

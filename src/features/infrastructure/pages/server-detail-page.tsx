@@ -146,7 +146,7 @@ export function ServerDetailPage() {
         heartbeatInterval: "2s"
       });
     }
-  }, [server]);
+  }, [server?.id]);
 
   // Terminal State & Commands
   const [termInput, setTermInput] = useState("");

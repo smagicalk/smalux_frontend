@@ -123,18 +123,22 @@ export function ServerProcessesDrawer({
 
   const canRemoteExec = server?.status !== "offline" && server?.allowRemoteExec !== false;
 
+  const serverId = server?.id;
+
   const baseProcesses = useMemo(() => {
     return getMockServerProcesses(server);
-  }, [server]);
+  }, [serverId]);
 
   const [processesList, setProcessesList] = useState<ServerProcessItem[]>(baseProcesses);
 
-  // Sync when server changes
+  // Sync only when target server ID changes or drawer opens
   useEffect(() => {
-    setProcessesList(getMockServerProcesses(server));
-    setSnapshotTime("刚刚");
-    setCollapsedMap({});
-  }, [server]);
+    if (isOpen && serverId) {
+      setProcessesList(getMockServerProcesses(server));
+      setSnapshotTime("刚刚");
+      setCollapsedMap({});
+    }
+  }, [isOpen, serverId]);
 
   // Available unique users
   const uniqueUsers = useMemo(() => {
