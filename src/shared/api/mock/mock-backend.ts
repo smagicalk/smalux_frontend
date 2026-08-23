@@ -9,6 +9,7 @@ import type {
   Task
 } from "@/shared/api/methods";
 import { mockServers } from "./mock-servers";
+import { MOCK_HOST_SERVERS } from "@/features/infrastructure/mock/infrastructure-mock";
 import {
   mockAccounts,
   mockAlertHistory,
@@ -324,6 +325,89 @@ class MockBackendImpl implements MockBackend {
             }
           : server);
         return { ok: true };
+      }
+
+      case "agent.hardware": {
+        const { serverId } = (params ?? {}) as { serverId: string };
+        const server = this.servers.find((s) => s.id === serverId);
+        const host = MOCK_HOST_SERVERS.find(
+          (m) => m.id === serverId || m.name.toLowerCase() === server?.name.toLowerCase()
+        );
+
+        const isArm = (server?.arch || host?.arch) === "aarch64" || (server?.arch || host?.arch) === "arm64";
+        const os = server?.os || host?.os || "Debian 12";
+        const cores = host?.cpuCores || (isArm ? 16 : 8);
+        const memTotal = host?.memTotalGb || (isArm ? 64 : 32);
+        const diskTotal = host?.diskTotalGb || 500;
+
+        let cpuModel = isArm
+          ? "Ampere® Altra® Max M128-30 (ARM Neoverse-N1)"
+          : "AMD EPYC™ 9654 (High-Frequency 96-Core)";
+        if (serverId && (serverId.includes("fra") || serverId.includes("ger") || serverId.includes("mixed"))) {
+          cpuModel = "Intel® Xeon® Platinum 8480+ (Sapphire Rapids)";
+        }
+
+        let kernelVersion = "6.8.0-40-generic";
+        if (os.includes("Debian")) kernelVersion = "6.1.0-18-amd64";
+        else if (os.includes("Alpine")) kernelVersion = "6.6.22-0-lts";
+        else if (os.includes("CentOS") || os.includes("Rocky")) kernelVersion = "5.14.0-362.el9.x86_64";
+
+        return {
+          serverId,
+          cpuModel,
+          cpuCores: cores,
+          cpuArch: isArm ? "aarch64" : "x86_64",
+          cpuFeatures: isArm ? ["NEON", "AES-NI", "FP16", "SVE"] : ["AVX-512", "AES-NI", "SHA-NI", "KVM-VT"],
+          memTotalGb: memTotal,
+          memType: isArm ? "DDR5 ECC (4800MHz)" : "DDR5 ECC (4800MHz)",
+          memSpeed: "4800 MT/s",
+          diskTotalGb: diskTotal,
+          diskType: "NVMe PCIe 4.0 SSD",
+          diskInterface: "PCIe 4.0 x4 (NVMe 1.4)",
+          os,
+          kernelVersion,
+          kernelFeatures: ["BBR TCP", "eBPF Tracing", "cgroup v2", "io_uring"],
+          virtSystem: isArm ? "Bare Metal (Ampere Native)" : "KVM / QEMU (cgroup v2 Unified)",
+          uptime: host?.uptime || "28天 6小时",
+          load: host?.load || "0.28, 0.35, 0.40",
+          agentVersion: server?.agentVersion || host?.agentVersion || "1.4.2",
+          lastCheckedAt: Date.now()
+        };
+      }
+
+      case "agent.sampleProcesses": {
+        const { serverId } = (params ?? {}) as { serverId: string };
+        const server = this.servers.find((s) => s.id === serverId);
+        const host = MOCK_HOST_SERVERS.find(
+          (m) => m.id === serverId || m.name.toLowerCase() === server?.name.toLowerCase()
+        );
+
+        if (!server && !host) {
+          return { ok: false, error: "未找到目标服务器" };
+        }
+
+        const isOff = (server?.status || host?.status) === "offline";
+        if (isOff) {
+          return { ok: false, error: "主机当前已离线，无法下发即时采样指令" };
+        }
+
+        const mode = host?.processCollectionMode || server?.processCollectionMode || (server?.enableProcessCollection === false ? "disable_auto" : "enabled");
+
+        // Mode: 全部禁止
+        if (mode === "forbidden") {
+          return {
+            ok: false,
+            mode: "forbidden",
+            error: "探针已完全禁用进程采集权限"
+          };
+        }
+
+        // Mode: 仅禁止自动常驻 (允许即时采样) 或 全功能开启
+        return {
+          ok: true,
+          mode,
+          timestamp: new Date().toLocaleTimeString("zh-CN", { hour12: false })
+        };
       }
 
       case "task.list": {

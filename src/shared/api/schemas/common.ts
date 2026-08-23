@@ -42,7 +42,10 @@ export const serverSchema = z.object({
   price: z.number().nonnegative().nullable().optional(),
   currency: z.string().min(1).optional(),
   expiresAt: z.number().nullable().optional(),
-  billingCycle: billingCycleSchema.nullable().optional()
+  billingCycle: billingCycleSchema.nullable().optional(),
+  allowRemoteExec: z.boolean().optional(),
+  enableProcessCollection: z.boolean().optional(),
+  processCollectionMode: z.enum(["enabled", "disable_auto", "forbidden"]).optional()
 });
 export type Server = z.infer<typeof serverSchema>;
 

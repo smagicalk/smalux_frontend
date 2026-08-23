@@ -113,3 +113,55 @@ export const agentUpdateParamsSchema = z.object({
   billingCycle: billingCycleSchema.nullable()
 });
 export type AgentUpdateParams = z.infer<typeof agentUpdateParamsSchema>;
+
+// agent.hardware — Dedicated RPC contract for Hardware Specifications & Kernel Runtime Environment
+export const agentHardwareParamsSchema = z.object({
+  serverId: z.string()
+});
+export type AgentHardwareParams = z.infer<typeof agentHardwareParamsSchema>;
+
+export const agentHardwareResultSchema = z.object({
+  serverId: z.string(),
+  // 1. CPU Compute
+  cpuModel: z.string(),
+  cpuCores: z.number(),
+  cpuArch: z.string(),
+  cpuFeatures: z.array(z.string()).default([]),
+  
+  // 2. Physical Memory
+  memTotalGb: z.number(),
+  memType: z.string(),
+  memSpeed: z.string().optional(),
+  
+  // 3. Disk Storage
+  diskTotalGb: z.number(),
+  diskType: z.string(),
+  diskInterface: z.string().optional(),
+  
+  // 4. Linux Kernel
+  os: z.string(),
+  kernelVersion: z.string(),
+  kernelFeatures: z.array(z.string()).default([]),
+  
+  // 5. System Runtime
+  virtSystem: z.string(),
+  uptime: z.string(),
+  load: z.string(),
+  agentVersion: z.string(),
+  lastCheckedAt: z.number().optional()
+});
+export type AgentHardwareResult = z.infer<typeof agentHardwareResultSchema>;
+
+// agent.sampleProcesses — On-demand single sampling of running processes
+export const agentSampleProcessesParamsSchema = z.object({
+  serverId: z.string()
+});
+export type AgentSampleProcessesParams = z.infer<typeof agentSampleProcessesParamsSchema>;
+
+export const agentSampleProcessesResultSchema = z.object({
+  ok: z.boolean(),
+  timestamp: z.string().optional(),
+  error: z.string().optional(),
+  mode: z.enum(["enabled", "disable_auto", "forbidden"]).optional()
+});
+export type AgentSampleProcessesResult = z.infer<typeof agentSampleProcessesResultSchema>;

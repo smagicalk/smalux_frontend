@@ -13,6 +13,7 @@ export const queryKeys = {
   servers: (params?: Record<string, unknown>) =>
     ["servers", params ?? {}] as const,
   server: (id: string) => ["server", id] as const,
+  serverHardware: (id: string) => ["server-hardware", id] as const,
   tokens: ["tokens"] as const,
   /** Broad task prefix used for mutation invalidation. */
   tasks: ["tasks"] as const,

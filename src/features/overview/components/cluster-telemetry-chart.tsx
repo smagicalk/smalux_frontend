@@ -1,11 +1,23 @@
 import { useState, useEffect, useMemo, useRef } from "react";
-import { TrendingUp, Clock, Cpu, Network, HardDrive, Folder } from "lucide-react";
+import { TrendingUp, Clock, Cpu, Network, HardDrive, Folder, ChevronDown, Check, Activity } from "lucide-react";
 import { Card, CardHeader, CardTitle, CardContent } from "@/shared/ui/card";
 import { EChart } from "@/shared/charts/echart";
 import type { EChartsType } from "echarts/core";
 import { useThemeStore, resolveThemeMode } from "@/shared/stores/theme-store";
 import type { MetricType, TimeRange, NodePulse, TelemetryPoint } from "../types";
 import { getMockTelemetryByRange, computeTelemetrySummary } from "../mock/telemetry-mock";
+
+const TIME_RANGE_OPTIONS: Array<{ key: TimeRange; label: string; short: string; isLive?: boolean }> = [
+  { key: "live", label: "实时推流", short: "Live 2s", isLive: true },
+  { key: "15m", label: "最近 15 分钟", short: "15m" },
+  { key: "1h", label: "最近 1 小时", short: "1h" },
+  { key: "6h", label: "最近 6 小时", short: "6h" },
+  { key: "24h", label: "最近 24 小时", short: "24h" },
+  { key: "7d", label: "最近 7 天", short: "7d" },
+  { key: "30d", label: "最近 30 天", short: "30d" },
+  { key: "90d", label: "最近 90 天", short: "90d" },
+  { key: "1y", label: "最近 1 年", short: "1y" }
+];
 
 interface ClusterTelemetryChartProps {
   fleetNodes: NodePulse[];
@@ -21,10 +33,28 @@ export function ClusterTelemetryChart({
   const [metricType, setMetricType] = useState<MetricType>("compute");
   const [timeRange, setTimeRange] = useState<TimeRange>("live");
   const [selectedGroup, setSelectedGroup] = useState<string>("all");
+  const [isGroupOpen, setIsGroupOpen] = useState(false);
+  const [isTimeRangeOpen, setIsTimeRangeOpen] = useState(false);
+  const groupRef = useRef<HTMLDivElement>(null);
+  const timeRangeRef = useRef<HTMLDivElement>(null);
+
   const themeMode = useThemeStore((state) => state.mode);
   const isDark = resolveThemeMode(themeMode) === "dark";
 
   const chartRef = useRef<EChartsType | null>(null);
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (groupRef.current && !groupRef.current.contains(event.target as Node)) {
+        setIsGroupOpen(false);
+      }
+      if (timeRangeRef.current && !timeRangeRef.current.contains(event.target as Node)) {
+        setIsTimeRangeOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
 
   // Available groups for dropdown
   const groupsList = useMemo(() => {
@@ -408,43 +438,155 @@ export function ClusterTelemetryChart({
               </button>
             </div>
 
-            {/* Business Group Selector */}
-            <div className="flex items-center gap-1.5 rounded-lg border border-border/80 bg-muted/40 px-2.5 py-1 text-xs">
-              <Folder className="size-3.5 text-primary shrink-0" />
-              <select
-                value={selectedGroup}
-                onChange={(e) => setSelectedGroup(e.target.value)}
-                className="bg-transparent text-xs text-foreground font-semibold outline-none cursor-pointer pr-1"
+            {/* Business Group Selector (Modern Floating Popover) */}
+            <div className="relative" ref={groupRef}>
+              <button
+                type="button"
+                onClick={() => {
+                  setIsGroupOpen((prev) => !prev);
+                  setIsTimeRangeOpen(false);
+                }}
+                className={`flex items-center gap-1.5 rounded-lg border px-2.5 py-1 text-xs font-semibold transition-all shadow-2xs cursor-pointer select-none ${
+                  isGroupOpen
+                    ? "bg-primary/15 text-primary border-primary/50 ring-1 ring-primary/20"
+                    : "bg-muted/40 hover:bg-muted/70 text-foreground border-border/80 hover:border-primary/40"
+                }`}
               >
-                <option value="all" className="bg-popover text-foreground">
-                  全网全量集群 ({fleetNodes.length})
-                </option>
-                {groupsList.map((g) => (
-                  <option key={g.group} value={g.group} className="bg-popover text-foreground">
-                    {g.group} ({g.count})
-                  </option>
-                ))}
-              </select>
+                <Folder className="size-3.5 text-primary shrink-0" />
+                <span className="max-w-[120px] truncate">
+                  {selectedGroup === "all" ? "全网全量集群" : selectedGroup}
+                </span>
+                <span className="text-[10px] text-muted-foreground font-mono bg-muted/80 px-1 rounded">
+                  {targetedNodes.length}
+                </span>
+                <ChevronDown className={`size-3 text-muted-foreground transition-transform duration-200 ${isGroupOpen ? "rotate-180 text-primary" : ""}`} />
+              </button>
+
+              {isGroupOpen && (
+                <div className="absolute right-0 sm:left-0 top-full mt-1.5 w-56 max-h-64 overflow-y-auto rounded-xl border border-border/90 bg-popover/95 backdrop-blur-md p-1.5 shadow-2xl z-50 animate-in fade-in zoom-in-95 duration-150 space-y-0.5">
+                  <div className="px-2 py-1 text-[10px] font-semibold text-muted-foreground tracking-wider uppercase flex items-center justify-between border-b border-border/40 mb-1">
+                    <span>集群业务分组</span>
+                    <span className="font-mono text-[9px] bg-muted px-1.5 py-0.5 rounded-full">{groupsList.length + 1}</span>
+                  </div>
+                  
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setSelectedGroup("all");
+                      setIsGroupOpen(false);
+                    }}
+                    className={`w-full text-left px-2.5 py-1.5 rounded-lg text-xs flex items-center justify-between transition-colors cursor-pointer ${
+                      selectedGroup === "all"
+                        ? "bg-primary/15 text-primary font-bold"
+                        : "text-foreground hover:bg-muted/70"
+                    }`}
+                  >
+                    <div className="flex items-center gap-2">
+                      <Folder className="size-3.5 text-primary" />
+                      <span>全网全量集群</span>
+                    </div>
+                    <div className="flex items-center gap-1.5">
+                      <span className="font-mono text-[11px] text-muted-foreground">{fleetNodes.length} 节点</span>
+                      {selectedGroup === "all" && <Check className="size-3 text-primary" />}
+                    </div>
+                  </button>
+
+                  {groupsList.map((g) => (
+                    <button
+                      key={g.group}
+                      type="button"
+                      onClick={() => {
+                        setSelectedGroup(g.group);
+                        setIsGroupOpen(false);
+                      }}
+                      className={`w-full text-left px-2.5 py-1.5 rounded-lg text-xs flex items-center justify-between transition-colors cursor-pointer ${
+                        selectedGroup === g.group
+                          ? "bg-primary/15 text-primary font-bold"
+                          : "text-foreground hover:bg-muted/70"
+                      }`}
+                    >
+                      <div className="flex items-center gap-2">
+                        <Folder className="size-3.5 text-muted-foreground" />
+                        <span className="truncate max-w-[120px]">{g.group}</span>
+                      </div>
+                      <div className="flex items-center gap-1.5">
+                        <span className="font-mono text-[11px] text-muted-foreground">{g.count} 节点</span>
+                        {selectedGroup === g.group && <Check className="size-3 text-primary" />}
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              )}
             </div>
 
-            {/* Expanded Time Range Dropdown */}
-            <div className="flex items-center gap-1.5 rounded-lg border border-border/80 bg-muted/40 px-2.5 py-1 text-xs">
-              <Clock className="size-3.5 text-muted-foreground shrink-0" />
-              <select
-                value={timeRange}
-                onChange={(e) => setTimeRange(e.target.value as TimeRange)}
-                className="bg-transparent text-xs text-foreground font-semibold outline-none cursor-pointer pr-1"
+            {/* Expanded Time Range Selector (Modern Floating Popover) */}
+            <div className="relative" ref={timeRangeRef}>
+              <button
+                type="button"
+                onClick={() => {
+                  setIsTimeRangeOpen((prev) => !prev);
+                  setIsGroupOpen(false);
+                }}
+                className={`flex items-center gap-1.5 rounded-lg border px-2.5 py-1 text-xs font-semibold transition-all shadow-2xs cursor-pointer select-none ${
+                  isTimeRangeOpen
+                    ? "bg-primary/15 text-primary border-primary/50 ring-1 ring-primary/20"
+                    : "bg-muted/40 hover:bg-muted/70 text-foreground border-border/80 hover:border-primary/40"
+                }`}
               >
-                <option value="live" className="bg-popover text-foreground">实时推流 (Live 2s)</option>
-                <option value="15m" className="bg-popover text-foreground">最近 15 分钟 (15m)</option>
-                <option value="1h" className="bg-popover text-foreground">最近 1 小时 (1h)</option>
-                <option value="6h" className="bg-popover text-foreground">最近 6 小时 (6h)</option>
-                <option value="24h" className="bg-popover text-foreground">最近 24 小时 (24h)</option>
-                <option value="7d" className="bg-popover text-foreground">最近 7 天 (7d)</option>
-                <option value="30d" className="bg-popover text-foreground">最近 30 天 (30d)</option>
-                <option value="90d" className="bg-popover text-foreground">最近 90 天 (90d)</option>
-                <option value="1y" className="bg-popover text-foreground">最近 1 年 (1y)</option>
-              </select>
+                {timeRange === "live" ? (
+                  <span className="relative flex h-2 w-2">
+                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                    <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+                  </span>
+                ) : (
+                  <Clock className="size-3.5 text-muted-foreground shrink-0" />
+                )}
+                <span>
+                  {TIME_RANGE_OPTIONS.find((t) => t.key === timeRange)?.label || timeRange}
+                </span>
+                <ChevronDown className={`size-3 text-muted-foreground transition-transform duration-200 ${isTimeRangeOpen ? "rotate-180 text-primary" : ""}`} />
+              </button>
+
+              {isTimeRangeOpen && (
+                <div className="absolute right-0 top-full mt-1.5 w-52 max-h-64 overflow-y-auto rounded-xl border border-border/90 bg-popover/95 backdrop-blur-md p-1.5 shadow-2xl z-50 animate-in fade-in zoom-in-95 duration-150 space-y-0.5">
+                  <div className="px-2 py-1 text-[10px] font-semibold text-muted-foreground tracking-wider uppercase flex items-center justify-between border-b border-border/40 mb-1">
+                    <span>采样聚合周期</span>
+                    <Activity className="size-3 text-muted-foreground" />
+                  </div>
+
+                  {TIME_RANGE_OPTIONS.map((opt) => (
+                    <button
+                      key={opt.key}
+                      type="button"
+                      onClick={() => {
+                        setTimeRange(opt.key);
+                        setIsTimeRangeOpen(false);
+                      }}
+                      className={`w-full text-left px-2.5 py-1.5 rounded-lg text-xs flex items-center justify-between transition-colors cursor-pointer ${
+                        timeRange === opt.key
+                          ? "bg-primary/15 text-primary font-bold"
+                          : "text-foreground hover:bg-muted/70"
+                      }`}
+                    >
+                      <div className="flex items-center gap-2">
+                        {opt.isLive ? (
+                          <span className="relative flex h-2 w-2">
+                            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                            <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+                          </span>
+                        ) : (
+                          <Clock className="size-3 text-muted-foreground" />
+                        )}
+                        <span>{opt.label}</span>
+                      </div>
+                      <div className="flex items-center gap-1.5">
+                        <span className="font-mono text-[10px] text-muted-foreground">{opt.short}</span>
+                        {timeRange === opt.key && <Check className="size-3 text-primary" />}
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              )}
             </div>
           </div>
         </div>

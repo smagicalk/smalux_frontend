@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useMemo, useState, useRef, useEffect } from "react";
 import {
   Activity,
   Plus,
@@ -8,6 +8,8 @@ import {
   Clock,
   ChevronLeft,
   ChevronRight,
+  ChevronDown,
+  Check,
   X
 } from "lucide-react";
 import { Card, CardHeader, CardTitle, CardContent, CardDescription } from "@/shared/ui/card";
@@ -62,6 +64,19 @@ export function PingProbesView({
   onSlaRangeChange,
   onOpenCreateProbe
 }: PingProbesViewProps) {
+  const [isSlaOpen, setIsSlaOpen] = useState(false);
+  const slaRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (slaRef.current && !slaRef.current.contains(event.target as Node)) {
+        setIsSlaOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
   // Global HUD Summary stats across all targets
   const upCount = allProbes.filter((p) => p.status === "up").length;
   const avgLatency = allProbes.length
@@ -182,21 +197,52 @@ export function PingProbesView({
 
           {/* Right Toolbar: SLA Time Range Selector & Status Filter */}
           <div className="flex flex-wrap items-center gap-2">
-            {/* SLA Time Range Selector */}
-            <div className="flex items-center gap-1.5 rounded-lg border border-border/80 bg-muted/30 px-2.5 py-1 text-xs">
-              <Clock className="size-3.5 text-primary shrink-0" />
-              <span className="text-muted-foreground font-medium">SLA 时段:</span>
-              <select
-                value={slaRange}
-                onChange={(e) => onSlaRangeChange(e.target.value as SlaTimeRange)}
-                className="bg-transparent text-xs text-foreground font-semibold outline-none cursor-pointer pr-1"
+            {/* SLA Time Range Selector (Modern Floating Popover) */}
+            <div className="relative" ref={slaRef}>
+              <button
+                type="button"
+                onClick={() => setIsSlaOpen((prev) => !prev)}
+                className={`flex items-center gap-1.5 rounded-lg border px-2.5 py-1 text-xs font-semibold transition-all shadow-2xs cursor-pointer select-none ${
+                  isSlaOpen
+                    ? "bg-primary/15 text-primary border-primary/50 ring-1 ring-primary/20"
+                    : "bg-muted/40 hover:bg-muted/70 text-foreground border-border/80 hover:border-primary/40"
+                }`}
               >
-                {SLA_RANGE_OPTIONS.map((opt) => (
-                  <option key={opt.id} value={opt.id} className="bg-popover text-foreground">
-                    {opt.label} ({opt.short})
-                  </option>
-                ))}
-              </select>
+                <Clock className="size-3.5 text-primary shrink-0" />
+                <span className="text-muted-foreground font-medium">SLA:</span>
+                <span>{SLA_RANGE_OPTIONS.find((o) => o.id === slaRange)?.label || slaRange}</span>
+                <ChevronDown className={`size-3 text-muted-foreground transition-transform duration-200 ${isSlaOpen ? "rotate-180 text-primary" : ""}`} />
+              </button>
+
+              {isSlaOpen && (
+                <div className="absolute right-0 top-full mt-1.5 w-52 max-h-60 overflow-y-auto rounded-xl border border-border/90 bg-popover/95 backdrop-blur-md p-1.5 shadow-2xl z-50 animate-in fade-in zoom-in-95 duration-150 space-y-0.5">
+                  <div className="px-2 py-1 text-[10px] font-semibold text-muted-foreground tracking-wider uppercase flex items-center justify-between border-b border-border/40 mb-1">
+                    <span>SLA 统计窗口</span>
+                    <Clock className="size-3 text-muted-foreground" />
+                  </div>
+                  {SLA_RANGE_OPTIONS.map((opt) => (
+                    <button
+                      key={opt.id}
+                      type="button"
+                      onClick={() => {
+                        onSlaRangeChange(opt.id);
+                        setIsSlaOpen(false);
+                      }}
+                      className={`w-full text-left px-2.5 py-1.5 rounded-lg text-xs flex items-center justify-between transition-colors cursor-pointer ${
+                        slaRange === opt.id
+                          ? "bg-primary/15 text-primary font-bold"
+                          : "text-foreground hover:bg-muted/70"
+                      }`}
+                    >
+                      <span>{opt.label}</span>
+                      <div className="flex items-center gap-1.5">
+                        <span className="font-mono text-[10px] text-muted-foreground">{opt.short}</span>
+                        {slaRange === opt.id && <Check className="size-3 text-primary" />}
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              )}
             </div>
 
             {/* Status Filter */}

@@ -476,8 +476,10 @@ export function HostServersView({
                   const diskTotal = server.diskTotalGb || 500;
                   const diskUsed = server.diskUsedGb || +(diskTotal * (server.disk / 100)).toFixed(1);
 
-                  const ipv4 = server.ipv4 || server.ip;
-                  const ipv6 = server.ipv6;
+                  const hasIpv4 = Boolean(server.ipv4 || (server.ip && !server.ip.includes(":")));
+                  const hasIpv6 = Boolean(server.ipv6 || (server.ip && server.ip.includes(":")));
+                  const ipv4 = server.ipv4 || (!server.ip?.includes(":") ? server.ip : "");
+                  const ipv6 = server.ipv6 || (server.ip?.includes(":") ? server.ip : "");
                   const regionDisplay = server.region.includes("(")
                     ? server.region.split("(")[1]?.replace(")", "")
                     : server.region;
@@ -522,21 +524,28 @@ export function HostServersView({
                           >
                             {regionDisplay}
                           </span>
-                          <span
-                            onClick={(e) => handleCopy(e, ipv4, "IPv4")}
-                            className="text-foreground/90 font-medium hover:text-primary hover:underline cursor-pointer select-all"
-                            title={`IPv4: ${ipv4} (点击复制)`}
-                          >
-                            {ipv4}
-                          </span>
-                          {ipv6 && (
+                          {hasIpv4 && (
+                            <span
+                              onClick={(e) => handleCopy(e, ipv4, "IPv4")}
+                              className="text-foreground/90 font-medium hover:text-primary hover:underline cursor-pointer select-all"
+                              title={`IPv4: ${ipv4} (点击复制)`}
+                            >
+                              {ipv4}
+                            </span>
+                          )}
+                          {hasIpv6 && (
                             <span
                               onClick={(e) => handleCopy(e, ipv6, "IPv6")}
-                              className="text-[10px] text-muted-foreground/80 bg-muted/40 hover:bg-muted hover:text-foreground border border-border/50 px-1.5 py-0.5 rounded cursor-pointer select-all truncate max-w-[130px]"
+                              className={`text-[10px] text-muted-foreground/80 bg-muted/40 hover:bg-muted hover:text-foreground border border-border/50 px-1.5 py-0.5 rounded cursor-pointer select-all truncate ${
+                                !hasIpv4 ? "max-w-[200px] text-foreground font-mono" : "max-w-[130px]"
+                              }`}
                               title={`IPv6: ${ipv6} (点击复制)`}
                             >
                               {ipv6}
                             </span>
+                          )}
+                          {!hasIpv4 && !hasIpv6 && (
+                            <span className="text-muted-foreground/50 text-[11px]">—</span>
                           )}
                         </div>
                       </td>

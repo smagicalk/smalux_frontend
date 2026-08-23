@@ -153,10 +153,12 @@ export function useInfrastructureData(
       const trafficUsedGb = +(1800 + cpu * 55);
       const tcpConns = Math.round(cpu * 32 + 280);
 
+      const mockHost = MOCK_HOST_SERVERS.find((m) => m.id === s.id || m.name.toLowerCase() === s.name.toLowerCase());
       const firstTag = s.tags?.[0]?.toLowerCase() || "";
-      const group = GROUP_TAG_MAP[firstTag] || "核心业务微服务";
-      const ipv4 = s.ipv4 || s.publicIp || "127.0.0.1";
-      const ipv6 = s.ipv6 || (s.id ? `2402:4e00:10::${s.id.slice(-2)}` : undefined);
+      const matchedTag = s.tags?.find((t) => t === "测试场景分组" || t.includes("集群") || t.includes("节点"));
+      const group = matchedTag || mockHost?.group || GROUP_TAG_MAP[firstTag] || "核心业务微服务";
+      const ipv4 = s.ipv4 || s.publicIp || mockHost?.ip || "127.0.0.1";
+      const ipv6 = s.ipv6 || mockHost?.ipv6 || (s.id ? `2402:4e00:10::${s.id.slice(-2)}` : undefined);
 
       return {
         id: s.id,
@@ -164,11 +166,11 @@ export function useInfrastructureData(
         ip: ipv4,
         ipv4,
         ipv6,
-        region: s.region || "亚太区域",
+        region: s.region || mockHost?.region || "亚太区域",
         group,
-        os: s.os || "Linux",
-        arch: s.arch || "x86_64",
-        agentVersion: s.agentVersion || "1.4.2",
+        os: s.os || mockHost?.os || "Linux",
+        arch: s.arch || mockHost?.arch || "x86_64",
+        agentVersion: s.agentVersion || mockHost?.agentVersion || "1.4.2",
         status: s.status,
         cpu,
         cpuCores,
@@ -185,12 +187,15 @@ export function useInfrastructureData(
         trafficTotalGb,
         trafficUsedGb,
         tcpConns,
-        note: s.note,
-        price: s.price,
-        currency: s.currency,
-        expiresAt: s.expiresAt,
-        billingCycle: s.billingCycle,
-        lastSeenAt: s.lastSeenAt || 0
+        note: s.note || mockHost?.note,
+        price: s.price ?? mockHost?.price,
+        currency: s.currency || mockHost?.currency,
+        expiresAt: s.expiresAt ?? mockHost?.expiresAt,
+        billingCycle: s.billingCycle || mockHost?.billingCycle,
+        lastSeenAt: s.lastSeenAt || mockHost?.lastSeenAt || 0,
+        enableProcessCollection: mockHost?.enableProcessCollection !== undefined ? mockHost.enableProcessCollection : (s as any).enableProcessCollection !== false,
+        allowRemoteExec: mockHost?.allowRemoteExec !== undefined ? mockHost.allowRemoteExec : (s as any).allowRemoteExec !== false,
+        processCollectionMode: s.processCollectionMode || mockHost?.processCollectionMode || (s.enableProcessCollection === false ? "disable_auto" : "enabled")
       };
     });
   }, [serverData, liveMetricsMap, serverFilters]);

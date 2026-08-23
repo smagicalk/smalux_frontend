@@ -1,4 +1,4 @@
-import { useState, useMemo, useEffect } from "react";
+import { useState, useMemo, useEffect, useRef } from "react";
 import {
   Radio,
   X,
@@ -8,11 +8,17 @@ import {
   Check,
   PowerOff,
   ShieldAlert,
+  AlertTriangle,
+  Lock,
+  Clock,
+  Sparkles,
   List,
   FolderTree,
   ChevronDown,
   ChevronRight,
-  CornerDownRight
+  CornerDownRight,
+  User,
+  ArrowUpDown
 } from "lucide-react";
 import { Button } from "@/shared/ui/button";
 import { Badge } from "@/shared/ui/badge";
@@ -105,16 +111,34 @@ export function ServerProcessesDrawer({
   processCollectionEnabled,
   onEnableCollection
 }: ServerProcessesDrawerProps) {
+  const [userFilter, setUserFilter] = useState<string>("all");
   const [viewMode, setViewMode] = useState<"list" | "tree">("list");
-  // Map of collapsed PIDs: { [pid]: true } means collapsed
   const [collapsedMap, setCollapsedMap] = useState<Record<number, boolean>>({});
   const [searchQuery, setSearchQuery] = useState("");
-  const [userFilter, setUserFilter] = useState("all");
   const [sortBy, setSortBy] = useState<ProcessSortKey>("cpu");
   const [sortOrder, setSortOrder] = useState<"asc" | "desc">("desc");
   const [isRefreshing, setIsRefreshing] = useState(false);
-  const [copiedPid, setCopiedPid] = useState<number | null>(null);
   const [snapshotTime, setSnapshotTime] = useState<string>("刚刚");
+
+  const [isUserMenuOpen, setIsUserMenuOpen] = useState(false);
+  const [isSortMenuOpen, setIsSortMenuOpen] = useState(false);
+  const userMenuRef = useRef<HTMLDivElement>(null);
+  const sortMenuRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (userMenuRef.current && !userMenuRef.current.contains(event.target as Node)) {
+        setIsUserMenuOpen(false);
+      }
+      if (sortMenuRef.current && !sortMenuRef.current.contains(event.target as Node)) {
+        setIsSortMenuOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, []);
+
+  const [copiedPid, setCopiedPid] = useState<number | null>(null);
 
   // Kill confirmation modal state
   const [confirmKillProcess, setConfirmKillProcess] = useState<ServerProcessItem | null>(null);
@@ -379,9 +403,23 @@ export function ServerProcessesDrawer({
                 <h2 className="text-base font-bold text-foreground">
                   全量系统进程监控 (Process Explorer)
                 </h2>
-                <Badge variant={processCollectionEnabled ? "success" : "neutral"} className="text-[10px]">
-                  {processCollectionEnabled ? "常驻采集已开启" : "自动采集已停用"}
-                </Badge>
+                {server.status === "offline" ? (
+                  <Badge variant="danger" className="text-[10px]">
+                    主机离线
+                  </Badge>
+                ) : server.processCollectionMode === "forbidden" ? (
+                  <Badge variant="danger" className="text-[10px] bg-rose-500/10 text-rose-400 border-rose-500/20 gap-1">
+                    <Lock className="size-2.5" /> 策略已禁用 · 历史快照
+                  </Badge>
+                ) : !processCollectionEnabled || server.processCollectionMode === "disable_auto" ? (
+                  <Badge variant="neutral" className="text-[10px] bg-amber-500/10 text-amber-400 border-amber-500/20 gap-1">
+                    <Clock className="size-2.5" /> 按需采样快照
+                  </Badge>
+                ) : (
+                  <Badge variant="success" className="text-[10px]">
+                    常驻采集已开启
+                  </Badge>
+                )}
               </div>
               <p className="text-xs text-muted-foreground">
                 目标节点: <strong className="text-foreground">{server.name}</strong> ({server.ip}) · 当前快照进程数:{" "}
@@ -393,10 +431,16 @@ export function ServerProcessesDrawer({
               <Button
                 size="sm"
                 variant="outline"
-                onClick={handleRefreshProcesses}
-                disabled={isRefreshing || server.status === "offline"}
+                onClick={server.processCollectionMode === "forbidden" || server.status === "offline" ? undefined : handleRefreshProcesses}
+                disabled={isRefreshing || server.status === "offline" || server.processCollectionMode === "forbidden"}
                 className="h-8 text-xs font-mono gap-1.5 cursor-pointer"
-                title={server.status === "offline" ? "主机已离线，无法抓取即时快照" : "向探针下发单次抓取最新快照指令"}
+                title={
+                  server.status === "offline"
+                    ? "主机已离线，无法抓取即时快照"
+                    : server.processCollectionMode === "forbidden"
+                    ? "探针安全策略已硬禁用进程采集"
+                    : "向探针下发单次抓取最新快照指令"
+                }
               >
                 <RefreshCw className={`size-3.5 ${isRefreshing ? "animate-spin text-primary" : ""}`} />
                 {isRefreshing ? "采样中..." : "即时抓取快照"}
@@ -411,6 +455,17 @@ export function ServerProcessesDrawer({
               </Button>
             </div>
           </div>
+
+          {/* Forbidden Notice Banner */}
+          {server.processCollectionMode === "forbidden" && (
+            <div className="px-4 sm:px-5 py-2.5 bg-rose-500/10 border-b border-rose-500/25 flex items-center justify-between gap-3 text-xs text-rose-300 font-mono shrink-0">
+              <div className="flex items-center gap-2">
+                <Lock className="size-4 text-rose-400 shrink-0" />
+                <span>探针安全策略已硬禁用进程采集 · 当前展示为历史留存快照 (禁止实时采样)</span>
+              </div>
+              <span className="text-[11px] text-rose-300/80">只读快照视图</span>
+            </div>
+          )}
 
           {/* Quick Metrics Bar */}
           <div className="px-4 sm:px-5 py-2.5 border-b border-border/60 bg-muted/20 flex flex-wrap items-center justify-between gap-3 text-xs font-mono shrink-0">
@@ -515,32 +570,123 @@ export function ServerProcessesDrawer({
                 </div>
               )}
 
-              {/* User filter */}
-              <div className="flex items-center gap-1.5 text-xs">
-                <select
-                  value={userFilter}
-                  onChange={(e) => setUserFilter(e.target.value)}
-                  className="h-8 rounded-lg border border-border/80 bg-muted/40 px-2 text-xs font-mono text-foreground outline-none cursor-pointer"
+              {/* User filter (Modern Floating Popover) */}
+              <div className="relative" ref={userMenuRef}>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsUserMenuOpen((prev) => !prev);
+                    setIsSortMenuOpen(false);
+                  }}
+                  className={`h-8 px-2.5 rounded-lg border text-xs font-mono flex items-center gap-1.5 font-medium transition-all shadow-2xs cursor-pointer select-none ${
+                    isUserMenuOpen
+                      ? "bg-primary/15 text-primary border-primary/50 ring-1 ring-primary/20"
+                      : "bg-muted/40 hover:bg-muted/70 text-foreground border-border/80 hover:border-primary/40"
+                  }`}
                 >
-                  <option value="all" className="bg-popover text-foreground">全部用户 ({uniqueUsers.length})</option>
-                  {uniqueUsers.map((u) => (
-                    <option key={u} value={u} className="bg-popover text-foreground">{u}</option>
-                  ))}
-                </select>
+                  <User className="size-3 text-muted-foreground" />
+                  <span>{userFilter === "all" ? "全部用户" : userFilter}</span>
+                  <span className="text-[10px] text-muted-foreground bg-muted px-1 rounded">
+                    {userFilter === "all" ? uniqueUsers.length : 1}
+                  </span>
+                  <ChevronDown className={`size-3 text-muted-foreground transition-transform duration-200 ${isUserMenuOpen ? "rotate-180 text-primary" : ""}`} />
+                </button>
+
+                {isUserMenuOpen && (
+                  <div className="absolute right-0 top-full mt-1.5 w-44 max-h-56 overflow-y-auto rounded-xl border border-border/90 bg-popover/95 backdrop-blur-md p-1.5 shadow-2xl z-50 animate-in fade-in zoom-in-95 duration-150 space-y-0.5 font-mono">
+                    <div className="px-2 py-1 text-[10px] font-semibold text-muted-foreground tracking-wider uppercase flex items-center justify-between border-b border-border/40 mb-1">
+                      <span>进程归属用户</span>
+                      <span className="text-[9px] bg-muted px-1.5 py-0.2 rounded-full">{uniqueUsers.length}</span>
+                    </div>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setUserFilter("all");
+                        setIsUserMenuOpen(false);
+                      }}
+                      className={`w-full text-left px-2.5 py-1.5 rounded-lg text-xs flex items-center justify-between transition-colors cursor-pointer ${
+                        userFilter === "all" ? "bg-primary/15 text-primary font-bold" : "text-foreground hover:bg-muted/70"
+                      }`}
+                    >
+                      <span>全部用户</span>
+                      {userFilter === "all" && <Check className="size-3 text-primary" />}
+                    </button>
+                    {uniqueUsers.map((u) => (
+                      <button
+                        key={u}
+                        type="button"
+                        onClick={() => {
+                          setUserFilter(u);
+                          setIsUserMenuOpen(false);
+                        }}
+                        className={`w-full text-left px-2.5 py-1.5 rounded-lg text-xs flex items-center justify-between transition-colors cursor-pointer ${
+                          userFilter === u ? "bg-primary/15 text-primary font-bold" : "text-foreground hover:bg-muted/70"
+                        }`}
+                      >
+                        <span>{u}</span>
+                        {userFilter === u && <Check className="size-3 text-primary" />}
+                      </button>
+                    ))}
+                  </div>
+                )}
               </div>
 
-              {/* Sort selector */}
-              <div className="flex items-center gap-1.5 text-xs">
-                <select
-                  value={sortBy}
-                  onChange={(e) => handleSortChange(e.target.value as ProcessSortKey)}
-                  className="h-8 rounded-lg border border-border/80 bg-muted/40 px-2 text-xs font-mono text-foreground outline-none cursor-pointer"
+              {/* Sort selector (Modern Floating Popover) */}
+              <div className="relative" ref={sortMenuRef}>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setIsSortMenuOpen((prev) => !prev);
+                    setIsUserMenuOpen(false);
+                  }}
+                  className={`h-8 px-2.5 rounded-lg border text-xs font-mono flex items-center gap-1.5 font-medium transition-all shadow-2xs cursor-pointer select-none ${
+                    isSortMenuOpen
+                      ? "bg-primary/15 text-primary border-primary/50 ring-1 ring-primary/20"
+                      : "bg-muted/40 hover:bg-muted/70 text-foreground border-border/80 hover:border-primary/40"
+                  }`}
                 >
-                  <option value="cpu" className="bg-popover text-foreground">CPU% (高到低)</option>
-                  <option value="res" className="bg-popover text-foreground">常驻物理内存 (高到低)</option>
-                  <option value="threads" className="bg-popover text-foreground">线程数 (高到低)</option>
-                  <option value="pid" className="bg-popover text-foreground">PID 编号</option>
-                </select>
+                  <ArrowUpDown className="size-3 text-muted-foreground" />
+                  <span>
+                    {sortBy === "cpu"
+                      ? "CPU%"
+                      : sortBy === "res"
+                      ? "物理内存"
+                      : sortBy === "threads"
+                      ? "线程数"
+                      : "PID"}
+                  </span>
+                  <ChevronDown className={`size-3 text-muted-foreground transition-transform duration-200 ${isSortMenuOpen ? "rotate-180 text-primary" : ""}`} />
+                </button>
+
+                {isSortMenuOpen && (
+                  <div className="absolute right-0 top-full mt-1.5 w-48 max-h-56 overflow-y-auto rounded-xl border border-border/90 bg-popover/95 backdrop-blur-md p-1.5 shadow-2xl z-50 animate-in fade-in zoom-in-95 duration-150 space-y-0.5">
+                    <div className="px-2 py-1 text-[10px] font-semibold text-muted-foreground tracking-wider uppercase flex items-center justify-between border-b border-border/40 mb-1">
+                      <span>指标排序规则</span>
+                      <ArrowUpDown className="size-3 text-muted-foreground" />
+                    </div>
+                    {[
+                      { key: "cpu" as const, label: "CPU 使用率 (高到低)" },
+                      { key: "res" as const, label: "常驻物理内存 (高到低)" },
+                      { key: "threads" as const, label: "线程总数 (高到低)" },
+                      { key: "pid" as const, label: "PID 进程号" }
+                    ].map((item) => (
+                      <button
+                        key={item.key}
+                        type="button"
+                        onClick={() => {
+                          handleSortChange(item.key);
+                          setIsSortMenuOpen(false);
+                        }}
+                        className={`w-full text-left px-2.5 py-1.5 rounded-lg text-xs flex items-center justify-between transition-colors cursor-pointer ${
+                          sortBy === item.key ? "bg-primary/15 text-primary font-bold" : "text-foreground hover:bg-muted/70"
+                        }`}
+                      >
+                        <span>{item.label}</span>
+                        {sortBy === item.key && <Check className="size-3 text-primary" />}
+                      </button>
+                    ))}
+                  </div>
+                )}
               </div>
             </div>
           </div>
@@ -558,38 +704,38 @@ export function ServerProcessesDrawer({
                     <tr>
                       <th
                         onClick={() => handleSortChange("pid")}
-                        className="px-3.5 py-2.5 font-semibold cursor-pointer hover:text-foreground w-16"
+                        className="px-3.5 py-2.5 font-semibold cursor-pointer hover:text-foreground w-20 min-w-[76px]"
                       >
                         PID
                       </th>
-                      <th className="px-3 py-2.5 font-semibold w-24">用户</th>
-                      <th className="px-3.5 py-2.5 font-semibold min-w-[240px]">
+                      <th className="px-3 py-2.5 font-semibold w-24 min-w-[84px]">用户</th>
+                      <th className="px-3.5 py-2.5 font-semibold min-w-[280px]">
                         {viewMode === "tree" ? "进程拓扑树与启动命令 (Process Tree)" : "进程命令与启动参数 (Command)"}
                       </th>
-                      <th className="px-3 py-2.5 font-semibold w-28 text-center" title="Linux 调度状态: R(运行中) S(休眠/等待事件) D(磁盘I/O阻塞) Z(僵尸) T(暂停)">
+                      <th className="px-3 py-2.5 font-semibold w-28 min-w-[96px] text-center" title="Linux 调度状态: R(运行中) S(休眠/等待事件) D(磁盘I/O阻塞) Z(僵尸) T(暂停)">
                         状态 (State)
                       </th>
                       <th
                         onClick={() => handleSortChange("threads")}
-                        className="px-3 py-2.5 font-semibold cursor-pointer hover:text-foreground text-center w-16 whitespace-nowrap"
+                        className="px-3 py-2.5 font-semibold cursor-pointer hover:text-foreground text-center w-18 min-w-[64px] whitespace-nowrap"
                         title="线程数 (Thread Count)"
                       >
                         线程
                       </th>
                       <th
                         onClick={() => handleSortChange("res")}
-                        className="px-3.5 py-2.5 font-semibold cursor-pointer hover:text-foreground text-right whitespace-nowrap min-w-[90px]"
+                        className="px-3.5 py-2.5 font-semibold cursor-pointer hover:text-foreground text-right whitespace-nowrap w-28 min-w-[100px]"
                         title="常驻集物理内存占用 (Resident Set Size)"
                       >
                         常驻内存
                       </th>
                       <th
                         onClick={() => handleSortChange("cpu")}
-                        className="px-3 py-2.5 font-semibold cursor-pointer hover:text-foreground text-right w-18 whitespace-nowrap"
+                        className="px-3.5 py-2.5 font-semibold cursor-pointer hover:text-foreground text-right w-20 min-w-[76px] whitespace-nowrap"
                       >
                         CPU%
                       </th>
-                      <th className="px-3 py-2.5 text-center sticky right-0 z-30 bg-muted/90 backdrop-blur-md border-l border-border/70 shadow-[-6px_0_10px_rgba(0,0,0,0.12)] min-w-[90px] w-28 font-semibold whitespace-nowrap">
+                      <th className="px-3 py-2.5 text-center sticky right-0 z-30 bg-muted/90 backdrop-blur-md border-l border-border/70 shadow-[-6px_0_10px_rgba(0,0,0,0.12)] w-24 min-w-[88px] font-semibold whitespace-nowrap">
                         操作
                       </th>
                     </tr>
@@ -748,11 +894,11 @@ export function ServerProcessesDrawer({
                                 <button
                                   type="button"
                                   disabled
-                                  className="inline-flex items-center gap-1 px-3 py-1 rounded-md text-[11px] font-mono text-muted-foreground/40 bg-muted/30 border border-border/40 cursor-not-allowed select-none"
+                                  className="inline-flex items-center gap-1 px-2.5 py-1 rounded-md text-[11px] font-mono text-muted-foreground/40 bg-muted/40 border border-border/50 cursor-not-allowed select-none opacity-60"
                                   title={server.status === "offline" ? "节点当前已离线，无法下发指令" : "该节点未开启远程执行权限 (allowRemoteExec: false)"}
                                 >
-                                  <PowerOff className="size-3" />
-                                  Kill
+                                  <PowerOff className="size-3 text-muted-foreground/40" />
+                                  <span className="line-through decoration-muted-foreground/40">Kill</span>
                                 </button>
                               )}
                             </div>
@@ -797,6 +943,21 @@ export function ServerProcessesDrawer({
                 </p>
               </div>
             </div>
+
+            {/* Stale / Historical Snapshot Warning Alert */}
+            {(!processCollectionEnabled || snapshotTime !== "刚刚") && (
+              <div className="flex items-start gap-2.5 p-3 rounded-xl bg-amber-500/15 border border-amber-500/35 text-amber-300 text-xs">
+                <AlertTriangle className="size-4.5 shrink-0 text-amber-400 mt-0.5" />
+                <div className="space-y-1">
+                  <div className="font-bold flex items-center gap-1.5 text-amber-200">
+                    <span>⚠️ 当前为历史快照 ({snapshotTime}) · 存在误杀风险</span>
+                  </div>
+                  <p className="text-[11px] leading-relaxed text-amber-200/80">
+                    自动常驻采集未开启，进程状态可能已变更或 PID 已被 Linux 内核复用。终止前请务必确认目标命令无误。
+                  </p>
+                </div>
+              </div>
+            )}
 
             {/* Target Process Summary Card */}
             <div className="p-3.5 rounded-xl bg-muted/40 border border-border/80 font-mono text-xs space-y-2">

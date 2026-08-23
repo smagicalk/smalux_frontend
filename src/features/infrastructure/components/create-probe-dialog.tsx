@@ -71,16 +71,18 @@ export function CreateProbeDialog({
           {/* Protocol Select */}
           <div className="space-y-1.5">
             <label className="font-semibold text-foreground">探测协议</label>
-            <select
-              value={protocol}
-              onChange={(e) => setProtocol(e.target.value as CreatePingTargetParams["protocol"])}
-              className="w-full h-8 rounded-lg border border-border/80 bg-muted/30 px-2.5 outline-none focus:border-primary text-foreground cursor-pointer"
-            >
-              <option value="HTTPS">HTTPS (带 SSL 证书有效期校验)</option>
-              <option value="HTTP">HTTP (普通 Web 状态码校验)</option>
-              <option value="TCP">TCP (指定主机端口连通性)</option>
-              <option value="ICMP">ICMP (Ping 丢包率与网络延迟)</option>
-            </select>
+            <div className="relative">
+              <select
+                value={protocol}
+                onChange={(e) => setProtocol(e.target.value as CreatePingTargetParams["protocol"])}
+                className="w-full h-9 rounded-lg border border-border/80 bg-muted/40 px-3 text-xs outline-none focus:border-primary focus:ring-1 focus:ring-primary/20 text-foreground cursor-pointer font-medium transition-all"
+              >
+                <option value="HTTPS" className="bg-popover text-foreground">HTTPS (带 SSL 证书有效期校验)</option>
+                <option value="HTTP" className="bg-popover text-foreground">HTTP (普通 Web 状态码校验)</option>
+                <option value="TCP" className="bg-popover text-foreground">TCP (指定主机端口连通性)</option>
+                <option value="ICMP" className="bg-popover text-foreground">ICMP (Ping 丢包率与网络延迟)</option>
+              </select>
+            </div>
           </div>
 
           {/* Target Address */}
@@ -96,23 +98,25 @@ export function CreateProbeDialog({
                   ? "1.1.1.1"
                   : "https://api.smalux.com/healthz"
               }
-              className="w-full h-8 rounded-lg border border-border/80 bg-muted/30 px-3 outline-none focus:border-primary text-foreground font-mono placeholder:text-muted-foreground/60"
+              className="w-full h-9 rounded-lg border border-border/80 bg-muted/30 px-3 text-xs outline-none focus:border-primary focus:ring-1 focus:ring-primary/20 text-foreground font-mono placeholder:text-muted-foreground/60 transition-all"
             />
           </div>
 
           {/* Group */}
           <div className="space-y-1.5">
             <label className="font-semibold text-foreground">探测分组</label>
-            <select
-              value={group}
-              onChange={(e) => setGroup(e.target.value as CreatePingTargetParams["group"])}
-              className="w-full h-8 rounded-lg border border-border/80 bg-muted/30 px-2.5 outline-none focus:border-primary text-foreground cursor-pointer"
-            >
-              <option value="public">公网开放服务 (Public)</option>
-              <option value="control">控制面与管理端 (Control Plane)</option>
-              <option value="notify">通知与告警通道 (Notify Channels)</option>
-              <option value="private">内网专线服务 (Private VPC)</option>
-            </select>
+            <div className="relative">
+              <select
+                value={group}
+                onChange={(e) => setGroup(e.target.value as CreatePingTargetParams["group"])}
+                className="w-full h-9 rounded-lg border border-border/80 bg-muted/40 px-3 text-xs outline-none focus:border-primary focus:ring-1 focus:ring-primary/20 text-foreground cursor-pointer font-medium transition-all"
+              >
+                <option value="public" className="bg-popover text-foreground">公网开放服务 (Public)</option>
+                <option value="control" className="bg-popover text-foreground">控制面与管理端 (Control Plane)</option>
+                <option value="notify" className="bg-popover text-foreground">通知与告警通道 (Notify Channels)</option>
+                <option value="private" className="bg-popover text-foreground">内网专线服务 (Private VPC)</option>
+              </select>
+            </div>
           </div>
 
           <DialogFooter className="pt-2">

@@ -39,10 +39,14 @@ export * from "./schemas/overview";
 import { okResultSchema, pingResultSchema } from "./schemas/common";
 import { overviewStatsResultSchema } from "./schemas/overview";
 import {
+  agentHardwareParamsSchema,
+  agentHardwareResultSchema,
   agentListParamsSchema,
   agentListResultSchema,
   agentPingSubscribeParamsSchema,
   agentRegisterParamsSchema,
+  agentSampleProcessesParamsSchema,
+  agentSampleProcessesResultSchema,
   agentUpdateParamsSchema,
   agentSummarySampleSchema,
   agentSummarySubscribeParamsSchema,
@@ -133,6 +137,14 @@ export const methods = {
   "agent.update": {
     params: agentUpdateParamsSchema,
     result: okResultSchema
+  },
+  "agent.hardware": {
+    params: agentHardwareParamsSchema,
+    result: agentHardwareResultSchema
+  },
+  "agent.sampleProcesses": {
+    params: agentSampleProcessesParamsSchema,
+    result: agentSampleProcessesResultSchema
   },
 
   // Read models used by administrative feature modules.

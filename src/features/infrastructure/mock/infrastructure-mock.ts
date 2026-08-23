@@ -1,17 +1,132 @@
 import type { HostServer, PingTarget, AgentInstallCommand } from "../types";
 
 export const MOCK_HOST_SERVERS: HostServer[] = [
-  // 0. 特殊测试场景节点 (Offline & Partial Uncollected)
+  // 0. 🧪 测试场景与边界节点 (Dedicated Test Group for Process & Remote Execution Matrix)
   {
-    id: "srv-offline-01",
-    name: "cd-backup-vault-01",
-    ip: "118.112.18.99",
+    id: "srv-test-normal",
+    name: "test-01-full-featured",
+    ip: "10.0.99.1",
+    region: "Tokyo (AP-NRT)",
+    group: "测试场景分组",
+    os: "Debian 12",
+    arch: "x86_64",
+    agentVersion: "1.4.2",
+    status: "online",
+    cpu: 24,
+    memory: 48,
+    disk: 38,
+    uptime: "28天 6小时",
+    load: "0.28, 0.35, 0.40",
+    networkIn: "85 MB/s",
+    networkOut: "112 MB/s",
+    allowRemoteExec: true,
+    enableProcessCollection: true,
+    processCollectionMode: "enabled",
+    note: "【测试01】标准全功能节点 · 自动采集开启 · 允许远程 Kill",
+    lastSeenAt: Date.now() - 1000
+  },
+  {
+    id: "srv-test-noauto",
+    name: "test-02-no-auto-collect",
+    ip: "10.0.99.2",
+    region: "Seoul (AP-ICN)",
+    group: "测试场景分组",
+    os: "Ubuntu 22.04",
+    arch: "x86_64",
+    agentVersion: "1.4.2",
+    status: "online",
+    cpu: 15,
+    memory: 36,
+    disk: 42,
+    uptime: "14天 2小时",
+    load: "0.12, 0.18, 0.15",
+    networkIn: "24 MB/s",
+    networkOut: "38 MB/s",
+    allowRemoteExec: true,
+    enableProcessCollection: false,
+    processCollectionMode: "disable_auto", // ⭐ 1. 仅禁止自动常驻采集 (允许即时采样)
+    note: "【测试02】仅禁止自动常驻采集 · 遮罩展示快照 · 点击【立即单次采样】可成功更新快照",
+    lastSeenAt: Date.now() - 1500
+  },
+  {
+    id: "srv-test-forbidden",
+    name: "test-03-forbidden-collect",
+    ip: "10.0.99.3",
+    region: "Osaka (JP-KIX)",
+    group: "测试场景分组",
+    os: "Debian 12",
+    arch: "x86_64",
+    agentVersion: "1.4.2",
+    status: "online",
+    cpu: 16,
+    memory: 40,
+    disk: 30,
+    uptime: "20天 8小时",
+    load: "0.18, 0.22, 0.20",
+    networkIn: "20 MB/s",
+    networkOut: "30 MB/s",
+    allowRemoteExec: true,
+    enableProcessCollection: false,
+    processCollectionMode: "forbidden", // ⭐ 2. 全部禁止采集 (探针硬禁用，单次采样也被拒)
+    note: "【测试03】全部禁止采集 · 探针硬禁用 · 点击【立即单次采样】服务器返回拒绝并弹出红字气泡",
+    lastSeenAt: Date.now() - 1800
+  },
+  {
+    id: "srv-test-noremote",
+    name: "test-04-no-remote-exec",
+    ip: "10.0.99.4",
+    region: "Singapore (AP-SIN)",
+    group: "测试场景分组",
+    os: "Alpine Linux 3.19",
+    arch: "aarch64",
+    agentVersion: "1.4.2",
+    status: "online",
+    cpu: 18,
+    memory: 52,
+    disk: 28,
+    uptime: "45天 18小时",
+    load: "0.45, 0.32, 0.28",
+    networkIn: "45 MB/s",
+    networkOut: "62 MB/s",
+    allowRemoteExec: false, // ⭐ 禁用远程 Kill 权限
+    enableProcessCollection: true,
+    processCollectionMode: "enabled",
+    note: "【测试04】禁用远程执行权限 · 进程正常采集 · 但 Kill 按钮置灰禁用 (allowRemoteExec: false)",
+    lastSeenAt: Date.now() - 2000
+  },
+  {
+    id: "srv-test-mixed",
+    name: "test-05-mixed-forbidden-and-noremote",
+    ip: "10.0.99.5",
+    region: "Frankfurt (EU-FRA)",
+    group: "测试场景分组",
+    os: "Debian 12",
+    arch: "x86_64",
+    agentVersion: "1.4.2",
+    status: "online",
+    cpu: 22,
+    memory: 45,
+    disk: 35,
+    uptime: "30天 12小时",
+    load: "0.20, 0.25, 0.22",
+    networkIn: "32 MB/s",
+    networkOut: "48 MB/s",
+    allowRemoteExec: false, // ⭐ 禁用远程 Kill
+    enableProcessCollection: false,
+    processCollectionMode: "forbidden", // ⭐ 全部禁止进程采集 (双重禁用)
+    note: "【测试05混合】全部禁止采集 + 禁用远程 Kill · 采样被拒弹出红字 · 抽屉内 Kill 同样置灰",
+    lastSeenAt: Date.now() - 1200
+  },
+  {
+    id: "srv-test-offline",
+    name: "test-06-offline-node",
+    ip: "10.0.99.6",
     region: "Chengdu (CN-CTU)",
-    group: "冷备与离线节点",
+    group: "测试场景分组",
     os: "Ubuntu 22.04",
     arch: "x86_64",
     agentVersion: "1.4.0",
-    status: "offline",
+    status: "offline", // ⭐ 离线故障节点
     cpu: undefined as unknown as number,
     memory: undefined as unknown as number,
     disk: undefined as unknown as number,
@@ -19,34 +134,11 @@ export const MOCK_HOST_SERVERS: HostServer[] = [
     load: "—",
     networkIn: "",
     networkOut: "",
-    note: "机房网络割接维护中 · 探针心跳已中断",
     allowRemoteExec: false,
     enableProcessCollection: false,
+    processCollectionMode: "forbidden",
+    note: "【测试06】离线故障节点 · 探针心跳中断 · 所有实时操作与采样安全锁定",
     lastSeenAt: Date.now() - 3600000 * 24
-  },
-  {
-    id: "srv-partial-01",
-    name: "kr-baremetal-01",
-    ip: "15.164.22.10",
-    region: "Seoul (AP-ICN)",
-    group: "边缘异构节点",
-    os: "Alpine Linux 3.19",
-    arch: "aarch64",
-    agentVersion: "1.4.2",
-    status: "online",
-    cpu: 16,
-    memory: undefined as unknown as number, // 内存未采集测试
-    disk: 35,
-    uptime: "12天 4小时",
-    load: "0.12, 0.18, 0.15",
-    networkIn: "18 MB/s",
-    networkOut: "24 MB/s",
-    trafficTotalGb: undefined, // 流量未配置测试
-    trafficUsedGb: undefined,
-    allowRemoteExec: false, // 禁用远程执行测试
-    enableProcessCollection: false, // 自动常驻采集未开启测试
-    note: "未配置月度流量配额 · 精简版探针 (无 I/O 与远程权限)",
-    lastSeenAt: Date.now() - 2000
   },
 
   // 1. 网关集群 (Gateway)
@@ -1560,7 +1652,15 @@ export function getMockServerTelemetry(server: HostServer, timeRange: string): i
   const baseNetIn = parseInt(server.networkIn) || 45;
   const baseNetOut = parseInt(server.networkOut) || 68;
 
-  if (timeRange === "1h") {
+  if (timeRange === "realtime") {
+    times = ["18:15:00", "18:15:30", "18:16:00", "18:16:30", "18:17:00", "18:17:30", "18:18:00", "18:18:30", "18:19:00", "18:19:30", "18:20:00"];
+    cpuPoints = [19, 21, 24, 22, 28, 25, 22, 26, 23, 27, server.cpu || 20];
+    memPoints = [53, 53, 54, 54, 54, 54, 55, 54, 54, 55, server.memory || 52];
+    netRxPoints = [38, 42, 45, 48, 52, 46, 44, 50, 48, 55, baseNetIn];
+    netTxPoints = [52, 58, 62, 68, 72, 64, 60, 70, 66, 75, baseNetOut];
+    ioReadPoints = [35, 40, 42, 50, 48, 44, 46, 52, 48, 50, 48];
+    ioWritePoints = [18, 20, 22, 28, 25, 21, 24, 26, 23, 25, 24];
+  } else if (timeRange === "1h") {
     times = ["17:20", "17:25", "17:30", "17:35", "17:40", "17:45", "17:50", "17:55", "18:00", "18:05", "18:10", "18:20"];
     cpuPoints = [18, 24, 20, 32, 28, 22, 35, 29, 24, 30, 26, server.cpu || 18];
     memPoints = [52, 53, 52, 54, 54, 53, 55, 54, 54, 55, 54, server.memory || 50];
@@ -1677,5 +1777,316 @@ export function getMockServerProcesses(server: HostServer | null): import("../ty
     { pid: 7820, ppid: 1, name: "vector --config /etc/vector", command: "/usr/bin/vector --config /etc/vector/vector.toml --watch-config", user: "vector", cpu: 2.8, mem: 4.5, resKb: 220000, resMb: 215, threads: 16, status: "R", ioReadMb: 18.2, ioWriteMb: 15.4 },
     { pid: 9912, ppid: 1, name: "cron -f", command: "/usr/sbin/cron -f -L 15", user: "root", cpu: 0.0, mem: 0.1, resKb: 820, resMb: 0.8, threads: 1, status: "S", ioReadMb: 0.0, ioWriteMb: 0.0 }
   ];
+}
+
+export interface ServerAgentStatus {
+  status: "online" | "warning" | "offline";
+  statusText: string;
+  badgeText: string;
+  subtitle: string;
+  protocol: string;
+  protocolDetail: string;
+  latencyMs: number;
+  jitterMs: number;
+  lossRate: string;
+  quality: string;
+  interval: string;
+  lastPing: string;
+  cpuUsage: string;
+  memRss: string;
+  version: string;
+  isLatest: boolean;
+  allowRemoteExec: boolean;
+  pid: number;
+}
+
+export function getServerAgentStatus(server: Partial<HostServer>): ServerAgentStatus {
+  const isOffline = server.status === "offline";
+  const isWarning = server.status === "warning";
+
+  const pid = 1000 + (server.id ? Math.abs(server.id.split("").reduce((acc, c) => acc + c.charCodeAt(0), 0)) % 9000 : 42);
+  const latency = isOffline ? 0 : isWarning ? 86 : Math.max(8, (server.cpu || 20) % 25 + 8);
+  const jitter = +(latency * 0.08).toFixed(1);
+  const lossRate = isOffline ? "100%" : isWarning ? "2.5%" : "0.0%";
+  const quality = isOffline ? "中断" : isWarning ? "波动" : "极佳";
+
+  return {
+    status: isOffline ? "offline" : isWarning ? "warning" : "online",
+    statusText: isOffline ? "Agent 守护进程连接中断" : isWarning ? "Agent 守护进程网络波动" : "Agent 守护进程连接正常",
+    badgeText: isOffline ? "OFFLINE · TIMEOUT" : isWarning ? "DEGRADED · JITTER" : "ONLINE · LOW JITTER",
+    subtitle: isOffline
+      ? "长连接通道已断开 · 正在等待客户端重新上线"
+      : "双向全双工流式遥测通道已建立 · 数据每 2 秒实时推流上报",
+    protocol: "gRPC / TLS 1.3",
+    protocolDetail: "HTTP/2 多路复用长连",
+    latencyMs: latency,
+    jitterMs: jitter,
+    lossRate,
+    quality,
+    interval: isOffline ? "--" : "2s / 次",
+    lastPing: isOffline ? "5分钟前" : "刚刚 (1s 前)",
+    cpuUsage: isOffline ? "0%" : `0.${Math.max(1, (server.cpu || 10) % 5 + 1)}%`,
+    memRss: isOffline ? "0 MB" : `${(16 + ((server.memory || 30) % 8)).toFixed(1)} MB`,
+    version: server.agentVersion ? `v${server.agentVersion}` : "v1.4.2",
+    isLatest: true,
+    allowRemoteExec: server.allowRemoteExec !== false,
+    pid
+  };
+}
+
+export interface ServerNetworkDetails {
+  hasIpv4: boolean;
+  hasIpv6: boolean;
+  isDualStack: boolean;
+  ipv4: string;
+  ipv4Gateway: string;
+  ipv4Mask: string;
+  ipv4Asn: string;
+  ipv4Isp: string;
+  ipv4Mtu: number;
+  ipv6: string;
+  ipv6Gateway: string;
+  ipv6Prefix: string;
+  ipv6Scope: string;
+  ipv6Allocation: string;
+  nicName: string;
+  nicModel: string;
+  nicSpeed: string;
+  nicMac: string;
+  nicDuplex: string;
+  nicRxBytes: string;
+  nicTxBytes: string;
+  nicRxPackets: number;
+  nicTxPackets: number;
+  dnsServers: string[];
+  tcpEstablished: number;
+  tcpTimeWait: number;
+  tcpSynRecv: number;
+  bgpPeers: number;
+  bgpStatus: string;
+}
+
+export interface GlobalProbeRegion {
+  id: string;
+  name: string;
+  target: string;
+  color: string;
+  baseLatency: number;
+  currentLatency: number;
+  jitter: number;
+  loss: string;
+  status: "up" | "degraded" | "down";
+  isp: string;
+  regionCode: string;
+}
+
+export const BASE_GLOBAL_PROBE_REGIONS: GlobalProbeRegion[] = [
+  { id: "hk", name: "中国香港 (Hong Kong)", target: "HK-Gateway-Edge", color: "#38bdf8", baseLatency: 16, currentLatency: 16, jitter: 1.1, loss: "0%", status: "up", isp: "HKT / PCCW Global", regionCode: "HKG" },
+  { id: "sg", name: "新加坡 (Singapore)", target: "GCP Asia-Southeast1", color: "#34d399", baseLatency: 32, currentLatency: 33, jitter: 1.4, loss: "0%", status: "up", isp: "Singtel / Google Anycast", regionCode: "SIN" },
+  { id: "tyo", name: "日本东京 (Tokyo)", target: "AWS AP-Northeast-1", color: "#818cf8", baseLatency: 38, currentLatency: 38, jitter: 1.6, loss: "0%", status: "up", isp: "NTT Communications", regionCode: "NRT" },
+  { id: "sel", name: "韩国首尔 (Seoul)", target: "Oracle Cloud ICN", color: "#06b6d4", baseLatency: 42, currentLatency: 44, jitter: 1.8, loss: "0%", status: "up", isp: "KT Corp / SK Telecom", regionCode: "ICN" },
+  { id: "sjc", name: "美国硅谷 (San Jose)", target: "US-West Anycast Ingress", color: "#fbbf24", baseLatency: 128, currentLatency: 130, jitter: 3.2, loss: "0%", status: "up", isp: "Equinix SV1 / Hurricane", regionCode: "SJC" },
+  { id: "iad", name: "美国弗吉尼亚 (N. Virginia)", target: "AWS US-East-1", color: "#f97316", baseLatency: 158, currentLatency: 162, jitter: 4.1, loss: "0.1%", status: "degraded", isp: "Lumen / AWS Transit", regionCode: "IAD" },
+  { id: "fra", name: "德国法兰克福 (Frankfurt)", target: "EU-Central Backbone", color: "#f43f5e", baseLatency: 164, currentLatency: 166, jitter: 3.8, loss: "0.2%", status: "degraded", isp: "DE-CIX / Telia Carrier", regionCode: "FRA" },
+  { id: "lhr", name: "英国伦敦 (London)", target: "Equinix LD8 Edge", color: "#a855f7", baseLatency: 172, currentLatency: 174, jitter: 4.2, loss: "0%", status: "up", isp: "Vodafone / LINX London", regionCode: "LHR" },
+  { id: "syd", name: "澳大利亚悉尼 (Sydney)", target: "Telstra Core AP", color: "#10b981", baseLatency: 145, currentLatency: 148, jitter: 3.5, loss: "0%", status: "up", isp: "Telstra Global", regionCode: "SYD" },
+  { id: "sao", name: "巴西圣保罗 (São Paulo)", target: "AWS SA-East-1", color: "#ec4899", baseLatency: 245, currentLatency: 252, jitter: 6.8, loss: "0.5%", status: "degraded", isp: "Claro / IX.br SP", regionCode: "GRU" }
+];
+
+export function getServerNetworkDetails(server: Partial<HostServer>): ServerNetworkDetails {
+  const hasIpv4 = Boolean(server.ipv4 || (server.ip && !server.ip.includes(":")));
+  const hasIpv6 = Boolean(server.ipv6);
+  const isDualStack = hasIpv4 && hasIpv6;
+
+  const ipv4Val = server.ipv4 || (!server.ip?.includes(":") ? server.ip : "198.51.100.42") || "198.51.100.42";
+  const ipv6Val = server.ipv6 || (server.ip?.includes(":") ? server.ip : `2402:4e00:1000::${server.id?.replace("srv-", "") || "42"}`);
+
+  // Derived subnet gateway
+  const ipv4Octets = ipv4Val.split(".");
+  const ipv4Gateway = ipv4Octets.length === 4 ? `${ipv4Octets[0]}.${ipv4Octets[1]}.${ipv4Octets[2]}.1` : "198.51.100.1";
+
+  const cpu = server.cpu || 20;
+  const tcpEstablished = Math.round(cpu * 32 + 280);
+  const tcpTimeWait = Math.round(cpu * 4 + 38);
+  const tcpSynRecv = Math.max(1, Math.round(cpu * 0.2));
+
+  // Determine ISP/ASN based on region/name
+  const isCloudflare = server.name?.toLowerCase().includes("cf") || server.group?.includes("CDN");
+  const isAws = server.name?.toLowerCase().includes("aws") || server.group?.includes("AI");
+  const isGcp = server.name?.toLowerCase().includes("gcp") || server.group?.includes("网关");
+
+  const ipv4Asn = isCloudflare ? "AS13335 (Cloudflare Anycast)" : isAws ? "AS16509 (Amazon.com AWS)" : isGcp ? "AS15169 (Google Cloud Platform)" : "AS4134 (China Telecom Backbone)";
+  const ipv4Isp = isCloudflare ? "Cloudflare Global Anycast Edge" : isAws ? "AWS Direct Connect Transit" : isGcp ? "Google Premium Cloud Interconnect" : "China Telecom CN2 GIA High-Speed";
+
+  const nicMac = `52:54:00:${Math.abs(ipv4Val.split(".").reduce((a, b) => a + Number(b), 0) % 89 + 10).toString(16)}:3a:${(cpu % 90 + 10).toString(16)}`;
+
+  return {
+    hasIpv4,
+    hasIpv6,
+    isDualStack,
+    ipv4: ipv4Val,
+    ipv4Gateway,
+    ipv4Mask: "255.255.255.0 (/24)",
+    ipv4Asn,
+    ipv4Isp,
+    ipv4Mtu: 1500,
+    ipv6: ipv6Val,
+    ipv6Gateway: "fe80::1 (Link-Local Gateway)",
+    ipv6Prefix: "/64 Global Unicast",
+    ipv6Scope: "Global (2000::/3)",
+    ipv6Allocation: "SLAAC + DHCPv6 Stateless",
+    nicName: "eth0",
+    nicModel: "Intel Corporation 82599ES 10-Gigabit SFI/SFP+ Network Connection",
+    nicSpeed: "10000 Mbps (Full Duplex)",
+    nicMac,
+    nicDuplex: "Full Duplex · Auto-Negotiation ON",
+    nicRxBytes: `${(148.5 + (server.trafficUsedGb || 1200) * 0.8).toFixed(1)} GB`,
+    nicTxBytes: `${(210.8 + (server.trafficUsedGb || 1200) * 1.2).toFixed(1)} GB`,
+    nicRxPackets: Math.round((server.trafficUsedGb || 1200) * 128000 + 4500000),
+    nicTxPackets: Math.round((server.trafficUsedGb || 1200) * 164000 + 5800000),
+    dnsServers: ["1.1.1.1 (Cloudflare)", "8.8.8.8 (Google)", "2001:4860:4860::8888 (Google IPv6)"],
+    tcpEstablished,
+    tcpTimeWait,
+    tcpSynRecv,
+    bgpPeers: isCloudflare ? 36 : isAws ? 18 : 8,
+    bgpStatus: "Established · Full Peering Table"
+  };
+}
+
+export function getServerProbeRegions(server: Partial<HostServer>): GlobalProbeRegion[] {
+  const isOffline = server.status === "offline";
+  const isWarning = server.status === "warning";
+
+  return BASE_GLOBAL_PROBE_REGIONS.map((probe) => {
+    let latency = probe.baseLatency;
+    let loss = probe.loss;
+    let status: "up" | "degraded" | "down" = probe.status;
+
+    if (isOffline) {
+      latency = 0;
+      loss = "100%";
+      status = "down";
+    } else if (isWarning) {
+      latency = +(probe.baseLatency * 1.6).toFixed(1);
+      loss = probe.loss === "0%" ? "1.5%" : probe.loss;
+      status = "degraded";
+    } else if (server.id?.includes("ai") && probe.id === "iad") {
+      latency = 72; // Closer to US East
+    }
+
+    const jitter = +(latency * 0.08).toFixed(1);
+
+    return {
+      ...probe,
+      currentLatency: latency,
+      jitter,
+      loss,
+      status
+    };
+  });
+}
+
+// ==================== Node Configuration & Operations Mock Database ====================
+
+import type { ServerConfigFormState } from "../types";
+
+const MOCK_CONFIG_STORE: Record<string, Partial<ServerConfigFormState>> = {};
+
+export function getMockServerConfig(serverId: string, fallbackServer?: Partial<HostServer>): ServerConfigFormState {
+  const existing = MOCK_CONFIG_STORE[serverId];
+  const srv = fallbackServer || MOCK_HOST_SERVERS.find((s) => s.id === serverId) || MOCK_HOST_SERVERS[0];
+
+  const defaultGroups = srv.groups || (srv.group ? [srv.group] : ["网关集群"]);
+  const defaultTags = srv.tags || ["production", "gateway", "bgp"];
+  const defaultLocation = srv.location || (srv.region ? `${srv.region} (BGP Anycast)` : "中国 香港 (Hong Kong · BGP)");
+
+  return {
+    name: existing?.name ?? srv.name ?? "Node",
+    groups: existing?.groups ?? defaultGroups,
+    tags: existing?.tags ?? defaultTags,
+    autoLocation: existing?.autoLocation ?? (srv.autoLocation ?? true),
+    location: existing?.location ?? defaultLocation,
+    trafficLimitValue: existing?.trafficLimitValue ?? (srv.trafficLimitValue ?? 1000),
+    trafficLimitUnit: existing?.trafficLimitUnit ?? (srv.trafficLimitUnit ?? "GB"),
+    trafficLimitGb: existing?.trafficLimitGb ?? (srv.trafficTotalGb ?? 1000),
+    trafficCalculation: existing?.trafficCalculation ?? (srv.trafficCalculation ?? "outbound"),
+    trafficResetDay: existing?.trafficResetDay ?? (srv.trafficResetDay ?? 1),
+    publicVisible: existing?.publicVisible ?? (srv.publicVisible ?? true),
+    maintenanceMode: existing?.maintenanceMode ?? (srv.maintenanceMode ?? false),
+    price: existing?.price ?? (srv.price ?? 45),
+    currency: existing?.currency ?? (srv.currency || "CNY"),
+    billingCycle: existing?.billingCycle ?? (srv.billingCycle || "biennial"),
+    expiresAt: existing?.expiresAt ?? (srv.expiresAt ? (typeof srv.expiresAt === "number" ? new Date(srv.expiresAt).toISOString().split("T")[0] : srv.expiresAt) : "2027-03-15"),
+    autoRenew: existing?.autoRenew ?? (srv.autoRenew ?? true),
+    note: existing?.note ?? (srv.note || "BGP Anycast · 生产核心节点 · 自动续费"),
+    cpuThreshold: existing?.cpuThreshold ?? (srv.cpuThreshold ?? 85),
+    cpuDurationSec: existing?.cpuDurationSec ?? (srv.cpuDurationSec ?? 60),
+    memThreshold: existing?.memThreshold ?? (srv.memThreshold ?? 90),
+    memDurationSec: existing?.memDurationSec ?? (srv.memDurationSec ?? 60),
+    diskThreshold: existing?.diskThreshold ?? (srv.diskThreshold ?? 90),
+    diskDurationSec: existing?.diskDurationSec ?? (srv.diskDurationSec ?? 300),
+    netThresholdMb: existing?.netThresholdMb ?? 100,
+    offlineTimeoutSec: existing?.offlineTimeoutSec ?? (srv.offlineTimeoutSec ?? 60),
+    enableNotify: existing?.enableNotify ?? (srv.enableNotify ?? true),
+    notifyChannels: existing?.notifyChannels ?? (srv.notifyChannels ?? [
+      { id: "notif-tg-devops", name: "Telegram SRE 核心运维群", type: "telegram", target: "-1001928374652", enabled: true },
+      { id: "notif-webhook-feishu", name: "飞书 基础设施监控机器人", type: "webhook", target: "https://open.feishu.cn/open-apis/bot/v2/hook/xxx", enabled: true },
+      { id: "notif-email-ops", name: "运维组公共告警邮箱", type: "email", target: "sre-alerts@company.internal", enabled: false }
+    ]),
+    agentToken: existing?.agentToken ?? (srv.agentToken || `smx_tok_${srv.id?.replace("srv-", "") || "agent"}_${Math.random().toString(36).slice(2, 8)}`),
+    allowRemoteExec: existing?.allowRemoteExec ?? (srv.allowRemoteExec !== false && srv.id !== "srv-test-noremote")
+  };
+}
+
+export function updateMockServerConfig(
+  serverId: string,
+  updates: Partial<ServerConfigFormState>
+): { ok: boolean; data: ServerConfigFormState; message: string } {
+  const current = getMockServerConfig(serverId);
+  const nextConfig: ServerConfigFormState = {
+    ...current,
+    ...updates
+  };
+  MOCK_CONFIG_STORE[serverId] = nextConfig;
+
+  // Mutate in-memory MOCK_HOST_SERVERS to keep consistency
+  const idx = MOCK_HOST_SERVERS.findIndex((s) => s.id === serverId);
+  if (idx !== -1) {
+    MOCK_HOST_SERVERS[idx] = {
+      ...MOCK_HOST_SERVERS[idx],
+      name: nextConfig.name,
+      group: nextConfig.groups[0] || MOCK_HOST_SERVERS[idx].group,
+      groups: nextConfig.groups,
+      tags: nextConfig.tags,
+      location: nextConfig.location,
+      price: nextConfig.price,
+      currency: nextConfig.currency,
+      billingCycle: nextConfig.billingCycle,
+      expiresAt: nextConfig.expiresAt,
+      note: nextConfig.note,
+      allowRemoteExec: nextConfig.allowRemoteExec,
+      autoRenew: nextConfig.autoRenew,
+      trafficTotalGb: nextConfig.trafficLimitGb
+    };
+  }
+
+  return {
+    ok: true,
+    data: nextConfig,
+    message: `主机 [${nextConfig.name}] 配置与报警策略已成功更新并生效`
+  };
+}
+
+export function decommissionMockServer(serverId: string): { ok: boolean; serverId: string; message: string } {
+  delete MOCK_CONFIG_STORE[serverId];
+  const idx = MOCK_HOST_SERVERS.findIndex((s) => s.id === serverId);
+  if (idx !== -1) {
+    MOCK_HOST_SERVERS.splice(idx, 1);
+  }
+  return {
+    ok: true,
+    serverId,
+    message: `节点 [${serverId}] 已成功从集群注销并解绑`
+  };
 }
 
