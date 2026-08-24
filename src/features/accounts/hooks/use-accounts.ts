@@ -5,6 +5,11 @@ import { queryKeys } from "@/shared/api/query-keys";
 import { useRpc } from "@/app/providers/rpc-context";
 import type { Account } from "@/shared/api/methods";
 
+/**
+ * 获取系统多用户与成员账号列表 Hook
+ * 
+ * 对应 `account.list` JSON-RPC 方法。
+ */
 export function useAccounts() {
   const { client } = useRpc();
   return useQuery({
@@ -13,6 +18,11 @@ export function useAccounts() {
   });
 }
 
+/**
+ * 邀请/创建新系统成员 Hook（Mutation）
+ * 
+ * 对应 `account.invite` JSON-RPC 方法。
+ */
 export function useInviteAccount() {
   const { client } = useRpc();
   const qc = useQueryClient();
@@ -23,6 +33,11 @@ export function useInviteAccount() {
   });
 }
 
+/**
+ * 锁定/解锁用户账号 Hook（Mutation）
+ * 
+ * 对应 `account.lock` JSON-RPC 方法。
+ */
 export function useLockAccount() {
   const { client } = useRpc();
   const qc = useQueryClient();
@@ -33,6 +48,11 @@ export function useLockAccount() {
   });
 }
 
+/**
+ * 修改成员角色与权限 Hook（Mutation）
+ * 
+ * 对应 `account.update` JSON-RPC 方法。
+ */
 export function useUpdateAccount() {
   const { client } = useRpc();
   const qc = useQueryClient();

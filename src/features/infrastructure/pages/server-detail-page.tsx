@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect, useMemo } from "react";
-import { useParams, useNavigate, Link } from "@tanstack/react-router";
+import { useParams, useNavigate, Link, useLocation } from "@tanstack/react-router";
 import {
   Server,
   ArrowLeft,
@@ -40,6 +40,7 @@ import {
   X,
   Plus,
   ChevronDown,
+  ChevronRight,
   Coins,
   Calendar,
   FileText
@@ -62,8 +63,12 @@ import { useServerNetworkProbes } from "../api/use-network-probes";
 import { ServerProcessesDrawer, formatProcessMemory } from "../components/server-processes-drawer";
 import { ScrollableBadgeInputStrip } from "../components/scrollable-badge-input-strip";
 import { ReinstallServerDialog } from "../components/reinstall-server-dialog";
-import { DynamicNotifyChannels, DEFAULT_NOTIFY_CHANNELS, type NotifyChannelItem } from "../components/dynamic-notify-channels";
-import { AssetBillingLifecycleSection } from "../components/asset-billing-lifecycle-section";
+import {
+  AssetBillingLifecycleSection,
+  CURRENCY_SYMBOLS,
+  BILLING_CYCLE_DAYS
+} from "../components/asset-billing-lifecycle-section";
+import { DynamicNotifyChannels, type NotifyChannelItem } from "../components/dynamic-notify-channels";
 import { useServerConfig } from "../api/use-server-config";
 import { toast } from "sonner";
 import type { HostServer } from "../types";
@@ -92,58 +97,6 @@ const PROBE_TIME_RANGES = [
   { key: "1m", label: "1m", fullLabel: "1个月 (30天)", ms: 30 * 24 * 3600 * 1000, stepCount: 30 },
   { key: "3m", label: "3m", fullLabel: "3个月 (90天)", ms: 90 * 24 * 3600 * 1000, stepCount: 30 }
 ] as const;
-
-const CURRENCY_OPTIONS = [
-  { code: "CNY", sym: "¥", name: "CNY (¥ 人民币)" },
-  { code: "USD", sym: "$", name: "USD ($ 美元)" },
-  { code: "EUR", sym: "€", name: "EUR (€ 欧元)" },
-  { code: "HKD", sym: "HK$", name: "HKD (HK$ 港币)" },
-  { code: "JPY", sym: "¥", name: "JPY (¥ 日元)" },
-  { code: "GBP", sym: "£", name: "GBP (£ 英镑)" },
-  { code: "SGD", sym: "S$", name: "SGD (S$ 新加坡元)" },
-  { code: "AUD", sym: "A$", name: "AUD (A$ 澳元)" },
-  { code: "CAD", sym: "C$", name: "CAD (C$ 加元)" },
-  { code: "USDT", sym: "₮", name: "USDT (₮ 泰达币)" },
-  { code: "TWD", sym: "NT$", name: "TWD (NT$ 新台币)" },
-  { code: "KRW", sym: "₩", name: "KRW (₩ 韩元)" }
-];
-
-const BILLING_CYCLE_OPTIONS = [
-  { value: "weekly", label: "周付 (Weekly · 7天)", days: 7 },
-  { value: "monthly", label: "月付 (Monthly · 30天)", days: 30 },
-  { value: "quarterly", label: "季付 / 三月 (Quarterly · 90天)", days: 90 },
-  { value: "semiannual", label: "半年付 (Semi-Annual · 180天)", days: 180 },
-  { value: "annual", label: "年付 (Annual · 365天)", days: 365 },
-  { value: "biennial", label: "两年付 (Biennial · 730天)", days: 730 },
-  { value: "triennial", label: "三年付 (Triennial · 1095天)", days: 1095 },
-  { value: "payg", label: "按量计费 (Pay-As-You-Go)", days: 30 }
-];
-
-const CURRENCY_SYMBOLS: Record<string, string> = {
-  CNY: "¥",
-  USD: "$",
-  EUR: "€",
-  HKD: "HK$",
-  JPY: "¥",
-  GBP: "£",
-  SGD: "S$",
-  AUD: "A$",
-  CAD: "C$",
-  USDT: "₮",
-  TWD: "NT$",
-  KRW: "₩"
-};
-
-const BILLING_CYCLE_DAYS: Record<string, number> = {
-  weekly: 7,
-  monthly: 30,
-  quarterly: 90,
-  semiannual: 180,
-  annual: 365,
-  biennial: 730,
-  triennial: 1095,
-  payg: 30
-};
 
 type ProbeTimeRangeKey = (typeof PROBE_TIME_RANGES)[number]["key"];
 
@@ -273,8 +226,26 @@ export function ServerDetailPage() {
   const navigate = useNavigate();
   const themeMode = useThemeStore((state) => state.mode);
   const isDark = resolveThemeMode(themeMode) === "dark";
+  const location = useLocation();
+  const searchTab = useMemo(() => {
+    try {
+      const searchParams = new URLSearchParams(location.search);
+      const t = searchParams.get("tab");
+      if (t === "config" || t === "network" || t === "terminal" || t === "telemetry") {
+        return t as "telemetry" | "network" | "terminal" | "config";
+      }
+    } catch {}
+    return "telemetry";
+  }, [location.search]);
 
-  const [activeTab, setActiveTab] = useState<"telemetry" | "network" | "terminal" | "config">("telemetry");
+  const [activeTab, setActiveTab] = useState<"telemetry" | "network" | "terminal" | "config">(searchTab);
+
+  useEffect(() => {
+    if (searchTab) {
+      setActiveTab(searchTab);
+    }
+  }, [searchTab]);
+
   const [timeRange, setTimeRange] = useState<TelemetryTimeRange>("1h");
   const [copiedKey, setCopiedKey] = useState<string | null>(null);
   const [isRefreshing, setIsRefreshing] = useState(false);
@@ -2475,6 +2446,27 @@ export function ServerDetailPage() {
                     控制是否在采集 CPU/内存波形的同时抓取 Top 进程画像，可按需在本地配置启动策略。
                   </p>
                 </div>
+              </div>
+
+              {/* Action Banner for Agent Tasks & PLUS Plugins Capabilities */}
+              <div className="pt-3 border-t border-border/50 flex flex-wrap items-center justify-between gap-3 text-xs bg-muted/20 p-3.5 rounded-xl border border-border/60">
+                <div className="space-y-1">
+                  <div className="font-semibold text-foreground flex items-center gap-2">
+                    <Sparkles className="size-4 text-purple-400" />
+                    <span>Agent 任务下发与 PLUS 插件调度 (Agent Tasks & Capabilities)</span>
+                  </div>
+                  <div className="text-[11px] text-muted-foreground">
+                    由该节点 Agent 自上报内置指标采集与扩展插件能力，支持按节点独立启停、下发采集频率微调与即时单次下发
+                  </div>
+                </div>
+                <Link
+                  to="/admin/infrastructure/servers/$serverId/tasks"
+                  params={{ serverId: server.id }}
+                  className="inline-flex items-center justify-center rounded-md font-semibold transition-all h-8 px-3.5 text-xs gap-1.5 border border-purple-500/40 text-purple-400 bg-purple-500/5 hover:bg-purple-500/15 hover:border-purple-500 shadow-2xs cursor-pointer"
+                >
+                  <Sparkles className="size-3.5 text-purple-400" /> 进入 Agent 任务与插件调度中心
+                  <ChevronRight className="size-3.5 text-purple-400" />
+                </Link>
               </div>
 
               {/* Action Banner for Reinstall / Reconnection Command Modal */}

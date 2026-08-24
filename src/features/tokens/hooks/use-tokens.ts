@@ -4,6 +4,11 @@ import { methods } from "@/shared/api/methods";
 import { queryKeys } from "@/shared/api/query-keys";
 import { useRpc } from "@/app/providers/rpc-context";
 
+/**
+ * 获取 API 访问令牌（Access Token）列表 Hook
+ * 
+ * 对应 `token.list` JSON-RPC 方法。
+ */
 export function useTokens() {
   const { client } = useRpc();
   return useQuery({
@@ -12,6 +17,11 @@ export function useTokens() {
   });
 }
 
+/**
+ * 签发新的 API Token Hook（Mutation）
+ * 
+ * 对应 `token.create` JSON-RPC 方法。
+ */
 export function useCreateToken() {
   const { client } = useRpc();
   const qc = useQueryClient();
@@ -22,6 +32,11 @@ export function useCreateToken() {
   });
 }
 
+/**
+ * 吊销/撤销已签发的 Token Hook（Mutation）
+ * 
+ * 对应 `token.revoke` JSON-RPC 方法。
+ */
 export function useRevokeToken() {
   const { client } = useRpc();
   const qc = useQueryClient();

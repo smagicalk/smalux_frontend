@@ -5,6 +5,12 @@ import { queryKeys } from "@/shared/api/query-keys";
 import { useRpc } from "@/app/providers/rpc-context";
 import type { PingProtocol } from "@/shared/api/methods";
 
+/**
+ * 获取服务可用性网络拨测目标列表 Hook
+ * 
+ * 对应 `monitor.service.list` JSON-RPC 方法。
+ * 查询 HTTP/HTTPS/TCP/ICMP/WSS 服务探针的在线状态、实时时延与可用率。
+ */
 export function usePingTargets() {
   const { client } = useRpc();
   return useQuery({
@@ -13,6 +19,11 @@ export function usePingTargets() {
   });
 }
 
+/**
+ * 新增服务网络拨测监控目标 Hook（Mutation）
+ * 
+ * 对应 `monitor.service.create` JSON-RPC 方法。
+ */
 export function useCreatePingTarget() {
   const { client } = useRpc();
   const qc = useQueryClient();
@@ -23,6 +34,11 @@ export function useCreatePingTarget() {
   });
 }
 
+/**
+ * 删除指定服务网络拨测监控目标 Hook（Mutation）
+ * 
+ * 对应 `monitor.service.delete` JSON-RPC 方法。
+ */
 export function useDeletePingTarget() {
   const { client } = useRpc();
   const qc = useQueryClient();

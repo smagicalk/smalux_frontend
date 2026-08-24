@@ -14,6 +14,10 @@ export const queryKeys = {
     ["servers", params ?? {}] as const,
   server: (id: string) => ["server", id] as const,
   serverHardware: (id: string) => ["server-hardware", id] as const,
+  serverStatus: (id: string) => ["server-status", id] as const,
+  serverNetworkDetails: (id: string) => ["server-network-details", id] as const,
+  serverProbeRegions: (id: string) => ["server-probe-regions", id] as const,
+  serverConfig: (id: string) => ["server-config", id] as const,
   tokens: ["tokens"] as const,
   /** Broad task prefix used for mutation invalidation. */
   tasks: ["tasks"] as const,

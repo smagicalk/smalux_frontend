@@ -12,9 +12,12 @@ import { useRpc } from "@/app/providers/rpc-context";
 export type ServerListFilters = AgentListParams;
 
 /**
- * Fetch the server fleet. Wraps the `agent.list` RPC in a TanStack Query so
- * pages get caching, loading and refetch for free. The transport (mock/ws)
- * is chosen by runtime config — this hook is identical in both.
+ * 获取集群服务器节点列表 Hook
+ * 
+ * 封装 `agent.list` JSON-RPC 方法并集成 TanStack Query，自动享有数据缓存、Loading 状态和条件重取能力。
+ * 底层 Transport 自动由全局 RuntimeConfig 决定，Mock / WS / HTTP 无感自适应。
+ * 
+ * @param filters 过滤与分页参数（如地域、状态、分组、关键词、分页等）
  */
 export function useServers(filters: ServerListFilters = {}) {
   const { client } = useRpc();
@@ -30,8 +33,9 @@ export function useServers(filters: ServerListFilters = {}) {
 }
 
 /**
- * Register a new server agent. Invalidates every `agent.list` query variant so
- * the fleet list refreshes regardless of which filter view is mounted.
+ * 注册/接入新服务器节点 Hook（Mutation）
+ * 
+ * 执行成功后自动失效所有服务器列表缓存，触发全页面无缝自动重载。
  */
 export function useRegisterServer() {
   const { client } = useRpc();
@@ -45,7 +49,9 @@ export function useRegisterServer() {
   });
 }
 
-/** Persist operator-owned billing metadata and refresh every server list. */
+/**
+ * 更新节点财务账单与基础元数据 Hook（Mutation）
+ */
 export function useUpdateServer() {
   const { client } = useRpc();
   const qc = useQueryClient();

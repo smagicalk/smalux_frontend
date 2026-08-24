@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import {
   Monitor,
   Moon,
@@ -21,6 +21,15 @@ export function AppShell() {
   const location = useLocation();
   const currentPath = location.pathname;
   const [commandOpen, setCommandOpen] = useState(false);
+  const mainRef = useRef<HTMLElement>(null);
+
+  // Automatically scroll to top whenever pathname or search changes
+  useEffect(() => {
+    if (mainRef.current) {
+      mainRef.current.scrollTop = 0;
+    }
+    window.scrollTo({ top: 0, left: 0, behavior: "instant" });
+  }, [location.pathname, location.search]);
 
   return (
     <div className="flex h-full min-h-0 bg-background font-sans">
@@ -120,7 +129,7 @@ export function AppShell() {
       {/* Main Content Area */}
       <div className="flex min-w-0 flex-1 flex-col">
         <TopBar onOpenCommand={() => setCommandOpen(true)} />
-        <main className="min-h-0 flex-1 overflow-y-auto pb-16 md:pb-0 bg-background/50">
+        <main ref={mainRef} className="min-h-0 flex-1 overflow-y-auto pb-16 md:pb-0 bg-background/50">
           <Outlet />
         </main>
       </div>

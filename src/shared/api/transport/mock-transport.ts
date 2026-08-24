@@ -5,46 +5,43 @@ import type { Transport, Unsubscribe, NotificationHandler } from "./types";
 import type { MockBackend } from "@/shared/api/mock/mock-backend";
 
 /**
- * Transport that dispatches every call to an in-memory mock backend.
- * This is the "mock backend" landing point: the same surface as the real
- * transports, so flipping `app-config.json` transport from `mock` to `ws`
- * swaps the backend without touching hooks or pages.
- *
- * Calls deliberately yield once before dispatch so query loading states and
- * cancellation timing resemble a remote transport. Results and push samples
- * still pass through caller-provided Zod schemas, preventing mock fixtures from
- * becoming a less strict contract than HTTP or WebSocket data.
- *
- * Subscriptions deliver any back-dated `initialBatch` synchronously, then use a
- * transport-owned interval for live samples. Invalid samples are isolated and
- * skipped; they do not terminate the stream or block other valid samples.
+ * 内存 Mock 仿真传输层（MockTransport）
+ * 
+ * 将所有 RPC 调用和推流订阅直接分发给内存中的 `MockBackend` 仿真后端。
+ * 
+ * 核心设计：
+ * 1. **完全等价的协议表面**：与真实 WsTransport / HttpTransport 拥有完全相同的抽象契约，
+ *    使切换 `app-config.json` 中的 `transport: "mock" | "ws"` 能在前端零改动下平滑无缝切换。
+ * 2. **异步时序模拟**：调用内部通过 `delay(0)` 产生事件循环让步，模拟真实网络请求的异步边界与 Loading 状态。
+ * 3. **严格契约校验**：Mock 数据同样必须通过调用方提供的 Zod Schema 强类型校验，避免本地 Mock 数据结构过时与真实后端漂移。
+ * 4. **推流与历史回放模拟**：订阅时同步回放 `initialBatch` 历史数据，并通过内部定时器按周期推送增量监控帧。
  */
 export class MockTransport implements Transport {
   readonly connected = true;
   private timers = new Set<ReturnType<typeof setInterval>>();
 
   constructor(
-    // Retained in the transport signature for parity with real transports and
-    // future latency/scenario settings, even though the current backend needs
-    // no endpoint from runtime config.
     private readonly runtimeConfig: RuntimeConfig,
     private readonly backend: MockBackend
   ) {}
 
+  /**
+   * 执行 Mock 请求分发并进行 Zod 校验
+   */
   async call<TResult>(
     method: string,
     params: unknown,
     schema: z.ZodType<TResult>
   ): Promise<TResult> {
-    // Yield to the event loop so callers observe the same asynchronous boundary
-    // as fetch/WebSocket even when the in-memory handler returns immediately.
+    // 模拟微任务微延迟，使得组件的 Loading 与缓存生命周期行为与真实网络请求一致
     await delay(0);
     const result = await this.backend.handle(method, params);
-    // Match real transports: unvalidated fixture data never reaches hooks or
-    // the TanStack Query cache.
     return schema.parse(result);
   }
 
+  /**
+   * 注册 Mock 实时推流
+   */
   subscribe<TResult>(
     method: string,
     params: unknown,
@@ -55,41 +52,41 @@ export class MockTransport implements Transport {
     if (!stream) {
       return () => {};
     }
-    // Parse each item independently so one corrupt simulated sample creates a
-    // chart gap instead of stopping the entire live stream.
+
     const push = (raw: unknown) => {
       try {
         handler(schema.parse(raw));
       } catch {
-        // Ignore parse failures on mock push.
+        // 忽略单帧 Mock 样本解析失败
       }
     };
-    // Deliver history before scheduling live ticks. Consumers can therefore
-    // render a stable initial series and append future samples in timestamp order.
+
+    // 1. 同步推送历史回放数据（使图表初次渲染即有连续折线）
     if (stream.initialBatch) {
       for (const raw of stream.initialBatch()) push(raw);
     }
+
+    // 2. 启动周期性定时器模拟实时推流
     const timer = setInterval(() => {
-      // Batch takes precedence when both factories exist: it represents one
-      // coherent tick across several servers and must not be mixed with sample().
       if (stream.sampleBatch) {
         for (const raw of stream.sampleBatch()) push(raw);
       } else if (stream.sample) {
         push(stream.sample());
       }
     }, stream.intervalMs);
+
     this.timers.add(timer);
+
     return () => {
-      // Cleanup is idempotent and removes this timer from transport ownership,
-      // which makes React Strict Mode effect cleanup safe.
       clearInterval(timer);
       this.timers.delete(timer);
     };
   }
 
+  /**
+   * 清理并销毁所有正在运行的 Mock 推流定时器
+   */
   dispose() {
-    // A client may own several active feature subscriptions. Dispose clears all
-    // of them so application teardown cannot leave background simulation work.
     for (const timer of this.timers) {
       clearInterval(timer);
     }

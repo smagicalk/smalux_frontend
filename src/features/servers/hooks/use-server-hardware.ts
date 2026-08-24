@@ -4,8 +4,12 @@ import { queryKeys } from "@/shared/api/query-keys";
 import { useRpc } from "@/app/providers/rpc-context";
 
 /**
- * Dedicated hook for fetching detailed hardware specifications and kernel runtime environment.
- * Backed by the standalone `agent.hardware` RPC contract.
+ * 获取服务器底层硬件规格与 Linux 内核环境详情 Hook
+ * 
+ * 基于独立契约 `agent.hardware` JSON-RPC 方法。
+ * 查询结果包含：CPU 物理型号/指令集、内存代际与规格、NVMe/SSD 存储总线、内核版本与网络 BBR 特性、虚拟化层形态等。
+ * 
+ * @param serverId 主机 ID
  */
 export function useServerHardware(serverId: string | undefined) {
   const { client } = useRpc();
@@ -21,6 +25,6 @@ export function useServerHardware(serverId: string | undefined) {
       );
     },
     enabled: Boolean(serverId),
-    staleTime: 60_000
+    staleTime: 60_000 // 硬件信息变动频率极低，缓存 1 分钟
   });
 }

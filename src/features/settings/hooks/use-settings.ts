@@ -4,6 +4,11 @@ import { methods } from "@/shared/api/methods";
 import { queryKeys } from "@/shared/api/query-keys";
 import { useRpc } from "@/app/providers/rpc-context";
 
+/**
+ * 获取系统级运行配置项字典 Hook
+ * 
+ * 对应 `config.list` JSON-RPC 方法。
+ */
 export function useSettings() {
   const { client } = useRpc();
   return useQuery({
@@ -12,7 +17,11 @@ export function useSettings() {
   });
 }
 
-/** Batch-save the changed settings as a single mutation. */
+/**
+ * 批量保存修改的系统设置项 Hook（Mutation）
+ * 
+ * 对应 `config.update` JSON-RPC 方法。
+ */
 export function useSaveSettings() {
   const { client } = useRpc();
   const qc = useQueryClient();

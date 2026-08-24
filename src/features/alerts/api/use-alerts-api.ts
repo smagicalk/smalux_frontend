@@ -8,14 +8,19 @@ import {
 } from "../mock/alerts-mock";
 
 /**
- * Isolated alerts feature hook for rules, history, and notification channels.
+ * 告警中心聚合数据 Hook（Alerts Page 专用）
+ * 
+ * 职责：
+ * 1. 规整 RPC `useAlerts` 获取的规则列表，映射为前端 UI 视图模型。
+ * 2. 转换告警历史事件流，格式化数值百分比与触发时间。
+ * 3. 关联通知渠道（Notification Channels）。
  */
 export function useAlertsData() {
   const { data: rpcAlertsData, isLoading, refetch } = useRpcAlerts();
 
   const [channels] = useState<NotificationChannelItem[]>(MOCK_NOTIFICATION_CHANNELS);
 
-  // 1. Transform Rules
+  // 1. 规整并映射告警规则
   const rules: AlertRuleItem[] = useMemo(() => {
     const rpcRules = rpcAlertsData?.rules ?? [];
     if (!rpcRules || rpcRules.length === 0) {
@@ -38,7 +43,7 @@ export function useAlertsData() {
     }));
   }, [rpcAlertsData]);
 
-  // 2. Transform Alert History
+  // 2. 规整并映射历史触发事件
   const history: AlertHistoryEvent[] = useMemo(() => {
     const rpcHistory = rpcAlertsData?.history ?? [];
     if (!rpcHistory || rpcHistory.length === 0) {

@@ -6,17 +6,19 @@ import { useRpc } from "@/app/providers/rpc-context";
 import { useMonitoringStore } from "./monitoring-store";
 
 /**
- * Subscribe to the live metrics stream for the given server ids (or all
- * servers if omitted). Pushed samples land in the monitoring store; this
- * hook only owns the subscription lifecycle. Components read metrics via
- * `useServerMetrics` / `useMonitoringStore` selectors so a 1s tick doesn't
- * re-render the entire page.
- *
- * Batching: a single transport tick carries one sample per subscribed server
- * (N samples in one synchronous burst). We accumulate the whole burst and
- * flush it with one `upsertBatch` call — so a 100-node tick is one store
- * write, not 100. The initial back-dated history is likewise collapsed into
- * a single batch via the microtask drain.
+ * 实时监控推流生命周期管理 Hook
+ * 
+ * 订阅指定 serverId（或全部服务器）的实时遥测指标流。
+ * 推送到的采样数据会自动写入全局 `monitoring-store`；该 Hook 本身仅负责维护 WebSocket 订阅生命周期。
+ * 业务组件无需直接重新执行此 Hook，而是通过 `useServerMetrics(id)` 选择器精准按需监听，
+ * 避免每秒数据刷新触发整个页面的全量重绘。
+ * 
+ * 微任务批处理机制（Microtask Batching）：
+ * 传输层在单个时钟周期可能同步分发数十甚至上百台主机的采样数据。
+ * 本 Hook 通过 `queueMicrotask` 将同步突发样本积攒为单次 `upsertBatch` 提交，
+ * 使得 100 台节点的单轮推流仅触发 1 次 Zustand Store 变更，性能极高。
+ * 
+ * @param serverIds 可选，要监听的主机 ID 列表；缺省则订阅全部主机
  */
 export function useMonitoring(serverIds?: string[]) {
   const { client } = useRpc();
@@ -36,10 +38,8 @@ export function useMonitoring(serverIds?: string[]) {
 
     const scheduleFlush = () => {
       if (flushScheduled) return;
-      // The transport delivers a synchronous burst (initialBatch then each
-      // tick's sampleBatch). Microtask-defer so a whole burst collapses into
-      // one store write rather than one per sample.
       flushScheduled = true;
+      // 微任务延迟执行：将同一个事件循环内同步到达的多条样本合并为一次写入
       queueMicrotask(flush);
     };
 
@@ -59,23 +59,31 @@ export function useMonitoring(serverIds?: string[]) {
       unsubscribe();
       flush();
     };
-    // serverIds identity: callers should pass a stable reference; we join
-    // for the dep so a new array with the same contents doesn't resubscribe.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [client, upsertBatch, serverIds?.join(",")]);
 }
 
-// Stable empty array so selectors return the same reference when a server
-// has no history yet — otherwise `?? []` builds a fresh array each render
-// and zustand's Object.is check triggers an infinite update loop.
+/**
+ * 稳定的空数组单例：防止在主机暂无历史时用 `?? []` 创建临时新数组引用引发 Zustand 死循环重渲染
+ */
 const EMPTY_HISTORY: never[] = [];
 
-/** Selector hook: latest metrics for one server, stable per id. */
+/**
+ * 单台主机最新指标选择器 Hook
+ * 
+ * @param serverId 主机 ID
+ * @returns 该主机最新一帧 ServerMetrics（未就绪时为 undefined）
+ */
 export function useServerMetrics(serverId: string) {
   return useMonitoringStore((s) => s.latest.get(serverId));
 }
 
-/** Selector hook: rolling history for one server (for detail charts). */
+/**
+ * 单台主机滚动历史时序选择器 Hook（用于详情页趋势图表渲染）
+ * 
+ * @param serverId 主机 ID
+ * @returns 该主机的滚动采样点数组（未就绪时返回稳定空数组）
+ */
 export function useServerHistory(serverId: string) {
   return useMonitoringStore((s) => s.history.get(serverId) ?? EMPTY_HISTORY);
 }

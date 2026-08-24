@@ -52,7 +52,17 @@ import {
   agentSummarySubscribeParamsSchema,
   pingHistoryParamsSchema,
   pingHistoryResultSchema,
-  pingSampleSchema
+  pingSampleSchema,
+  agentStatusParamsSchema,
+  agentStatusResultSchema,
+  agentNetworkDetailsParamsSchema,
+  agentNetworkDetailsResultSchema,
+  agentProbeRegionsParamsSchema,
+  agentProbeRegionsResultSchema,
+  agentGetConfigParamsSchema,
+  agentServerConfigResultSchema,
+  agentUpdateConfigParamsSchema,
+  agentDecommissionParamsSchema
 } from "./schemas/agent";
 import {
   taskApproveParamsSchema,
@@ -145,6 +155,32 @@ export const methods = {
   "agent.sampleProcesses": {
     params: agentSampleProcessesParamsSchema,
     result: agentSampleProcessesResultSchema
+  },
+
+  // New: previously mock-only infrastructure endpoints, now proper RPC contracts.
+  "agent.getStatus": {
+    params: agentStatusParamsSchema,
+    result: agentStatusResultSchema
+  },
+  "agent.getNetworkDetails": {
+    params: agentNetworkDetailsParamsSchema,
+    result: agentNetworkDetailsResultSchema
+  },
+  "agent.getProbeRegions": {
+    params: agentProbeRegionsParamsSchema,
+    result: agentProbeRegionsResultSchema
+  },
+  "agent.getConfig": {
+    params: agentGetConfigParamsSchema,
+    result: agentServerConfigResultSchema
+  },
+  "agent.updateConfig": {
+    params: agentUpdateConfigParamsSchema,
+    result: okResultSchema
+  },
+  "agent.decommission": {
+    params: agentDecommissionParamsSchema,
+    result: okResultSchema
   },
 
   // Read models used by administrative feature modules.

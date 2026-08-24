@@ -22,6 +22,10 @@ const ServerDetailPage = lazyRouteComponent(
   () => import("@/features/infrastructure/pages/server-detail-page"),
   "ServerDetailPage"
 );
+const ServerTasksPage = lazyRouteComponent(
+  () => import("@/features/infrastructure/pages/server-tasks-page"),
+  "ServerTasksPage"
+);
 const AutomationPage = lazyRouteComponent(
   () => import("@/features/automation/pages/automation-page"),
   "AutomationPage"
@@ -51,6 +55,7 @@ function buildRouteTree() {
       overviewRoute,
       infrastructureRoute,
       infrastructureServerDetailRoute,
+      infrastructureServerTasksRoute,
       automationRoute,
       alertsRoute,
       settingsRoute,
@@ -106,6 +111,12 @@ const infrastructureServerDetailRoute = createRoute({
   getParentRoute: () => adminRoute,
   path: "infrastructure/servers/$serverId",
   component: ServerDetailPage
+});
+
+const infrastructureServerTasksRoute = createRoute({
+  getParentRoute: () => adminRoute,
+  path: "infrastructure/servers/$serverId/tasks",
+  component: ServerTasksPage
 });
 
 const automationRoute = createRoute({

@@ -12,6 +12,9 @@ import {
   MOCK_LIVE_EVENTS
 } from "../mock/overview-mock";
 
+/**
+ * 总览大盘过滤与分页入参
+ */
 export interface OverviewQueryFilters {
   page?: number;
   limit?: number;
@@ -21,9 +24,15 @@ export interface OverviewQueryFilters {
 }
 
 /**
- * Unified Overview page data hook.
- * Directly integrates dedicated `overview.stats` RPC for cluster HUD metrics,
- * and paginated `agent.list` for fleet matrix.
+ * 总览大盘核心聚合 Hook（Overview Page 专用）
+ * 
+ * 汇聚多数据源构建全景运维驾驶舱：
+ * 1. 驾驶舱 HUD：调用 `useOverviewStats` 获取全网集群健康度与聚合 SLA。
+ * 2. 节点脉冲矩阵（Fleet Pulse Matrix）：将主机列表与 WebSocket `useThrottledMonitoring` 秒级流融合，动态展示网格矩阵。
+ * 3. 故障告警流（Incidents）：结合 `useAlerts` 展示当前活跃告警事件。
+ * 4. 实时活动审计（Live Activity Stream）：结合 `useLogs` 实时呈现节点上线与变更事件。
+ * 
+ * @param filters 大盘节点矩阵过滤参数
  */
 export function useOverviewData(
   filters: OverviewQueryFilters = { page: 1, limit: 12, group: "all", status: "all" }

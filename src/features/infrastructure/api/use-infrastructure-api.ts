@@ -26,16 +26,29 @@ const GROUP_TAG_MAP: Record<string, string> = {
   backup: "存储与冷备节点"
 };
 
+/**
+ * 基础设施主机查询过滤参数
+ */
 export interface ServerQueryFilters {
+  /** 当前页码（从 1 开始） */
   page?: number;
+  /** 每页条数 */
   limit?: number;
+  /** 模糊搜索关键词（匹配名称、IP、标签、地域） */
   search?: string;
+  /** 分组名过滤 */
   group?: string;
+  /** 在线状态过滤 */
   status?: "online" | "warning" | "offline";
+  /** 排序字段 */
   sortBy?: "id" | "name" | "cpu" | "memory" | "disk";
+  /** 排序方向 */
   sortOrder?: "asc" | "desc";
 }
 
+/**
+ * 基础设施网络拨测探测点过滤参数
+ */
 export interface ProbeQueryFilters {
   page?: number;
   limit?: number;
@@ -46,8 +59,16 @@ export interface ProbeQueryFilters {
 }
 
 /**
- * Isolated infrastructure feature hook for host servers, ping probes, and agent installation.
- * Accepts server-side pagination & filter params and dispatches to RPC / Mock backend.
+ * 基础设施主数据聚合 Hook（Infrastructure Page 专用）
+ * 
+ * 职责分工：
+ * 1. 服务器列表融合：结合 `useServers`（分页元数据）与 `useThrottledMonitoring`（秒级实时动态指标流），
+ *    实时计算每台主机的动态 CPU / 内存 / 实时进出流量，动态计算在离线状态。
+ * 2. 拨测探针列表：结合 `usePingTargets` 查询集群配置的各协议服务探测点状态与 24h SLA。
+ * 3. 一键安装命令：提供节点一键接入 Shell / Docker 命令模板。
+ * 
+ * @param serverFilters 主机过滤分页参数
+ * @param probeFilters 探针过滤参数
  */
 export function useInfrastructureData(
   serverFilters: ServerQueryFilters = { page: 1, limit: 12 },
@@ -65,7 +86,7 @@ export function useInfrastructureData(
 
   useMonitoring();
   const liveMetricsMap = useThrottledMonitoring((latest) => latest, 1000);
-  const { data: _pingData, isLoading: isLoadingPing, refetch: refetchPing } = usePingTargets();
+  const { data: pingData, isLoading: isLoadingPing, refetch: refetchPing } = usePingTargets();
 
   // 1. Transform Host Servers from Backend response
   const servers: HostServer[] = useMemo(() => {
@@ -238,7 +259,9 @@ export function useInfrastructureData(
 
   // 2. Transform Ping Targets with simulated backend pagination & search
   const { paginatedProbes, probeTotal, probeTotalPages, allProbes } = useMemo(() => {
-    const rawList = MOCK_PING_TARGETS;
+    // Use real RPC data when available; fall back to mock only until the first fetch completes.
+    const rawList: typeof MOCK_PING_TARGETS =
+      (pingData?.targets as unknown as typeof MOCK_PING_TARGETS) ?? MOCK_PING_TARGETS;
 
     const filtered = rawList.filter((p) => {
       const matchSearch =

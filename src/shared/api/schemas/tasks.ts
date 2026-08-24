@@ -40,7 +40,8 @@ export const taskTemplateSchema = z.object({
   command: z.string(),
   risk: z.enum(["low", "medium", "high"]),
   scope: z.string(),
-  requiresApproval: z.boolean().default(false)
+  requiresApproval: z.boolean().optional(),
+  description: z.string().optional()
 });
 export type TaskTemplate = z.infer<typeof taskTemplateSchema>;
 

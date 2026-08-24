@@ -3,39 +3,35 @@ import { create } from "zustand";
 import type { ServerMetrics } from "@/shared/api/methods";
 
 /**
- * Live metrics indexed by serverId. The monitoring subscription pushes
- * updates here; selectors let components subscribe to a single server's
- * metrics without re-rendering the whole grid on every tick.
- *
- * We keep a short rolling history per server so detail-page charts can plot
- * a tail without a separate fetch.
- *
- * Storage shape (v2): the per-server maps are mutated in place. A single
- * incoming sample no longer rebuilds the entire `latest`/`history` tables —
- * it touches only its own server's entry and bumps `tick`. That keeps a
- * per-server update O(1) instead of O(N) spread, so a tick carrying N node
- * samples is O(N) total rather than O(N²).
- *
- * Versioning for whole-table subscribers (the overview cluster charts read
- * `history`/`latest` across all servers): a stable Map reference would make
- * `useSyncExternalStore`'s `Object.is` see "no change" and freeze the charts.
- * So `tick` increments on every batch; whole-table selectors opt into a
- * throttled read of `tick` (see use-throttled-store) so they recompute ~1×/s
- * instead of once per sample. Per-server selectors (`latest.get(id)`,
- * `history.get(id)`) keep their existing reference-stable behavior — they only
- * change when *that* server updates.
+ * 每个主机保留的历史时序指标最大采样点数（120点 ≈ 2秒/点 x 4分钟滚动窗口）
  */
 const HISTORY_LIMIT = 120;
 
+/**
+ * 实时监控指标状态接口
+ * 
+ * 存储结构设计考量（高并发低延迟 v2 架构）：
+ * 1. **O(1) 原地局部更新（In-Place Mutation）**：
+ *    采用 Map 按 serverId 索引存储。当收到单个服务器的新采样点时，仅更新对应 serverId 的键值对，
+ *    而不需要使用不可变展开语法（如 `...state.latest`）重建整个 Map。
+ *    在 100+ 节点高频推流场景下，单批次处理复杂度从 O(N²) 降低到 O(N)。
+ * 2. **细粒度单节点订阅 vs 全局集群订阅**：
+ *    - 单节点订阅者（如单个主机卡片）：直接通过 `latest.get(id)` 订阅，仅当该主机数据变动时重渲染。
+ *    - 全局聚合订阅者（如总览大盘趋势图）：依赖单调递增计数器 `tick`，配合 `useThrottledMonitoring`
+ *      将 1 秒内到达的数十次局部批次节流合并为 1 次大盘重绘，避免图表高频刷新卡顿。
+ */
 interface MonitoringState {
-  /** Latest sample per server. Mutated in place; do not read for reactivity without `tick`. */
+  /** 各服务器最新实时采样数据（键为 serverId） */
   latest: Map<string, ServerMetrics>;
-  /** Rolling history per server. Mutated in place; do not read for reactivity without `tick`. */
+  /** 各服务器滚动时序历史队列（键为 serverId） */
   history: Map<string, ServerMetrics[]>;
-  /** Monotonic counter, bumped once per applied batch. Drives whole-table selectors. */
+  /** 单调递增版本号计数器：每批次数据写入后自增，驱动全表聚合选择器 */
   tick: number;
+  /** 写入单个主机的遥测指标 */
   upsert: (metrics: ServerMetrics) => void;
+  /** 批量写入多台主机的遥测指标（单次更新仅 bump 一次 tick） */
   upsertBatch: (samples: ServerMetrics[]) => void;
+  /** 重置清空所有实时数据 */
   reset: () => void;
 }
 
@@ -51,8 +47,7 @@ export const useMonitoringStore = create<MonitoringState>((set) => ({
   upsertBatch: (samples) =>
     set((state) => {
       for (const m of samples) applySample(state, m);
-      // One tick per batch, not one per sample — a 100-node tick lands as a
-      // single set rather than 100 cascading ones.
+      // 一批样本仅递增一次 tick，避免 100 台机器数据同时到达时触发 100 次级联重渲染
       return { tick: state.tick + 1 };
     }),
   reset: () =>
@@ -63,28 +58,27 @@ export const useMonitoringStore = create<MonitoringState>((set) => ({
     })
 }));
 
-/** Mutate one server's latest + history entry on the live state maps.
- *
- * `history` is given a fresh array per update for that server (not the whole
- * table), so `useServerHistory(id)` — which memoizes on the array reference —
- * re-renders when *that* server ticks but is untouched by every other server's
- * updates. `latest` swaps in the new sample object the same way. Only the
- * outer `Map` identities are stable; their contents change. Whole-table
- * consumers react to `tick` instead (via the throttled selector). */
+/**
+ * 将单条遥测样本写入 Map 状态
+ * 
+ * 关键机制：
+ * 1. 数组浅拷贝局部隔离：仅为当前更新的主机创建新的数组引用，使仅关注该主机的组件（如 useServerHistory）正常响应更新。
+ * 2. **时间戳严格单调防御（Monotonic Guard）**：
+ *    在 React StrictMode（开发模式下组件会进行 Mount -> Unmount -> Mount 两次执行）或网络乱序时，
+ *    历史回放种子数据可能重复推入。如果新推入的样本其 ts <= 末尾已有样本的 ts，则自动丢弃，
+ *    彻底防止 ECharts / uPlot 等时间轴折线出现“同一时间点来回折返”的渲染 Bug。
+ */
 function applySample(state: MonitoringState, metrics: ServerMetrics): void {
   state.latest.set(metrics.serverId, metrics);
   const prev = state.history.get(metrics.serverId);
-  // Monotonic guard: skip any sample whose ts isn't strictly greater than the
-  // last stored one. React StrictMode double-invokes the subscription effect
-  // in dev (mount → unmount → mount), so the back-dated seed history gets
-  // pushed twice; the second copy's timestamps are older than the first copy's
-  // tail, which left the array non-monotonic and made uPlot/ECharts time axes
-  // fold back on themselves ("同一个 x 点来回折线"). Dropping non-advancing
-  // samples keeps the series strictly ascending without losing live ticks.
+
+  // 单调时间戳防御拦截：丢弃非严格递增的时序点
   if (prev && prev.length > 0 && metrics.ts <= prev[prev.length - 1].ts) {
     return;
   }
+
   if (prev) {
+    // 保持队列长度不超过 HISTORY_LIMIT
     const next = prev.length >= HISTORY_LIMIT ? prev.slice(prev.length - HISTORY_LIMIT + 1) : prev.slice();
     next.push(metrics);
     state.history.set(metrics.serverId, next);

@@ -1,124 +1,122 @@
 import { useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
+import { useRpc } from "@/app/providers/rpc-context";
+import { methods, type GlobalProbeRegion } from "@/shared/api/methods";
+import { queryKeys } from "@/shared/api/query-keys";
 import type { HostServer } from "../types";
-import {
-  getServerNetworkDetails,
-  getServerProbeRegions,
-  type ServerNetworkDetails,
-  type GlobalProbeRegion
-} from "../mock/infrastructure-mock";
+
+export type { GlobalProbeRegion };
+export type { AgentNetworkDetailsResult as ServerNetworkDetails } from "@/shared/api/methods";
 
 /**
- * Mock API: Fetch IP addressing, routing, NIC hardware and BGP peering details
- */
-export async function fetchServerNetworkDetailsApi(
-  server: Partial<HostServer>
-): Promise<ServerNetworkDetails> {
-  // Simulate lightweight RPC delay
-  await new Promise((resolve) => setTimeout(resolve, 50));
-  return getServerNetworkDetails(server);
-}
-
-/**
- * Mock API: Fetch current multi-region probe node latency and packet loss
- */
-export async function fetchServerProbeRegionsApi(
-  server: Partial<HostServer>
-): Promise<GlobalProbeRegion[]> {
-  // Simulate lightweight RPC delay
-  await new Promise((resolve) => setTimeout(resolve, 80));
-  return getServerProbeRegions(server);
-}
-
-/**
- * Mock API: Trigger an on-demand full-mesh global ping test across all 10 probe regions
- */
-export async function runGlobalProbeTestApi(server: Partial<HostServer>): Promise<{
-  avgLatency: number;
-  minLatency: number;
-  minRegion: string;
-  avgLoss: string;
-}> {
-  await new Promise((resolve) => setTimeout(resolve, 500));
-
-  if (server.status === "offline") {
-    throw new Error("全网拨测失败: 目标主机无网络响应 (All probes timed out)");
-  }
-
-  const isWarning = server.status === "warning";
-  const avgLatency = isWarning ? 138.5 : 96.2;
-  const minLatency = isWarning ? 28 : 16;
-  const minRegion = "中国香港 (Hong Kong)";
-  const avgLoss = isWarning ? "1.2%" : "0.08%";
-
-  return {
-    avgLatency,
-    minLatency,
-    minRegion,
-    avgLoss
-  };
-}
-
-/**
- * React Hook for Server Network Addressing and Global Probe Telemetry
+ * 主机网络寻址详情与全球多区域拨测 Hook
+ * 
+ * 功能覆盖：
+ * 1. `networkQuery`: 调用 `agent.getNetworkDetails` 获取网卡型号、MAC、双栈 IP、子网掩码、BGP 对等状态等。
+ * 2. `probeQuery`: 调用 `agent.getProbeRegions` 获取全球 10 大核心节点（香港、新加坡、东京、硅谷、法兰克福等）的往返延迟与抖动。
+ * 3. `runGlobalTest`: 触发全网多区域实时拨测扫描，计算全网平均延迟并弹出摘要通知。
+ * 
+ * @param server 主机部分元数据
+ * @param _timeRange 时间范围
  */
 export function useServerNetworkProbes(
   server: Partial<HostServer> | null | undefined,
   _timeRange: string = "24h"
 ) {
+  const { client } = useRpc();
   const qc = useQueryClient();
   const [isTesting, setIsTesting] = useState(false);
 
-  // 1. Network details query
+  // 1. 网络硬件与 BGP 详情查询
   const networkQuery = useQuery({
-    queryKey: ["server-network-details", server?.id, server?.ip, server?.ipv4, server?.ipv6],
-    queryFn: () => {
-      if (!server) return null;
-      return fetchServerNetworkDetailsApi(server);
+    queryKey: queryKeys.serverNetworkDetails(server?.id ?? ""),
+    queryFn: async () => {
+      if (!server?.id) return null;
+      return client.call(
+        "agent.getNetworkDetails",
+        { serverId: server.id },
+        methods["agent.getNetworkDetails"].result
+      );
     },
     enabled: Boolean(server?.id),
     staleTime: 5000
   });
 
-  // 2. Probe regions query
+  // 2. 全球区域拨测结果查询（10 秒定时同步）
   const probeQuery = useQuery({
-    queryKey: ["server-global-probes", server?.id, server?.status],
-    queryFn: () => {
-      if (!server) return [];
-      return fetchServerProbeRegionsApi(server);
+    queryKey: queryKeys.serverProbeRegions(server?.id ?? ""),
+    queryFn: async () => {
+      if (!server?.id) return { regions: [] as GlobalProbeRegion[] };
+      return client.call(
+        "agent.getProbeRegions",
+        { serverId: server.id },
+        methods["agent.getProbeRegions"].result
+      );
     },
     enabled: Boolean(server?.id),
     staleTime: 4000,
-    refetchInterval: 10000 // Poll every 10 seconds for probe jitter
+    refetchInterval: 10000
   });
 
-  const networkDetails: ServerNetworkDetails | null =
-    networkQuery.data ?? (server ? getServerNetworkDetails(server) : null);
+  const networkDetails = networkQuery.data ?? null;
+  const probeRegions: GlobalProbeRegion[] = probeQuery.data?.regions ?? [];
 
-  const probeRegions: GlobalProbeRegion[] =
-    probeQuery.data ?? (server ? getServerProbeRegions(server) : []);
-
-  // Compute aggregate stats
+  // 计算聚合统计指标
   const activeProbes = probeRegions.filter((p) => p.status !== "down");
-  const avgLatency = activeProbes.length > 0
-    ? Math.round(activeProbes.reduce((sum, p) => sum + p.currentLatency, 0) / activeProbes.length)
-    : 0;
+  const avgLatency =
+    activeProbes.length > 0
+      ? Math.round(
+          activeProbes.reduce((sum, p) => sum + p.currentLatency, 0) /
+            activeProbes.length
+        )
+      : 0;
 
   const minProbe = activeProbes.reduce<GlobalProbeRegion | null>(
     (min, p) => (!min || p.currentLatency < min.currentLatency ? p : min),
     null
   );
 
+  /**
+   * 执行一次即时全网拨测巡检
+   */
   const runGlobalTest = async () => {
-    if (!server) return;
+    if (!server?.id) return;
     setIsTesting(true);
     try {
-      const res = await runGlobalProbeTestApi(server);
-      toast.success(
-        `全网拨测完成: 平均时延 ${res.avgLatency}ms · 最优 ${res.minLatency}ms (${res.minRegion}) · 丢包 ${res.avgLoss}`
+      const res = await client.call(
+        "agent.getProbeRegions",
+        { serverId: server.id },
+        methods["agent.getProbeRegions"].result
       );
-      qc.invalidateQueries({ queryKey: ["server-global-probes", server.id] });
+
+      const active = res.regions.filter((p) => p.status !== "down");
+      const avg =
+        active.length > 0
+          ? Math.round(
+              active.reduce((s, p) => s + p.currentLatency, 0) / active.length
+            )
+          : 0;
+      const min = active.reduce<GlobalProbeRegion | null>(
+        (m, p) => (!m || p.currentLatency < m.currentLatency ? p : m),
+        null
+      );
+      const avgLoss =
+        active.length > 0
+          ? (
+              active.reduce(
+                (s, p) => s + parseFloat(p.loss.replace("%", "") || "0"),
+                0
+              ) / active.length
+            ).toFixed(2) + "%"
+          : "100%";
+
+      toast.success(
+        `全网拨测完成: 平均时延 ${avg}ms · 最优 ${min?.currentLatency ?? 0}ms (${min?.name ?? "-"}) · 丢包 ${avgLoss}`
+      );
+
+      // 更新缓存
+      qc.setQueryData(queryKeys.serverProbeRegions(server.id), res);
     } catch (err: unknown) {
       const message = err instanceof Error ? err.message : "拨测失败";
       toast.error(message);
@@ -132,8 +130,8 @@ export function useServerNetworkProbes(
     probeRegions,
     summary: {
       avgLatency,
-      minLatency: minProbe?.currentLatency || 16,
-      minRegion: minProbe?.name || "中国香港 (Hong Kong)",
+      minLatency: minProbe?.currentLatency ?? 16,
+      minRegion: minProbe?.name ?? "中国香港 (Hong Kong)",
       upCount: probeRegions.filter((p) => p.status === "up").length,
       totalCount: probeRegions.length
     },

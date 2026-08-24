@@ -165,3 +165,158 @@ export const agentSampleProcessesResultSchema = z.object({
   mode: z.enum(["enabled", "disable_auto", "forbidden"]).optional()
 });
 export type AgentSampleProcessesResult = z.infer<typeof agentSampleProcessesResultSchema>;
+
+// ---------------------------------------------------------------------------
+// agent.getStatus — Agent daemon heartbeat, connection quality & process info
+// ---------------------------------------------------------------------------
+export const agentStatusParamsSchema = z.object({ serverId: z.string() });
+export type AgentStatusParams = z.infer<typeof agentStatusParamsSchema>;
+
+export const agentStatusResultSchema = z.object({
+  status: z.enum(["online", "warning", "offline"]),
+  statusText: z.string(),
+  badgeText: z.string(),
+  subtitle: z.string(),
+  protocol: z.string(),
+  protocolDetail: z.string(),
+  latencyMs: z.number(),
+  jitterMs: z.number(),
+  lossRate: z.string(),
+  quality: z.string(),
+  interval: z.string(),
+  lastPing: z.string(),
+  cpuUsage: z.string(),
+  memRss: z.string(),
+  version: z.string(),
+  isLatest: z.boolean(),
+  allowRemoteExec: z.boolean(),
+  pid: z.number()
+});
+export type AgentStatusResult = z.infer<typeof agentStatusResultSchema>;
+
+// ---------------------------------------------------------------------------
+// agent.getNetworkDetails — IP addressing, NIC hardware, BGP peering
+// ---------------------------------------------------------------------------
+export const agentNetworkDetailsParamsSchema = z.object({ serverId: z.string() });
+export type AgentNetworkDetailsParams = z.infer<typeof agentNetworkDetailsParamsSchema>;
+
+export const agentNetworkDetailsResultSchema = z.object({
+  hasIpv4: z.boolean(),
+  hasIpv6: z.boolean(),
+  isDualStack: z.boolean(),
+  ipv4: z.string(),
+  ipv4Gateway: z.string(),
+  ipv4Mask: z.string(),
+  ipv4Asn: z.string(),
+  ipv4Isp: z.string(),
+  ipv4Mtu: z.number(),
+  ipv6: z.string(),
+  ipv6Gateway: z.string(),
+  ipv6Prefix: z.string(),
+  ipv6Scope: z.string(),
+  ipv6Allocation: z.string(),
+  nicName: z.string(),
+  nicModel: z.string(),
+  nicSpeed: z.string(),
+  nicMac: z.string(),
+  nicDuplex: z.string(),
+  nicRxBytes: z.string(),
+  nicTxBytes: z.string(),
+  nicRxPackets: z.number(),
+  nicTxPackets: z.number(),
+  dnsServers: z.array(z.string()),
+  tcpEstablished: z.number(),
+  tcpTimeWait: z.number(),
+  tcpSynRecv: z.number(),
+  bgpPeers: z.number(),
+  bgpStatus: z.string()
+});
+export type AgentNetworkDetailsResult = z.infer<typeof agentNetworkDetailsResultSchema>;
+
+// ---------------------------------------------------------------------------
+// agent.getProbeRegions — Multi-region latency probe results
+// ---------------------------------------------------------------------------
+export const agentProbeRegionsParamsSchema = z.object({ serverId: z.string() });
+export type AgentProbeRegionsParams = z.infer<typeof agentProbeRegionsParamsSchema>;
+
+export const globalProbeRegionSchema = z.object({
+  id: z.string(),
+  name: z.string(),
+  target: z.string(),
+  color: z.string(),
+  baseLatency: z.number(),
+  currentLatency: z.number(),
+  jitter: z.number(),
+  loss: z.string(),
+  status: z.enum(["up", "degraded", "down"]),
+  isp: z.string(),
+  regionCode: z.string()
+});
+export type GlobalProbeRegion = z.infer<typeof globalProbeRegionSchema>;
+
+export const agentProbeRegionsResultSchema = z.object({
+  regions: z.array(globalProbeRegionSchema)
+});
+export type AgentProbeRegionsResult = z.infer<typeof agentProbeRegionsResultSchema>;
+
+// ---------------------------------------------------------------------------
+// agent.getConfig — Full server configuration form state (billing/alerts/traffic)
+// ---------------------------------------------------------------------------
+export const agentGetConfigParamsSchema = z.object({ serverId: z.string() });
+export type AgentGetConfigParams = z.infer<typeof agentGetConfigParamsSchema>;
+
+const notifyChannelConfigSchema = z.object({
+  id: z.string(),
+  name: z.string(),
+  type: z.string(),
+  target: z.string().optional(),
+  enabled: z.boolean()
+});
+
+export const agentServerConfigResultSchema = z.object({
+  name: z.string(),
+  groups: z.array(z.string()),
+  tags: z.array(z.string()),
+  autoLocation: z.boolean(),
+  location: z.string(),
+  trafficLimitValue: z.number(),
+  trafficLimitUnit: z.enum(["MB", "GB", "TB", "PB"]),
+  trafficLimitGb: z.number(),
+  trafficCalculation: z.enum(["outbound", "both", "inbound", "max"]),
+  trafficResetDay: z.number(),
+  publicVisible: z.boolean(),
+  maintenanceMode: z.boolean(),
+  price: z.number(),
+  currency: z.string(),
+  billingCycle: z.string(),
+  expiresAt: z.string(),
+  autoRenew: z.boolean(),
+  note: z.string(),
+  cpuThreshold: z.number(),
+  cpuDurationSec: z.number(),
+  memThreshold: z.number(),
+  memDurationSec: z.number(),
+  diskThreshold: z.number(),
+  diskDurationSec: z.number(),
+  netThresholdMb: z.number().optional(),
+  offlineTimeoutSec: z.number(),
+  enableNotify: z.boolean(),
+  notifyChannels: z.array(notifyChannelConfigSchema),
+  agentToken: z.string(),
+  allowRemoteExec: z.boolean()
+});
+export type AgentServerConfigResult = z.infer<typeof agentServerConfigResultSchema>;
+
+// ---------------------------------------------------------------------------
+// agent.updateConfig — Persist full server configuration
+// ---------------------------------------------------------------------------
+export const agentUpdateConfigParamsSchema = agentServerConfigResultSchema.extend({
+  serverId: z.string()
+});
+export type AgentUpdateConfigParams = z.infer<typeof agentUpdateConfigParamsSchema>;
+
+// ---------------------------------------------------------------------------
+// agent.decommission — Remove and deregister a server node
+// ---------------------------------------------------------------------------
+export const agentDecommissionParamsSchema = z.object({ serverId: z.string() });
+export type AgentDecommissionParams = z.infer<typeof agentDecommissionParamsSchema>;

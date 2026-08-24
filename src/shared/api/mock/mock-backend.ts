@@ -9,7 +9,15 @@ import type {
   Task
 } from "@/shared/api/methods";
 import { mockServers } from "./mock-servers";
-import { MOCK_HOST_SERVERS } from "@/features/infrastructure/mock/infrastructure-mock";
+import {
+  MOCK_HOST_SERVERS,
+  getServerAgentStatus,
+  getServerNetworkDetails,
+  getServerProbeRegions,
+  getMockServerConfig,
+  updateMockServerConfig,
+  decommissionMockServer
+} from "@/features/infrastructure/mock/infrastructure-mock";
 import {
   mockAccounts,
   mockAlertHistory,
@@ -410,6 +418,80 @@ class MockBackendImpl implements MockBackend {
         };
       }
 
+      // -----------------------------------------------------------------------
+      // Infrastructure detail endpoints — previously only served by feature mocks
+      // -----------------------------------------------------------------------
+
+      case "agent.getStatus": {
+        const { serverId } = (params ?? {}) as { serverId: string };
+        const server = this.servers.find((s) => s.id === serverId);
+        const host = MOCK_HOST_SERVERS.find(
+          (m) => m.id === serverId || m.name.toLowerCase() === server?.name.toLowerCase()
+        );
+        // Build a partial HostServer-compatible object from what we have
+        const partial = host ?? {
+          id: serverId,
+          status: server?.status ?? "online",
+          cpu: 20,
+          memory: 50,
+          agentVersion: server?.agentVersion,
+          allowRemoteExec: true
+        };
+        return getServerAgentStatus(partial);
+      }
+
+      case "agent.getNetworkDetails": {
+        const { serverId } = (params ?? {}) as { serverId: string };
+        const server = this.servers.find((s) => s.id === serverId);
+        const host = MOCK_HOST_SERVERS.find(
+          (m) => m.id === serverId || m.name.toLowerCase() === server?.name.toLowerCase()
+        );
+        const partial: Partial<typeof MOCK_HOST_SERVERS[0]> = host ?? {
+          id: serverId,
+          ip: server?.ipv4 ?? server?.publicIp ?? "198.51.100.1",
+          ipv4: server?.ipv4 ?? (server?.publicIp ?? undefined),
+          ipv6: server?.ipv6 ?? undefined,
+          cpu: 20,
+          group: "",
+          name: server?.name ?? serverId
+        };
+        return getServerNetworkDetails(partial);
+      }
+
+      case "agent.getProbeRegions": {
+        const { serverId } = (params ?? {}) as { serverId: string };
+        const server = this.servers.find((s) => s.id === serverId);
+        const host = MOCK_HOST_SERVERS.find(
+          (m) => m.id === serverId || m.name.toLowerCase() === server?.name.toLowerCase()
+        );
+        const partial = host ?? { id: serverId, status: server?.status ?? "online" };
+        const regions = getServerProbeRegions(partial);
+        return { regions };
+      }
+
+      case "agent.getConfig": {
+        const { serverId } = (params ?? {}) as { serverId: string };
+        const host = MOCK_HOST_SERVERS.find((m) => m.id === serverId);
+        return getMockServerConfig(serverId, host);
+      }
+
+      case "agent.updateConfig": {
+        const { serverId, ...updates } = (params ?? {}) as { serverId: string } & Record<string, unknown>;
+        const result = updateMockServerConfig(serverId, updates as Parameters<typeof updateMockServerConfig>[1]);
+        if (!result.ok) throw new Error("mock: updateConfig failed");
+        return { ok: true };
+      }
+
+      case "agent.decommission": {
+        const { serverId } = (params ?? {}) as { serverId: string };
+        const result = decommissionMockServer(serverId);
+        if (!result.ok) throw new Error(`mock: decommission failed for ${serverId}`);
+        // Also remove from live servers array so agent.list reflects the change
+        this.servers = this.servers.filter((s) => s.id !== serverId);
+        this.runtimes.delete(serverId);
+        return { ok: true };
+      }
+
       case "task.list": {
         const p = (params ?? {}) as { status?: string; search?: string };
         let tasks = mockTasks;
@@ -476,18 +558,35 @@ class MockBackendImpl implements MockBackend {
       case "task.dispatch": {
         const p = (params ?? {}) as { serverId: string; command: string; risk: string; scope: string };
         const server = this.servers.find((s) => s.id === p.serverId);
+
+        // Generate realistic stdout based on command keywords
+        let mockOutput = `[smalux-agent] Executing: ${p.command}\n`;
+        const cmdLower = p.command.toLowerCase();
+        if (cmdLower.includes("df") || cmdLower.includes("free")) {
+          mockOutput += `Filesystem      Size  Used Avail Use% Mounted on\n/dev/nvme0n1p1  100G   24G   72G  25% /\ntmpfs           7.8G     0  7.8G   0% /dev/shm\n---\n               total        used        free      shared  buff/cache   available\nMem:           15.6G        3.8G        9.2G        120M        2.6G       11.4G\nSwap:           4.0G          0B        4.0G`;
+        } else if (cmdLower.includes("nginx")) {
+          mockOutput += `nginx: the configuration file /etc/nginx/nginx.conf syntax is ok\nnginx: configuration file /etc/nginx/nginx.conf test is successful\n[systemd] Reloading A high performance web server and a reverse proxy server...\n[systemd] Reloaded Nginx service in 42ms.`;
+        } else if (cmdLower.includes("docker")) {
+          mockOutput += `Deleted Containers: 3\nDeleted Images: 12 (untagged)\nDeleted Networks: 1\nTotal reclaimed space: 14.82GB\n[OK] Docker system prune completed successfully.`;
+        } else if (cmdLower.includes("systemctl") || cmdLower.includes("status")) {
+          mockOutput += `● smalux-agent.service - Smalux Fleet Telemetry Agent\n   Loaded: loaded (/etc/systemd/system/smalux-agent.service; enabled; vendor preset: enabled)\n   Active: active (running) since Sun 2026-08-23 04:12:00 CST; 6h ago\n Main PID: 12480 (smalux-agent)\n    Tasks: 8 (limit: 4915)\n   Memory: 18.4M\n   CGroup: /system.slice/smalux-agent.service\n           └─12480 /usr/local/bin/smalux-agent --config=/etc/smalux/agent.yaml`;
+        } else {
+          mockOutput += `[root@${server?.name ?? p.serverId} ~]# ${p.command}\nExecution completed with exit code 0\nFinished at: ${new Date().toLocaleTimeString("zh-CN")}`;
+        }
+
         mockTasks.unshift({
           id: `t${mockTasks.length + 1}`,
           serverId: p.serverId,
           serverName: server?.name ?? p.serverId,
           command: p.command,
-          status: p.risk === "high" ? "pending" : "success",
+          status: "success",
           risk: p.risk as Task["risk"],
           scope: p.scope,
           startedAt: Date.now(),
-          finishedAt: p.risk === "high" ? undefined : Date.now() + 1000,
-          durationMs: p.risk === "high" ? undefined : 1000,
-          exitCode: p.risk === "high" ? undefined : 0
+          finishedAt: Date.now() + 520,
+          durationMs: 520,
+          exitCode: 0,
+          output: mockOutput
         });
         return { ok: true };
       }
@@ -495,9 +594,13 @@ class MockBackendImpl implements MockBackend {
         const p = (params ?? {}) as { id: string };
         const t = mockTasks.find((x) => x.id === p.id);
         if (t) {
-          t.status = "running";
+          t.status = "success";
           t.startedAt = Date.now();
+          t.finishedAt = Date.now() + 850;
+          t.durationMs = 850;
+          t.exitCode = 0;
           t.approver = "admin";
+          t.output = `[Security Audit] Task approved by operator: admin at ${new Date().toLocaleTimeString("zh-CN")}\n[smalux-agent] Executing approved command: ${t.command}\n[OK] High-risk operation completed successfully with exit code 0.`;
         }
         return { ok: true };
       }

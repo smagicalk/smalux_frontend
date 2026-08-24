@@ -5,6 +5,11 @@ import { queryKeys } from "@/shared/api/query-keys";
 import { useRpc } from "@/app/providers/rpc-context";
 import type { AlertSeverity } from "@/shared/api/methods";
 
+/**
+ * 获取集群告警规则与历史触发事件列表 Hook
+ * 
+ * 对应 `alert.list` JSON-RPC 方法。
+ */
 export function useAlerts() {
   const { client } = useRpc();
   return useQuery({
@@ -13,6 +18,11 @@ export function useAlerts() {
   });
 }
 
+/**
+ * 新建告警规则策略 Hook（Mutation）
+ * 
+ * 对应 `alert.create` JSON-RPC 方法。
+ */
 export function useCreateAlertRule() {
   const { client } = useRpc();
   const qc = useQueryClient();
@@ -30,6 +40,11 @@ export function useCreateAlertRule() {
   });
 }
 
+/**
+ * 静音/取消静音指定告警规则 Hook（Mutation）
+ * 
+ * 对应 `alert.silence` JSON-RPC 方法。
+ */
 export function useSilenceAlert() {
   const { client } = useRpc();
   const qc = useQueryClient();
@@ -40,6 +55,11 @@ export function useSilenceAlert() {
   });
 }
 
+/**
+ * 删除指定告警规则 Hook（Mutation）
+ * 
+ * 对应 `alert.delete` JSON-RPC 方法。
+ */
 export function useDeleteAlert() {
   const { client } = useRpc();
   const qc = useQueryClient();

@@ -26,21 +26,21 @@ const hr = 3_600_000;
 const day = 86_400_000;
 
 export const mockTasks: Task[] = [
-  { id: "t1", serverId: "srv-hkg-01", serverName: "edge-hkg-01", command: "systemctl restart nginx", status: "success", risk: "medium", scope: "node:exec", startedAt: now - 2 * hr, finishedAt: now - 2 * hr + 3200, durationMs: 3200, exitCode: 0, output: "nginx restarted", approver: "admin" },
-  { id: "t2", serverId: "srv-tok-01", serverName: "edge-tok-01", command: "df -h", status: "success", risk: "low", scope: "node:read", startedAt: now - 90 * min, finishedAt: now - 90 * min + 800, durationMs: 800, exitCode: 0 },
-  { id: "t3", serverId: "srv-sgp-02", serverName: "worker-sgp-02", command: "apt update && apt upgrade -y", status: "running", risk: "high", scope: "node:exec", startedAt: now - 5 * min, approver: "admin" },
-  { id: "t4", serverId: "srv-fra-02", serverName: "edge-fra-02", command: "rm -rf /tmp/cache", status: "approved", risk: "high", scope: "node:exec", approver: "operator" },
-  { id: "t5", serverId: "srv-lax-01", serverName: "db-lax-01", command: "pg_dump main", status: "pending", risk: "medium", scope: "node:exec" },
-  { id: "t6", serverId: "srv-sha-01", serverName: "worker-sha-01", command: "docker logs app", status: "failed", risk: "low", scope: "node:read", startedAt: now - 3 * hr, finishedAt: now - 3 * hr + 1500, durationMs: 1500, exitCode: 1, output: "container not found" },
-  { id: "t7", serverId: "srv-hkg-02", serverName: "core-hkg-02", command: "uptime", status: "timeout", risk: "low", scope: "node:read", startedAt: now - 4 * hr, finishedAt: now - 4 * hr + 30_000, durationMs: 30_000, exitCode: 124 }
+  { id: "t1", serverId: "srv-hkg-01", serverName: "edge-hkg-01", command: "systemctl restart nginx", status: "success", risk: "medium", scope: "node:exec", startedAt: now - 2 * hr, finishedAt: now - 2 * hr + 3200, durationMs: 3200, exitCode: 0, output: "nginx: the configuration file /etc/nginx/nginx.conf syntax is ok\nnginx: configuration file /etc/nginx/nginx.conf test is successful\n[OK] Reloaded Nginx Web Server." },
+  { id: "t2", serverId: "srv-tok-01", serverName: "edge-tok-01", command: "df -h && free -m", status: "success", risk: "low", scope: "node:read", startedAt: now - 90 * min, finishedAt: now - 90 * min + 800, durationMs: 800, exitCode: 0, output: "Filesystem      Size  Used Avail Use% Mounted on\n/dev/nvme0n1p1  100G   24G   72G  25% /\n---\nMem: 15.6G total, 3.8G used, 11.8G free" },
+  { id: "t3", serverId: "srv-sgp-02", serverName: "worker-sgp-02", command: "docker system prune -af", status: "success", risk: "high", scope: "node:exec", startedAt: now - 5 * min, finishedAt: now - 5 * min + 4200, durationMs: 4200, exitCode: 0, output: "Deleted Containers: 4\nDeleted Images: 8\nTotal reclaimed space: 12.4GB\n[OK] Docker prune completed." },
+  { id: "t4", serverId: "srv-fra-02", serverName: "edge-fra-02", command: "rm -rf /tmp/cache/*", status: "success", risk: "high", scope: "node:exec", startedAt: now - 40 * min, finishedAt: now - 40 * min + 600, durationMs: 600, exitCode: 0, output: "Removed 142 temporary cache files." },
+  { id: "t5", serverId: "srv-lax-01", serverName: "db-lax-01", command: "pg_dump -U postgres -d main > /backup/main.sql", status: "success", risk: "medium", scope: "node:exec", startedAt: now - 55 * min, finishedAt: now - 55 * min + 8500, durationMs: 8500, exitCode: 0, output: "pg_dump: exporting database schema and tables...\n[OK] Database dump created successfully (248MB)." },
+  { id: "t6", serverId: "srv-sha-01", serverName: "worker-sha-01", command: "docker logs app", status: "failed", risk: "low", scope: "node:read", startedAt: now - 3 * hr, finishedAt: now - 3 * hr + 1500, durationMs: 1500, exitCode: 1, output: "Error response from daemon: No such container: app" },
+  { id: "t7", serverId: "srv-hkg-02", serverName: "core-hkg-02", command: "uptime", status: "timeout", risk: "low", scope: "node:read", startedAt: now - 4 * hr, finishedAt: now - 4 * hr + 30_000, durationMs: 30_000, exitCode: 124, output: "Command timed out after 30s." }
 ];
 
 export const mockTaskTemplates: TaskTemplate[] = [
-  { id: "tp1", name: "重启服务", command: "systemctl restart {service}", risk: "medium", scope: "node:exec", requiresApproval: true },
-  { id: "tp2", name: "系统诊断", command: "uname -a && df -h && free -m", risk: "low", scope: "node:read", requiresApproval: false },
-  { id: "tp3", name: "内核参数采集", command: "sysctl -a | grep net", risk: "low", scope: "node:read", requiresApproval: false },
-  { id: "tp4", name: "Agent 重启", command: "systemctl restart smalux-agent", risk: "high", scope: "node:exec", requiresApproval: true },
-  { id: "tp5", name: "网络诊断", command: "ping -c 4 {host} && traceroute {host}", risk: "low", scope: "node:read", requiresApproval: false }
+  { id: "tp1", name: "重启 Web 服务", command: "systemctl restart nginx", risk: "medium", scope: "node:exec", description: "平滑重启 Nginx Web 服务并测试配置文件" },
+  { id: "tp2", name: "系统综合诊断", command: "uname -a && df -h && free -m && uptime", risk: "low", scope: "node:read", description: "采集内核版本、磁盘占用、内存容量与瞬时负载" },
+  { id: "tp3", name: "网络内核参数采集", command: "sysctl -a | grep -E 'net.ipv4.tcp|net.core'", risk: "low", scope: "node:read", description: "提取 TCP 拥塞控制算法与网络缓冲区核心配置" },
+  { id: "tp4", name: "Agent 守护进程重启", command: "systemctl restart smalux-agent", risk: "high", scope: "node:exec", description: "重启当前节点上的 Smalux 监控采集守护进程" },
+  { id: "tp5", name: "网络链路连通性检测", command: "ping -c 4 8.8.8.8 && mtr -rn -c 5 1.1.1.1", risk: "low", scope: "node:read", description: "快速测试公网出网延迟与骨干路由跳点损耗" }
 ];
 
 export const mockCrons: Cron[] = [
