@@ -24,7 +24,14 @@ import {
   Layers,
   Calendar,
   Shield,
-  HelpCircle
+  HelpCircle,
+  CheckCircle2,
+  AlertTriangle,
+  XCircle,
+  Filter,
+  Repeat,
+  Zap,
+  Timer
 } from "lucide-react";
 import { Card, CardHeader, CardTitle, CardContent, CardDescription } from "@/shared/ui/card";
 import { Button } from "@/shared/ui/button";
@@ -35,8 +42,10 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } f
 import { toast } from "sonner";
 import {
   useTasks,
+  useTaskVariables,
   useDispatchTask,
   useCrons,
+  useCronLogs,
   useCreateCron,
   useUpdateCron,
   useToggleCron,
@@ -44,7 +53,7 @@ import {
 } from "../api/use-automation";
 import { useInfrastructureData } from "@/features/infrastructure/api/use-infrastructure-api";
 import { ScriptLibraryWidget } from "../components/script-library-widget";
-import type { Task, Cron } from "@/shared/api/methods";
+import type { Task, Cron, CronLog, TaskVariable } from "@/shared/api/methods";
 
 // ─────────────────────────────────────────────────────────────
 // 辅助计算与格式化工具函数
@@ -80,6 +89,19 @@ function statusBadge(status: string) {
   }
 }
 
+function batchStatusBadge(batch: TaskBatchGroup) {
+  if (batch.status === "running") {
+    return <Badge variant="info" dot>执行中 ({batch.tasks.filter((t) => t.status === "success").length}/{batch.totalNodes})</Badge>;
+  }
+  if (batch.status === "success") {
+    return <Badge variant="success" dot>{batch.totalNodes > 1 ? `全部成功 (${batch.totalNodes}台)` : "执行成功"}</Badge>;
+  }
+  if (batch.status === "partial") {
+    return <Badge variant="warning" dot>部分成功 ({batch.successNodes}/{batch.totalNodes})</Badge>;
+  }
+  return <Badge variant="danger" dot>{batch.totalNodes > 1 ? `全部失败 (${batch.totalNodes}台)` : "执行失败"}</Badge>;
+}
+
 function parseCronDescription(expr: string): string {
   const parts = expr.trim().split(/\s+/);
   if (parts.length !== 5) return "自定义表达式";
@@ -100,7 +122,7 @@ function parseCronDescription(expr: string): string {
 }
 
 // ─────────────────────────────────────────────────────────────
-// 完整丰富的动态运维变量库定义
+// 动态运维变量默认兜底定义
 // ─────────────────────────────────────────────────────────────
 
 export interface DynamicVariable {
@@ -136,15 +158,65 @@ export const DYNAMIC_VARIABLES: DynamicVariable[] = [
 ];
 
 // ─────────────────────────────────────────────────────────────
+// 每次下发执行的批次分组类型定义
+// ─────────────────────────────────────────────────────────────
+
+export interface TaskBatchGroup {
+  id: string;
+  batchId?: string;
+  command: string;
+  startedAt: number;
+  totalNodes: number;
+  successNodes: number;
+  failedNodes: number;
+  runningNodes: number;
+  tasks: Task[];
+  status: "success" | "running" | "failed" | "partial";
+}
+
+export interface CronBatchLogGroup {
+  batchId: string;
+  runNumber?: number;
+  cronId: string;
+  cronName: string;
+  expression: string;
+  command: string;
+  triggerType: "cron" | "manual";
+  startedAt: number;
+  totalNodes: number;
+  successNodes: number;
+  failedNodes: number;
+  runningNodes: number;
+  status: "success" | "failed" | "partial" | "running";
+  logs: CronLog[];
+}
+
+export interface CronJobLogGroup {
+  cronId: string;
+  cronName: string;
+  expression: string;
+  command: string;
+  totalRuns: number;
+  successRuns: number;
+  failedRuns: number;
+  latestRunAt: number;
+  batches: CronBatchLogGroup[];
+}
+
+// ─────────────────────────────────────────────────────────────
 // 自动化运维主页面组件
 // ─────────────────────────────────────────────────────────────
 
 export function AutomationPage() {
   const [activeTab, setActiveTab] = useState<"dispatch" | "cron" | "logs">("dispatch");
+  const [logSubTab, setLogSubTab] = useState<"adhoc" | "cron">("adhoc");
 
   // RPC 数据与 Hooks
   const { data: taskData, isLoading: isLoadingTasks, refetch: refetchTasks } = useTasks();
+  const { data: varData, isLoading: isLoadingVars } = useTaskVariables();
   const { data: cronData, isLoading: isLoadingCrons, refetch: refetchCrons } = useCrons();
+  const { data: cronLogData, isLoading: isLoadingCronLogs, refetch: refetchCronLogs } = useCronLogs();
+
   const dispatchTask = useDispatchTask();
   const createCron = useCreateCron();
   const updateCron = useUpdateCron();
@@ -159,7 +231,9 @@ export function AutomationPage() {
   }, [servers]);
 
   const tasks: Task[] = taskData?.tasks ?? [];
+  const dynamicVariables: TaskVariable[] = useMemo(() => varData?.variables ?? DYNAMIC_VARIABLES, [varData]);
   const crons: Cron[] = cronData?.crons ?? [];
+  const cronLogs: CronLog[] = cronLogData?.logs ?? [];
 
   // ── 即时命令下发状态 ──
   const [commandText, setCommandText] = useState("df -h && free -m");
@@ -174,6 +248,7 @@ export function AutomationPage() {
 
   // ── 实时下发执行控制台状态 ──
   const [activeBatchResult, setActiveBatchResult] = useState<{
+    batchId: string;
     command: string;
     dispatchedAt: number;
     serverIds: string[];
@@ -197,24 +272,43 @@ export function AutomationPage() {
   const [cronSearchQuery, setCronSearchQuery] = useState("");
   const [cronFilterStatus, setCronFilterStatus] = useState<"all" | "enabled" | "disabled">("all");
 
-  // ── 任务日志筛选与分栏选中的 Task ──
+  // ── 即时下发记录筛选与选中的 Batch / 机器 ──
   const [logSearchQuery, setLogSearchQuery] = useState("");
   const [logStatusFilter, setLogStatusFilter] = useState<string>("all");
   const [autoRefreshLogs, setAutoRefreshLogs] = useState(true);
-  const [selectedAuditTaskId, setSelectedAuditTaskId] = useState<string | null>(null);
+  const [selectedBatchId, setSelectedBatchId] = useState<string | null>(null);
+  const [expandedBatchId, setExpandedBatchId] = useState<string | null>(null);
+  const [selectedNodeIdInBatch, setSelectedNodeIdInBatch] = useState<string | null>(null);
+  const [nodeStatusFilter, setNodeStatusFilter] = useState<"all" | "failed" | "success" | "running">("all");
+  const [nodeSearchQuery, setNodeSearchQuery] = useState("");
+
+  // ── 计划调度记录（任务名称 -> 批次/机器 -> 终端 三栏）状态 ──
+  const [cronLogSearchQuery, setCronLogSearchQuery] = useState("");
+  const [cronLogTriggerFilter, setCronLogTriggerFilter] = useState<string>("all");
+  const [cronLogStatusFilter, setCronLogStatusFilter] = useState<string>("all");
+  const [selectedCronJobId, setSelectedCronJobId] = useState<string | null>(null);
+  const [cronDetailViewMode, setCronDetailViewMode] = useState<"batch" | "node">("batch");
+  const [cronDetailSearch, setCronDetailSearch] = useState("");
+  const [selectedCronBatchId, setSelectedCronBatchId] = useState<string | null>(null);
+  const [expandedCronBatchId, setExpandedCronBatchId] = useState<string | null>(null);
+  const [expandedCronNodeSummaryId, setExpandedCronNodeSummaryId] = useState<string | null>(null);
+  const [selectedCronNodeId, setSelectedCronNodeId] = useState<string | null>(null);
+  const [cronNodeStatusFilter, setCronNodeStatusFilter] = useState<"all" | "failed" | "success" | "running">("all");
+  const [cronNodeSearchQuery, setCronNodeSearchQuery] = useState("");
 
   // 自动轮询刷新任务日志（每 4 秒）
   useEffect(() => {
     if (!autoRefreshLogs) return;
     const timer = setInterval(() => {
       refetchTasks();
+      refetchCronLogs();
     }, 4000);
     return () => clearInterval(timer);
-  }, [autoRefreshLogs, refetchTasks]);
+  }, [autoRefreshLogs, refetchTasks, refetchCronLogs]);
 
   // 过滤后的变量列表
   const filteredVariables = useMemo(() => {
-    return DYNAMIC_VARIABLES.filter((item) => {
+    return dynamicVariables.filter((item) => {
       const matchCat =
         variableCategory === "all" || item.category === variableCategory;
       const q = variableSearchQuery.toLowerCase().trim();
@@ -226,30 +320,327 @@ export function AutomationPage() {
         item.example.toLowerCase().includes(q);
       return matchCat && matchQuery;
     });
-  }, [variableCategory, variableSearchQuery]);
+  }, [dynamicVariables, variableCategory, variableSearchQuery]);
 
-  // 过滤后的日志记录列表
-  const filteredTasks = useMemo(() => {
-    return tasks.filter((t) => {
+  // ─────────────────────────────────────────────────────────────
+  // 即时下发记录：聚合成「每次执行算一次分组 (TaskBatchGroup)」
+  // ─────────────────────────────────────────────────────────────
+  const batchGroups = useMemo<TaskBatchGroup[]>(() => {
+    const map = new Map<string, Task[]>();
+
+    for (const t of tasks) {
+      const key = t.batchId || `${t.command}_${Math.floor((t.startedAt || 0) / 5000)}`;
+      const list = map.get(key) || [];
+      list.push(t);
+      map.set(key, list);
+    }
+
+    const groups: TaskBatchGroup[] = [];
+    map.forEach((list, key) => {
+      const first = list[0];
+      const totalNodes = list.length;
+      const successNodes = list.filter((t) => t.status === "success").length;
+      const failedNodes = list.filter((t) => t.status === "failed" || t.status === "timeout").length;
+      const runningNodes = list.filter((t) => t.status === "running" || t.status === "pending").length;
+
+      let status: TaskBatchGroup["status"] = "success";
+      if (runningNodes > 0) {
+        status = "running";
+      } else if (failedNodes === totalNodes) {
+        status = "failed";
+      } else if (failedNodes > 0) {
+        status = "partial";
+      }
+
+      groups.push({
+        id: key,
+        batchId: first.batchId,
+        command: first.command,
+        startedAt: first.startedAt || Date.now(),
+        totalNodes,
+        successNodes,
+        failedNodes,
+        runningNodes,
+        tasks: list,
+        status
+      });
+    });
+
+    return groups.sort((a, b) => b.startedAt - a.startedAt);
+  }, [tasks]);
+
+  const filteredBatchGroups = useMemo(() => {
+    return batchGroups.filter((g) => {
       const matchSearch =
         !logSearchQuery ||
-        t.command.toLowerCase().includes(logSearchQuery.toLowerCase()) ||
-        t.id.toLowerCase().includes(logSearchQuery.toLowerCase()) ||
-        t.serverName.toLowerCase().includes(logSearchQuery.toLowerCase());
-      const matchStatus =
-        logStatusFilter === "all" || t.status === logStatusFilter;
+        g.command.toLowerCase().includes(logSearchQuery.toLowerCase()) ||
+        g.id.toLowerCase().includes(logSearchQuery.toLowerCase()) ||
+        g.tasks.some((t) => t.serverName.toLowerCase().includes(logSearchQuery.toLowerCase()) || t.serverId.toLowerCase().includes(logSearchQuery.toLowerCase()));
+
+      let matchStatus = true;
+      if (logStatusFilter === "success") matchStatus = g.status === "success";
+      if (logStatusFilter === "running") matchStatus = g.status === "running";
+      if (logStatusFilter === "failed") matchStatus = g.status === "failed" || g.status === "partial";
+
       return matchSearch && matchStatus;
     });
-  }, [tasks, logSearchQuery, logStatusFilter]);
+  }, [batchGroups, logSearchQuery, logStatusFilter]);
 
-  // 分栏视图当前选中的 Task
-  const currentAuditTask = useMemo(() => {
-    if (selectedAuditTaskId) {
-      const found = tasks.find((t) => t.id === selectedAuditTaskId);
+  const currentBatch = useMemo<TaskBatchGroup | null>(() => {
+    if (selectedBatchId) {
+      const found = batchGroups.find((g) => g.id === selectedBatchId);
       if (found) return found;
     }
-    return filteredTasks[0] || tasks[0] || null;
-  }, [tasks, filteredTasks, selectedAuditTaskId]);
+    return filteredBatchGroups[0] || batchGroups[0] || null;
+  }, [batchGroups, filteredBatchGroups, selectedBatchId]);
+
+  const filteredBatchTasks = useMemo(() => {
+    if (!currentBatch) return [];
+    return currentBatch.tasks.filter((t) => {
+      let matchStatus = true;
+      if (nodeStatusFilter === "failed") {
+        matchStatus = t.status === "failed" || t.status === "timeout";
+      } else if (nodeStatusFilter === "success") {
+        matchStatus = t.status === "success";
+      } else if (nodeStatusFilter === "running") {
+        matchStatus = t.status === "running" || t.status === "pending";
+      }
+
+      const q = nodeSearchQuery.trim().toLowerCase();
+      const matchQuery = !q || t.serverName.toLowerCase().includes(q) || t.serverId.toLowerCase().includes(q);
+
+      return matchStatus && matchQuery;
+    });
+  }, [currentBatch, nodeStatusFilter, nodeSearchQuery]);
+
+  const currentBatchActiveTask = useMemo<Task | null>(() => {
+    if (!currentBatch) return null;
+    if (selectedNodeIdInBatch) {
+      const foundInFiltered = filteredBatchTasks.find((t) => t.serverId === selectedNodeIdInBatch);
+      if (foundInFiltered) return foundInFiltered;
+    }
+    return filteredBatchTasks[0] || currentBatch.tasks[0] || null;
+  }, [currentBatch, selectedNodeIdInBatch, filteredBatchTasks]);
+
+  // ─────────────────────────────────────────────────────────────
+  // 计划调度记录：按「任务名称 -> 批次(第几次下发) -> 机器记录」三层聚合
+  // ─────────────────────────────────────────────────────────────
+  const cronJobGroups = useMemo<CronJobLogGroup[]>(() => {
+    const jobMap = new Map<string, Map<string, CronLog[]>>();
+
+    for (const log of cronLogs) {
+      const jMap = jobMap.get(log.cronId) || new Map<string, CronLog[]>();
+      const batchKey = log.batchId || `cb_${log.cronId}_${Math.floor(log.startedAt / 5000)}`;
+      const list = jMap.get(batchKey) || [];
+      list.push(log);
+      jMap.set(batchKey, list);
+      jobMap.set(log.cronId, jMap);
+    }
+
+    const groups: CronJobLogGroup[] = [];
+
+    jobMap.forEach((batchMap, cronId) => {
+      const batches: CronBatchLogGroup[] = [];
+
+      batchMap.forEach((logs, batchKey) => {
+        const first = logs[0];
+        const totalNodes = logs.length;
+        const successNodes = logs.filter((l) => l.status === "success").length;
+        const failedNodes = logs.filter((l) => l.status === "failed" || l.status === "timeout").length;
+        const runningNodes = logs.filter((l) => l.status === "running" || l.status === "pending").length;
+
+        let status: CronBatchLogGroup["status"] = "success";
+        if (runningNodes > 0) status = "running";
+        else if (failedNodes === totalNodes) status = "failed";
+        else if (failedNodes > 0) status = "partial";
+
+        batches.push({
+          batchId: batchKey,
+          runNumber: first.runNumber,
+          cronId: first.cronId,
+          cronName: first.cronName,
+          expression: first.expression,
+          command: first.command,
+          triggerType: first.triggerType,
+          startedAt: first.startedAt,
+          totalNodes,
+          successNodes,
+          failedNodes,
+          runningNodes,
+          status,
+          logs
+        });
+      });
+
+      batches.sort((a, b) => b.startedAt - a.startedAt);
+
+      if (batches.length > 0) {
+        const firstBatch = batches[0];
+        const successRuns = batches.filter((b) => b.status === "success").length;
+        const failedRuns = batches.filter((b) => b.status === "failed" || b.status === "partial").length;
+
+        groups.push({
+          cronId,
+          cronName: firstBatch.cronName,
+          expression: firstBatch.expression,
+          command: firstBatch.command,
+          totalRuns: batches.length,
+          successRuns,
+          failedRuns,
+          latestRunAt: firstBatch.startedAt,
+          batches
+        });
+      }
+    });
+
+    return groups.sort((a, b) => b.latestRunAt - a.latestRunAt);
+  }, [cronLogs]);
+
+  // 过滤后的 Cron Job Groups
+  const filteredCronJobGroups = useMemo(() => {
+    return cronJobGroups.map((job) => {
+      const filteredBatches = job.batches.filter((b) => {
+        const matchTrigger = cronLogTriggerFilter === "all" || b.triggerType === cronLogTriggerFilter;
+        let matchStatus = true;
+        if (cronLogStatusFilter === "success") matchStatus = b.status === "success";
+        if (cronLogStatusFilter === "failed") matchStatus = b.status === "failed" || b.status === "partial";
+        if (cronLogStatusFilter === "running") matchStatus = b.status === "running";
+
+        const q = cronLogSearchQuery.trim().toLowerCase();
+        const matchSearch =
+          !q ||
+          b.cronName.toLowerCase().includes(q) ||
+          b.command.toLowerCase().includes(q) ||
+          b.logs.some((l) => l.serverName.toLowerCase().includes(q) || l.serverId.toLowerCase().includes(q));
+
+        return matchTrigger && matchStatus && matchSearch;
+      });
+
+      return {
+        ...job,
+        batches: filteredBatches
+      };
+    }).filter((job) => {
+      if (cronLogSearchQuery || cronLogTriggerFilter !== "all" || cronLogStatusFilter !== "all") {
+        return job.batches.length > 0;
+      }
+      return true;
+    });
+  }, [cronJobGroups, cronLogTriggerFilter, cronLogStatusFilter, cronLogSearchQuery]);
+
+  // 当前选中的 Cron Job
+  const currentCronJob = useMemo<CronJobLogGroup | null>(() => {
+    if (selectedCronJobId) {
+      const found = filteredCronJobGroups.find((j) => j.cronId === selectedCronJobId);
+      if (found) return found;
+    }
+    return filteredCronJobGroups[0] || null;
+  }, [filteredCronJobGroups, selectedCronJobId]);
+
+  // ── 针对当前 Job 下按「机器维度 (By Node)」聚合历次调度记录 ──
+  const currentCronJobNodes = useMemo(() => {
+    if (!currentCronJob) return [];
+    const map = new Map<string, {
+      serverId: string;
+      serverName: string;
+      totalRuns: number;
+      successRuns: number;
+      failedRuns: number;
+      latestStatus: "success" | "failed" | "running";
+      latestRunAt: number;
+      runs: {
+        batchId: string;
+        runNumber?: number;
+        triggerType: "cron" | "manual";
+        startedAt: number;
+        durationMs: number;
+        exitCode: number;
+        status: "success" | "failed" | "running";
+        output?: string;
+        log: CronLog;
+      }[];
+    }>();
+
+    for (const batch of currentCronJob.batches) {
+      for (const log of batch.logs) {
+        const item = map.get(log.serverId) || {
+          serverId: log.serverId,
+          serverName: log.serverName,
+          totalRuns: 0,
+          successRuns: 0,
+          failedRuns: 0,
+          latestStatus: "success",
+          latestRunAt: log.startedAt,
+          runs: []
+        };
+
+        item.totalRuns += 1;
+        if (log.status === "success") item.successRuns += 1;
+        else if (log.status === "failed" || log.status === "timeout") item.failedRuns += 1;
+
+        if (item.runs.length === 0) {
+          item.latestStatus = log.status as any;
+          item.latestRunAt = log.startedAt;
+        }
+
+        item.runs.push({
+          batchId: batch.batchId,
+          runNumber: batch.runNumber,
+          triggerType: batch.triggerType,
+          startedAt: log.startedAt,
+          durationMs: log.durationMs || 0,
+          exitCode: log.exitCode ?? 0,
+          status: log.status as any,
+          output: log.output,
+          log
+        });
+
+        map.set(log.serverId, item);
+      }
+    }
+
+    return Array.from(map.values()).sort((a, b) => b.latestRunAt - a.latestRunAt);
+  }, [currentCronJob]);
+
+  // 当前选中的批次 (在当前选中的 Job 之下)
+  const currentCronBatch = useMemo<CronBatchLogGroup | null>(() => {
+    if (!currentCronJob || currentCronJob.batches.length === 0) return null;
+    if (selectedCronBatchId) {
+      const found = currentCronJob.batches.find((b) => b.batchId === selectedCronBatchId);
+      if (found) return found;
+    }
+    return currentCronJob.batches[0] || null;
+  }, [currentCronJob, selectedCronBatchId]);
+
+  // 当前选中批次下过滤的节点任务
+  const filteredCronBatchLogs = useMemo(() => {
+    if (!currentCronBatch) return [];
+    return currentCronBatch.logs.filter((l) => {
+      let matchStatus = true;
+      if (cronNodeStatusFilter === "failed") {
+        matchStatus = l.status === "failed" || l.status === "timeout";
+      } else if (cronNodeStatusFilter === "success") {
+        matchStatus = l.status === "success";
+      } else if (cronNodeStatusFilter === "running") {
+        matchStatus = l.status === "running";
+      }
+
+      const q = cronNodeSearchQuery.trim().toLowerCase();
+      const matchQuery = !q || l.serverName.toLowerCase().includes(q) || l.serverId.toLowerCase().includes(q);
+
+      return matchStatus && matchQuery;
+    });
+  }, [currentCronBatch, cronNodeStatusFilter, cronNodeSearchQuery]);
+
+  // 当前激活节点执行记录
+  const currentCronNodeLog = useMemo<CronLog | null>(() => {
+    if (!currentCronBatch || currentCronBatch.logs.length === 0) return null;
+    if (selectedCronNodeId) {
+      const found = currentCronBatch.logs.find((l) => l.serverId === selectedCronNodeId);
+      if (found) return found;
+    }
+    return currentCronBatch.logs[0] || null;
+  }, [currentCronBatch, selectedCronNodeId]);
 
   // 目标选择器过滤后的主机列表
   const filteredServers = useMemo(() => {
@@ -264,7 +655,6 @@ export function AutomationPage() {
     );
   }, [servers, serverSearchQuery]);
 
-  // 已选目标主机的文字摘要
   const selectedLabel = useMemo(() => {
     if (selectedServerIds.length === 0) return "点击选择目标主机范围...";
     if (selectedServerIds.length === onlineServers.length && onlineServers.length > 0) {
@@ -343,6 +733,8 @@ export function AutomationPage() {
     const timeStr = `${pad(now.getHours())}:${pad(now.getMinutes())}:${pad(now.getSeconds())}`;
     const datetimeStr = `${now.getFullYear()}${pad(now.getMonth() + 1)}${pad(now.getDate())}_${pad(now.getHours())}${pad(now.getMinutes())}${pad(now.getSeconds())}`;
 
+    const batchId = `b_${Date.now()}`;
+
     for (const serverId of validServerIds) {
       const server = servers.find((s) => s.id === serverId);
 
@@ -370,6 +762,7 @@ export function AutomationPage() {
       dispatchTask.mutate({
         serverId,
         command: finalCommand,
+        batchId,
         risk: "low",
         scope: "node:exec"
       });
@@ -378,14 +771,16 @@ export function AutomationPage() {
     pushToHistory(commandText);
 
     setActiveBatchResult({
+      batchId,
       command: commandText,
       dispatchedAt: Date.now(),
       serverIds: validServerIds,
       activeServerId: validServerIds[0]
     });
 
-    toast.success(`指令已成功下发至 ${validServerIds.length} 台主机，实时回显已生成！`);
-    setTimeout(() => refetchTasks(), 200);
+    toast.success(`指令已下发至 ${validServerIds.length} 台主机，实时回显已生成！`);
+    refetchTasks();
+    setTimeout(() => refetchTasks(), 250);
   };
 
   const handleSaveCron = () => {
@@ -436,22 +831,31 @@ export function AutomationPage() {
       return;
     }
 
+    const batchId = `b_cron_${Date.now()}`;
+
     dispatchTask.mutate({
       serverId: job.serverId,
       command: job.command,
+      batchId,
       risk: "low",
       scope: "node:exec"
     });
 
     setActiveBatchResult({
+      batchId,
       command: job.command,
       dispatchedAt: Date.now(),
       serverIds: [job.serverId],
       activeServerId: job.serverId
     });
 
-    toast.success(`已向主机 [${job.serverName}] 触发下发任务: ${job.name}，正在捕获回显...`);
-    setTimeout(() => refetchTasks(), 200);
+    toast.success(`已向主机 [${job.serverName}] 触发任务: ${job.name}`);
+    refetchTasks();
+    refetchCronLogs();
+    setTimeout(() => {
+      refetchTasks();
+      refetchCronLogs();
+    }, 250);
   };
 
   const filteredCrons = useMemo(() => {
@@ -472,7 +876,7 @@ export function AutomationPage() {
     if (!activeBatchResult) return [];
     return activeBatchResult.serverIds.map((sid) => {
       const server = servers.find((s) => s.id === sid);
-      const task = tasks.find((t) => t.serverId === sid && t.command.startsWith(activeBatchResult.command.slice(0, 15)));
+      const task = tasks.find((t) => t.serverId === sid && (t.batchId === activeBatchResult.batchId || t.command.startsWith(activeBatchResult.command.slice(0, 15))));
       return {
         serverId: sid,
         serverName: server?.name || sid,
@@ -507,13 +911,13 @@ export function AutomationPage() {
       />
 
       <div className="flex-1 space-y-5 p-6 pb-16">
-        {/* 顶部导航 */}
+        {/* 顶部主导航 Tab 栏（三大核心板块：即时下发、计划任务、历史流水） */}
         <div className="flex items-center justify-between border-b border-border/80 pb-3 flex-wrap gap-3">
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 flex-wrap">
             {([
-              { key: "dispatch" as const, icon: Terminal, label: "远程命令与模板" },
+              { key: "dispatch" as const, icon: Terminal, label: "远程命令下发" },
               { key: "cron" as const, icon: Clock, label: `计划任务 (${crons.length})` },
-              { key: "logs" as const, icon: ScrollText, label: `执行记录 (${tasks.length})` }
+              { key: "logs" as const, icon: ScrollText, label: `执行流水记录 (${batchGroups.length + cronLogs.length})` }
             ] as const).map((tab) => (
               <button
                 key={tab.key}
@@ -543,7 +947,8 @@ export function AutomationPage() {
               onClick={() => {
                 refetchTasks();
                 refetchCrons();
-                toast.info("已刷新数据");
+                refetchCronLogs();
+                toast.info("已刷新全部数据");
               }}
             >
               <RefreshCw className="size-3 mr-1" /> 刷新
@@ -552,7 +957,7 @@ export function AutomationPage() {
         </div>
 
         {/* ══════════════════════════════════════════════════════ */}
-        {/* Tab 1: 远程命令执行（开阔高密工作台）                  */}
+        {/* Tab 1: 远程命令执行（开阔高密工作台 + 常驻终端控制台）  */}
         {/* ══════════════════════════════════════════════════════ */}
         {activeTab === "dispatch" && (
           <div className="space-y-5">
@@ -572,7 +977,7 @@ export function AutomationPage() {
               </CardHeader>
 
               <CardContent className="p-4 space-y-3.5 flex-1 flex flex-col justify-between">
-                {/* 重新设计的紧凑动态变量工具栏 */}
+                {/* 紧凑动态变量工具栏 */}
                 <div className="flex items-center justify-between gap-3 flex-wrap text-xs">
                   {/* 目标主机选择 */}
                   <button
@@ -591,7 +996,6 @@ export function AutomationPage() {
                   <div className="flex items-center gap-1.5 flex-wrap">
                     <span className="text-[11px] text-muted-foreground mr-0.5">注入变量:</span>
 
-                    {/* 2 个最常用的高频变量快速直插 */}
                     <button
                       type="button"
                       onClick={() => insertVariable("{{SERVER_IP}}")}
@@ -617,7 +1021,6 @@ export function AutomationPage() {
                       + 日期时间
                     </button>
 
-                    {/* 更多变量抽屉/弹窗选择器 */}
                     <Button
                       size="sm"
                       variant="outline"
@@ -625,13 +1028,13 @@ export function AutomationPage() {
                       className="h-6.5 text-[11px] px-2.5 gap-1.5 cursor-pointer bg-muted/40 hover:bg-muted font-medium border-border/80"
                     >
                       <Variable className="size-3 text-primary" />
-                      更多变量 ({DYNAMIC_VARIABLES.length}) ▾
+                      更多变量 ({dynamicVariables.length}) ▾
                     </Button>
                   </div>
                 </div>
 
                 {/* 饱满专业的深色 IDE 终端编辑器 */}
-                <div className="relative rounded-lg border border-border/80 bg-zinc-950 p-3.5 font-mono text-xs text-zinc-100 shadow-inner flex-1 flex flex-col min-h-[260px]">
+                <div className="relative rounded-lg border border-border/80 bg-zinc-950 p-3.5 font-mono text-xs text-zinc-100 shadow-inner flex-1 flex flex-col min-h-[240px]">
                   <div className="flex items-center justify-between text-emerald-400 mb-2 select-none font-bold text-[11px] border-b border-zinc-900 pb-1.5">
                     <div className="flex items-center gap-2">
                       <span className="size-2 rounded-full bg-emerald-500" />
@@ -649,7 +1052,7 @@ export function AutomationPage() {
                     </button>
                   </div>
                   <textarea
-                    rows={10}
+                    rows={8}
                     value={commandText}
                     onChange={(e) => setCommandText(e.target.value)}
                     placeholder="在此输入 Shell 脚本指令，支持多行脚本与复杂管道命令...（可插入动态变量或点击右下角气泡展开脚本库）"
@@ -701,57 +1104,98 @@ export function AutomationPage() {
             </Card>
 
             {/* ══════════════════════════════════════════════════════ */}
-            {/* 实时执行控制台（有下发结果时展开，无下发时展示最近流水）*/}
+            {/* 常驻实时执行控制台（未执行前展示待命终端，执行后展示结果） */}
             {/* ══════════════════════════════════════════════════════ */}
-            {activeBatchResult ? (
-              <Card id="live-console-card" className="border-primary/40 shadow-md">
-                <CardHeader className="bg-muted/20 border-b border-border/60 pb-3">
-                  <div className="flex items-center justify-between flex-wrap gap-2">
-                    <div className="flex items-center gap-2.5">
-                      <div className="size-7 rounded-lg bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center">
-                        <Terminal className="size-4 text-emerald-400" />
-                      </div>
-                      <div>
-                        <CardTitle className="text-sm font-mono font-bold">
-                          实时执行控制台 · 回显已生成
-                        </CardTitle>
-                        <CardDescription className="text-xs font-mono mt-0.5">
-                          指令: <span className="text-foreground font-semibold">{activeBatchResult.command}</span> · 调度时间: {new Date(activeBatchResult.dispatchedAt).toLocaleTimeString()}
-                        </CardDescription>
-                      </div>
+            <Card className="border-border/80 shadow-sm overflow-hidden">
+              <CardHeader className="bg-muted/20 border-b border-border/60 pb-3">
+                <div className="flex items-center justify-between flex-wrap gap-2">
+                  <div className="flex items-center gap-2.5">
+                    <div className="size-7 rounded-lg bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center">
+                      <Terminal className="size-4 text-emerald-400" />
                     </div>
+                    <div>
+                      <div className="flex items-center gap-2">
+                        <CardTitle className="text-sm font-mono font-bold">
+                          实时执行回显控制台
+                        </CardTitle>
+                        {activeBatchResult ? (
+                          <Badge variant="success" dot className="text-[10px]">
+                            已生成回显
+                          </Badge>
+                        ) : (
+                          <Badge variant="neutral" dot className="text-[10px] text-emerald-400 border-emerald-500/20 bg-emerald-500/10">
+                            集群就绪 · 待命中
+                          </Badge>
+                        )}
+                      </div>
+                      <CardDescription className="text-xs font-mono mt-0.5">
+                        {activeBatchResult ? (
+                          <>指令: <span className="text-foreground font-semibold">{activeBatchResult.command}</span> · 调度时间: {new Date(activeBatchResult.dispatchedAt).toLocaleTimeString()}</>
+                        ) : (
+                          <>在上方输入指令并点击 [立即下发执行]，实时标准输出 (Stdout) 将在此处流式捕获</>
+                        )}
+                      </CardDescription>
+                    </div>
+                  </div>
 
-                    <div className="flex items-center gap-2">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        className="h-7 text-xs cursor-pointer"
-                        onClick={() => setActiveTab("logs")}
-                      >
-                        <ExternalLink className="size-3 mr-1" /> 查看完整执行记录
-                      </Button>
+                  <div className="flex items-center gap-2">
+                    {activeBatchResult ? (
+                      <>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="h-7 text-xs cursor-pointer"
+                          onClick={() => {
+                            setSelectedBatchId(activeBatchResult.batchId);
+                            setActiveTab("logs");
+                            setLogSubTab("adhoc");
+                          }}
+                        >
+                          <ExternalLink className="size-3 mr-1" /> 查看历史即时记录
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="h-7 text-xs text-muted-foreground hover:text-foreground cursor-pointer"
+                          onClick={() => setActiveBatchResult(null)}
+                        >
+                          重置控制台
+                        </Button>
+                      </>
+                    ) : (
                       <Button
                         variant="ghost"
                         size="sm"
-                        className="h-7 w-7 p-0 cursor-pointer"
-                        onClick={() => setActiveBatchResult(null)}
+                        className="h-7 text-xs text-muted-foreground hover:text-foreground cursor-pointer"
+                        onClick={() => {
+                          setActiveTab("logs");
+                          setLogSubTab("adhoc");
+                        }}
                       >
-                        <X className="size-4" />
+                        <History className="size-3 mr-1" /> 历史记录 ({batchGroups.length}次)
                       </Button>
-                    </div>
+                    )}
                   </div>
-                </CardHeader>
+                </div>
+              </CardHeader>
 
-                <CardContent className="p-0">
-                  <div className="grid grid-cols-1 md:grid-cols-4 divide-y md:divide-y-0 md:divide-x divide-border/60 min-h-[260px]">
-                    {/* 左侧：节点状态 */}
-                    <div className="p-3 space-y-1.5 bg-muted/10 md:col-span-1 max-h-[320px] overflow-y-auto">
-                      <div className="text-[11px] font-semibold text-muted-foreground mb-2 flex items-center justify-between">
-                        <span>目标节点 ({activeConsoleServerTasks.length})</span>
-                        <span className="text-[10px] text-emerald-400">已就绪</span>
-                      </div>
+              <CardContent className="p-0">
+                <div className="grid grid-cols-1 md:grid-cols-4 divide-y md:divide-y-0 md:divide-x divide-border/60 min-h-[280px]">
+                  {/* 左侧：节点状态列表 */}
+                  <div className="p-3 space-y-1.5 bg-muted/10 md:col-span-1 max-h-[340px] overflow-y-auto">
+                    <div className="text-[11px] font-semibold text-muted-foreground mb-2 flex items-center justify-between">
+                      <span>
+                        {activeBatchResult
+                          ? `执行机器 (${activeConsoleServerTasks.length}台)`
+                          : `就绪目标 (${selectedServerIds.length}台)`}
+                      </span>
+                      <span className="text-[10px] text-emerald-400 font-mono">
+                        {activeBatchResult ? "捕获完成" : "等待下发"}
+                      </span>
+                    </div>
 
-                      {activeConsoleServerTasks.map((item) => {
+                    {activeBatchResult ? (
+                      activeConsoleServerTasks.map((item) => {
                         const isCurrentActive = activeBatchResult.activeServerId === item.serverId;
                         const task = item.task;
 
@@ -779,24 +1223,55 @@ export function AutomationPage() {
                             </div>
                           </div>
                         );
-                      })}
-                    </div>
+                      })
+                    ) : selectedServerIds.length > 0 ? (
+                      selectedServerIds.map((id) => {
+                        const server = servers.find((s) => s.id === id);
+                        return (
+                          <div
+                            key={id}
+                            className="p-2 rounded-lg border border-border/40 bg-card/60 text-xs font-mono space-y-1"
+                          >
+                            <div className="flex items-center justify-between">
+                              <span className="font-semibold text-foreground truncate">{server?.name || id}</span>
+                              <span className="size-1.5 rounded-full bg-emerald-400" />
+                            </div>
+                            <div className="text-[10px] text-muted-foreground flex items-center justify-between">
+                              <span>{server?.ip || "—"}</span>
+                              <span className="text-zinc-500">待命</span>
+                            </div>
+                          </div>
+                        );
+                      })
+                    ) : (
+                      <div className="py-12 text-center text-xs text-muted-foreground flex flex-col items-center gap-1.5 px-2">
+                        <Server className="size-5 text-zinc-600 mb-1" />
+                        <span className="font-medium text-foreground">尚未选择目标主机</span>
+                        <span className="text-[11px]">请在上方点击选择待下发的目标节点</span>
+                      </div>
+                    )}
+                  </div>
 
-                    {/* 右侧：黑色终端回显 */}
-                    <div className="p-4 md:col-span-3 bg-zinc-950 text-zinc-200 font-mono text-xs flex flex-col justify-between overflow-hidden">
-                      <div className="flex items-center justify-between pb-2 mb-2 border-b border-zinc-800 text-[11px] text-zinc-400">
-                        <div className="flex items-center gap-2">
-                          <span className="size-2 rounded-full bg-emerald-500 animate-pulse" />
-                          <span>
-                            终端回显: <strong className="text-zinc-100">{servers.find((s) => s.id === activeBatchResult.activeServerId)?.name || activeBatchResult.activeServerId}</strong>
-                          </span>
-                          {activeConsoleSelectedTask && (
-                            <span className="text-zinc-500">
-                              (耗时: {durationStr(activeConsoleSelectedTask.durationMs)} · 退出码: {activeConsoleSelectedTask.exitCode ?? 0})
-                            </span>
+                  {/* 右侧：深色终端执行回显与待命屏 */}
+                  <div className="p-4 md:col-span-3 bg-zinc-950 text-zinc-200 font-mono text-xs flex flex-col justify-between overflow-hidden">
+                    <div className="flex items-center justify-between pb-2 mb-2 border-b border-zinc-800 text-[11px] text-zinc-400">
+                      <div className="flex items-center gap-2">
+                        <span className={`size-2 rounded-full ${activeBatchResult ? "bg-emerald-500 animate-pulse" : "bg-zinc-600"}`} />
+                        <span>
+                          {activeBatchResult ? (
+                            <>终端回显: <strong className="text-zinc-100">{servers.find((s) => s.id === activeBatchResult.activeServerId)?.name || activeBatchResult.activeServerId}</strong></>
+                          ) : (
+                            <>控制台状态: <span className="text-emerald-400 font-semibold">STANDBY (待命就绪)</span></>
                           )}
-                        </div>
+                        </span>
+                        {activeConsoleSelectedTask && (
+                          <span className="text-zinc-500">
+                            (耗时: {durationStr(activeConsoleSelectedTask.durationMs)} · 退出码: {activeConsoleSelectedTask.exitCode ?? 0})
+                          </span>
+                        )}
+                      </div>
 
+                      {activeBatchResult && (
                         <button
                           type="button"
                           onClick={() => {
@@ -806,76 +1281,53 @@ export function AutomationPage() {
                           }}
                           className="hover:text-zinc-100 flex items-center gap-1 cursor-pointer text-[11px]"
                         >
-                          <Copy className="size-3" /> 复制
+                          <Copy className="size-3" /> 复制回显
                         </button>
-                      </div>
+                      )}
+                    </div>
 
-                      <div className="flex-1 overflow-y-auto max-h-56 whitespace-pre-wrap leading-relaxed select-text pr-2 text-zinc-300">
-                        {activeConsoleSelectedTask?.output ? (
+                    <div className="flex-1 overflow-y-auto max-h-56 whitespace-pre-wrap leading-relaxed select-text pr-2 text-zinc-300">
+                      {activeBatchResult ? (
+                        activeConsoleSelectedTask?.output ? (
                           activeConsoleSelectedTask.output
                         ) : (
                           <div className="py-8 text-center text-zinc-500 flex flex-col items-center gap-2">
                             <RefreshCw className="size-4 animate-spin text-primary" />
                             <span>正在等待远程 Agent 守护进程返回执行回显数据...</span>
                           </div>
-                        )}
-                      </div>
+                        )
+                      ) : (
+                        <div className="py-6 font-mono text-[11px] leading-relaxed text-zinc-400 space-y-1 select-none">
+                          <div className="text-emerald-400 font-bold">
+                            [smalux@fleet ~]# Smalux Automation Dispatch Console v2.4.0
+                          </div>
+                          <div className="text-zinc-500">
+                            [system] Cluster RPC communication channel: <span className="text-emerald-400">CONNECTED</span>
+                          </div>
+                          <div className="text-zinc-500">
+                            [system] Ready to accept remote POSIX Shell commands with dynamic variable injection.
+                          </div>
+                          <div className="text-zinc-600 pt-2">
+                            &gt; Select target nodes above and click <span className="text-zinc-300 font-semibold">[立即下发执行]</span> to stream output here...
+                          </div>
+                          <div className="text-emerald-500 animate-pulse pt-1">_</div>
+                        </div>
+                      )}
+                    </div>
 
-                      <div className="pt-2 mt-2 border-t border-zinc-900 flex items-center justify-between text-[10px] text-zinc-500">
-                        <span>终端模式: POSIX Shell (UTF-8)</span>
-                        <span>Smalux Fleet Agent v2.4</span>
-                      </div>
+                    <div className="pt-2 mt-2 border-t border-zinc-900 flex items-center justify-between text-[10px] text-zinc-500">
+                      <span>终端模式: POSIX Shell (UTF-8)</span>
+                      <span>Smalux Fleet Agent Engine v2.4</span>
                     </div>
                   </div>
-                </CardContent>
-              </Card>
-            ) : (
-              <Card>
-                <CardHeader className="py-3 border-b border-border/60">
-                  <div className="flex items-center justify-between">
-                    <CardTitle className="text-xs font-semibold flex items-center gap-2">
-                      <Activity className="size-3.5 text-primary" />
-                      最近调度流水概览 (最近 3 条)
-                    </CardTitle>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      onClick={() => setActiveTab("logs")}
-                      className="h-6 text-[11px] cursor-pointer"
-                    >
-                      查看全部 {tasks.length} 条流水 <ChevronRight className="size-3 ml-0.5" />
-                    </Button>
-                  </div>
-                </CardHeader>
-                <CardContent className="p-0 divide-y divide-border/40">
-                  {tasks.slice(0, 3).map((t) => (
-                    <div
-                      key={t.id}
-                      onClick={() => {
-                        setSelectedAuditTaskId(t.id);
-                        setActiveTab("logs");
-                      }}
-                      className="flex items-center justify-between p-3 hover:bg-muted/30 cursor-pointer transition-colors text-xs"
-                    >
-                      <div className="flex items-center gap-2.5 min-w-0">
-                        {statusBadge(t.status)}
-                        <span className="font-mono font-medium truncate max-w-md">{t.command}</span>
-                      </div>
-                      <div className="flex items-center gap-4 text-muted-foreground text-[11px] font-mono shrink-0">
-                        <span>{t.serverName}</span>
-                        <span>{durationStr(t.durationMs)}</span>
-                        <span>{relativeTime(t.startedAt)}</span>
-                      </div>
-                    </div>
-                  ))}
-                </CardContent>
-              </Card>
-            )}
+                </div>
+              </CardContent>
+            </Card>
           </div>
         )}
 
         {/* ══════════════════════════════════════════════════════ */}
-        {/* Tab 2: 分布式计划任务 (Cron Jobs)                      */}
+        {/* Tab 2: 分布式计划任务 (Cron Jobs 配置与管理)           */}
         {/* ══════════════════════════════════════════════════════ */}
         {activeTab === "cron" && (
           <Card>
@@ -886,7 +1338,7 @@ export function AutomationPage() {
                   分布式计划任务
                 </CardTitle>
                 <CardDescription>
-                  基于 Agent 守护进程的周期性计划任务，支持秒级表达式与多节点独立调度
+                  基于 Agent 守护进程的周期性计划任务，支持标准 Cron 表达式与节点独立调度
                 </CardDescription>
               </div>
               <div className="flex items-center gap-2">
@@ -1016,154 +1468,926 @@ export function AutomationPage() {
         )}
 
         {/* ══════════════════════════════════════════════════════ */}
-        {/* Tab 3: 历史执行记录与双栏控制台                         */}
+        {/* Tab 3: 执行流水记录（内含即时下发与计划调度两套二级Tab）*/}
         {/* ══════════════════════════════════════════════════════ */}
         {activeTab === "logs" && (
           <div className="space-y-4">
-            <Card>
-              <CardHeader className="flex flex-row items-center justify-between flex-wrap gap-4 pb-3">
-                <div>
-                  <CardTitle className="text-base">历史执行记录</CardTitle>
-                  <CardDescription>左侧选择任务流水，右侧即刻实时预览终端执行回显与运行详情</CardDescription>
-                </div>
+            {/* 二级 Pill Tabs 切换器 */}
+            <div className="flex items-center justify-between flex-wrap gap-3 pb-0.5">
+              <div className="flex items-center gap-1.5 p-1 bg-muted/40 rounded-xl border border-border/60">
+                <button
+                  type="button"
+                  onClick={() => setLogSubTab("adhoc")}
+                  className={`flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
+                    logSubTab === "adhoc"
+                      ? "bg-background text-foreground shadow-2xs border border-border/60 font-bold"
+                      : "text-muted-foreground hover:text-foreground hover:bg-muted/60"
+                  }`}
+                >
+                  <ScrollText className="size-3.5 text-primary" />
+                  <span>即时下发记录 ({batchGroups.length} 次)</span>
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setLogSubTab("cron")}
+                  className={`flex items-center gap-2 px-3.5 py-1.5 rounded-lg text-xs font-semibold transition-all cursor-pointer ${
+                    logSubTab === "cron"
+                      ? "bg-background text-foreground shadow-2xs border border-border/60 font-bold"
+                      : "text-muted-foreground hover:text-foreground hover:bg-muted/60"
+                  }`}
+                >
+                  <Timer className="size-3.5 text-primary" />
+                  <span>计划调度记录 ({cronLogs.length} 条)</span>
+                </button>
+              </div>
 
-                <div className="flex items-center gap-2">
-                  <div className="relative">
-                    <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 size-3.5 text-muted-foreground" />
-                    <input
-                      value={logSearchQuery}
-                      onChange={(e) => setLogSearchQuery(e.target.value)}
-                      placeholder="搜索任务 ID / 命令..."
-                      className="h-8 w-44 rounded-lg border border-border/80 bg-muted/40 pl-8 pr-3 text-xs outline-none focus:border-primary text-foreground"
-                    />
+              <div className="text-xs text-muted-foreground font-mono">
+                {logSubTab === "adhoc" ? "按每次下发批次聚合与机器手风琴归类" : "按定时/手动触发源流式审计"}
+              </div>
+            </div>
+
+            {logSubTab === "adhoc" && (
+              <Card>
+                <CardHeader className="flex flex-row items-center justify-between flex-wrap gap-4 pb-3">
+                  <div>
+                    <CardTitle className="text-base">即时下发执行记录 ({filteredBatchGroups.length} 次)</CardTitle>
+                    <CardDescription>每次下发算一次独立分组，左侧手风琴折叠展开各执行机器，右侧查看独立终端回显</CardDescription>
                   </div>
 
-                  <select
-                    value={logStatusFilter}
-                    onChange={(e) => setLogStatusFilter(e.target.value)}
-                    className="h-8 rounded-lg border border-border/80 bg-muted/40 px-2 text-xs outline-none focus:border-primary text-foreground cursor-pointer"
-                  >
-                    <option value="all">全部状态</option>
-                    <option value="success">仅成功</option>
-                    <option value="running">执行中</option>
-                    <option value="failed">失败/超时</option>
-                  </select>
-                </div>
-              </CardHeader>
-
-              <CardContent className="p-0">
-                {isLoadingTasks ? (
-                  <div className="text-center text-xs text-muted-foreground py-16 flex flex-col items-center gap-2">
-                    <RefreshCw className="size-4 animate-spin text-primary" />
-                    <span>正在加载执行记录...</span>
-                  </div>
-                ) : filteredTasks.length === 0 ? (
-                  <div className="text-center text-xs text-muted-foreground py-16">
-                    {logSearchQuery ? "未匹配到相关执行记录" : "暂无历史执行记录"}
-                  </div>
-                ) : (
-                  <div className="grid grid-cols-1 lg:grid-cols-12 divide-y lg:divide-y-0 lg:divide-x divide-border/60 min-h-[420px]">
-                    {/* 左侧：任务列表 (5列) */}
-                    <div className="lg:col-span-5 divide-y divide-border/60 max-h-[500px] overflow-y-auto p-2 space-y-1">
-                      {filteredTasks.map((task) => {
-                        const isSelected = (currentAuditTask?.id === task.id);
-
-                        return (
-                          <div
-                            key={task.id}
-                            onClick={() => setSelectedAuditTaskId(task.id)}
-                            className={`p-3 rounded-lg border transition-all cursor-pointer text-xs ${
-                              isSelected
-                                ? "bg-primary/10 border-primary shadow-xs"
-                                : "bg-card/60 border-border/40 hover:bg-muted/40"
-                            }`}
-                          >
-                            <div className="flex items-center justify-between gap-2">
-                              {statusBadge(task.status)}
-                              <span className="text-[11px] text-muted-foreground font-mono">
-                                {relativeTime(task.startedAt)}
-                              </span>
-                            </div>
-
-                            <div className="font-mono text-xs font-semibold text-foreground mt-2 truncate">
-                              {task.command}
-                            </div>
-
-                            <div className="text-[11px] text-muted-foreground mt-1 flex items-center justify-between">
-                              <span>目标: {task.serverName}</span>
-                              <span>耗时: {durationStr(task.durationMs)}</span>
-                            </div>
-                          </div>
-                        );
-                      })}
+                  <div className="flex items-center gap-2">
+                    <div className="relative">
+                      <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 size-3.5 text-muted-foreground" />
+                      <input
+                        value={logSearchQuery}
+                        onChange={(e) => setLogSearchQuery(e.target.value)}
+                        placeholder="搜索命令 / 主机名 / 批次..."
+                        className="h-8 w-48 rounded-lg border border-border/80 bg-muted/40 pl-8 pr-3 text-xs outline-none focus:border-primary text-foreground"
+                      />
                     </div>
 
-                    {/* 右侧：实时选中项详情与终端输出回显 (7列) */}
-                    <div className="lg:col-span-7 p-4 bg-zinc-950 text-zinc-200 font-mono text-xs flex flex-col justify-between max-h-[500px]">
-                      {currentAuditTask ? (
-                        <>
-                          <div className="pb-3 border-b border-zinc-800 flex items-center justify-between flex-wrap gap-2">
-                            <div>
+                    <select
+                      value={logStatusFilter}
+                      onChange={(e) => setLogStatusFilter(e.target.value)}
+                      className="h-8 rounded-lg border border-border/80 bg-muted/40 px-2 text-xs outline-none focus:border-primary text-foreground cursor-pointer"
+                    >
+                      <option value="all">全部执行状态</option>
+                      <option value="success">全部成功</option>
+                      <option value="running">执行中</option>
+                      <option value="failed">存在异常/失败</option>
+                    </select>
+                  </div>
+                </CardHeader>
+
+                <CardContent className="p-0">
+                  {isLoadingTasks ? (
+                    <div className="text-center text-xs text-muted-foreground py-16 flex flex-col items-center gap-2">
+                      <RefreshCw className="size-4 animate-spin text-primary" />
+                      <span>正在加载执行记录...</span>
+                    </div>
+                  ) : filteredBatchGroups.length === 0 ? (
+                    <div className="text-center text-xs text-muted-foreground py-16">
+                      {logSearchQuery ? "未匹配到相关执行批次" : "暂无历史即时执行记录"}
+                    </div>
+                  ) : (
+                    <div className="grid grid-cols-1 lg:grid-cols-12 divide-y lg:divide-y-0 lg:divide-x divide-border/60 min-h-[500px]">
+                      {/* 左侧：执行批次列表 + 手风琴展开层级机器选择 (5列) */}
+                      <div className="lg:col-span-5 divide-y divide-border/60 max-h-[600px] overflow-y-auto p-2.5 space-y-2">
+                        {filteredBatchGroups.map((group, index) => {
+                          const isSelected = currentBatch?.id === group.id;
+                          const isExpanded = expandedBatchId !== null ? expandedBatchId === group.id : (index === 0);
+
+                          return (
+                            <div
+                              key={group.id}
+                              className={`rounded-xl border transition-all text-xs ${
+                                isSelected
+                                  ? "bg-primary/5 border-primary/60 shadow-xs"
+                                  : "bg-card/60 border-border/40 hover:bg-muted/40"
+                              }`}
+                            >
+                              {/* 批次头部卡片触发区（手风琴头部） */}
+                              <div
+                                onClick={() => {
+                                  if (isExpanded) {
+                                    setExpandedBatchId("__closed__");
+                                  } else {
+                                    setExpandedBatchId(group.id);
+                                    setSelectedBatchId(group.id);
+                                    const failedNode = group.tasks.find((t) => t.status === "failed" || t.status === "timeout");
+                                    setSelectedNodeIdInBatch(failedNode ? failedNode.serverId : (group.tasks[0]?.serverId || null));
+                                    setNodeStatusFilter("all");
+                                    setNodeSearchQuery("");
+                                  }
+                                }}
+                                className="p-3 cursor-pointer select-none space-y-1.5 hover:bg-muted/20 transition-colors rounded-xl"
+                              >
+                                <div className="flex items-center justify-between gap-2">
+                                  {batchStatusBadge(group)}
+                                  <div className="flex items-center gap-1.5">
+                                    <span className="text-[11px] text-muted-foreground font-mono">
+                                      {relativeTime(group.startedAt)}
+                                    </span>
+                                    <ChevronRight
+                                      className={`size-3.5 transition-transform duration-200 ${
+                                        isExpanded ? "rotate-90 text-primary" : "text-muted-foreground"
+                                      }`}
+                                    />
+                                  </div>
+                                </div>
+
+                                <div className="font-mono text-xs font-semibold text-foreground truncate">
+                                  {group.command}
+                                </div>
+
+                                {/* 紧凑统计摘要 */}
+                                <div className="pt-1 flex items-center justify-between text-[10px] text-muted-foreground">
+                                  <div className="flex items-center gap-1.5 font-mono">
+                                    {group.successNodes > 0 && (
+                                      <span className="text-emerald-400">
+                                        {group.successNodes} 成功
+                                      </span>
+                                    )}
+                                    {group.failedNodes > 0 && (
+                                      <span className="text-rose-400">
+                                        · {group.failedNodes} 失败
+                                      </span>
+                                    )}
+                                    {group.runningNodes > 0 && (
+                                      <span className="text-sky-400">
+                                        · {group.runningNodes} 运行中
+                                      </span>
+                                    )}
+                                  </div>
+                                  <span className="text-zinc-500 font-sans">
+                                    共 {group.totalNodes} 台机器 {isExpanded ? "(已展开)" : "(点击展开)"}
+                                  </span>
+                                </div>
+                              </div>
+
+                              {/* 手风琴展开内容：机器状态筛选与机器列表 */}
+                              {isExpanded && (
+                                <div className="p-2.5 pt-0 border-t border-border/40 space-y-2 bg-muted/15 rounded-b-xl">
+                                  {/* 状态快速分类切换 (全部 / 失败 / 成功) */}
+                                  <div className="flex items-center justify-between pt-2 flex-wrap gap-1.5">
+                                    <div className="flex items-center gap-1">
+                                      {[
+                                        { key: "all" as const, label: "全部", count: group.totalNodes },
+                                        { key: "failed" as const, label: "异常", count: group.failedNodes, isDanger: true },
+                                        { key: "success" as const, label: "成功", count: group.successNodes },
+                                        { key: "running" as const, label: "运行中", count: group.runningNodes }
+                                      ].map((tab) => {
+                                        if (tab.count === 0 && tab.key !== "all") return null;
+                                        const isActive = nodeStatusFilter === tab.key;
+
+                                        return (
+                                          <button
+                                            key={tab.key}
+                                            type="button"
+                                            onClick={() => setNodeStatusFilter(tab.key)}
+                                            className={`px-1.5 py-0.5 rounded text-[10px] font-medium transition-all cursor-pointer ${
+                                              isActive
+                                                ? tab.isDanger && tab.count > 0
+                                                  ? "bg-rose-500/20 text-rose-300 border border-rose-500/40 font-bold"
+                                                  : "bg-primary text-primary-foreground font-bold shadow-2xs"
+                                                : "text-muted-foreground hover:text-foreground bg-muted/40 hover:bg-muted"
+                                            }`}
+                                          >
+                                            {tab.label} ({tab.count})
+                                          </button>
+                                        );
+                                      })}
+                                    </div>
+
+                                    {/* 机器数量多时提供微型过滤输入框 */}
+                                    {group.totalNodes > 3 && (
+                                      <div className="relative">
+                                        <Search className="absolute left-1.5 top-1/2 -translate-y-1/2 size-2.5 text-muted-foreground" />
+                                        <input
+                                          type="text"
+                                          value={nodeSearchQuery}
+                                          onChange={(e) => setNodeSearchQuery(e.target.value)}
+                                          placeholder="过滤主机..."
+                                          className="h-5.5 w-24 rounded bg-background border border-border/80 pl-5 pr-1.5 text-[10px] text-foreground outline-none focus:border-primary"
+                                        />
+                                      </div>
+                                    )}
+                                  </div>
+
+                                  {/* 执行机器竖向列表 */}
+                                  <div className="space-y-1 max-h-[220px] overflow-y-auto pr-0.5">
+                                    {filteredBatchTasks.length === 0 ? (
+                                      <div className="py-3 text-center text-[10px] text-muted-foreground italic">
+                                        该状态下无匹配机器
+                                      </div>
+                                    ) : (
+                                      filteredBatchTasks.map((t) => {
+                                        const isNodeActive = currentBatchActiveTask?.serverId === t.serverId;
+
+                                        return (
+                                          <div
+                                            key={t.id}
+                                            onClick={() => setSelectedNodeIdInBatch(t.serverId)}
+                                            className={`flex items-center justify-between p-2 rounded-lg border transition-all cursor-pointer text-[11px] font-mono ${
+                                              isNodeActive
+                                                ? "bg-primary/15 border-primary text-foreground shadow-2xs font-semibold"
+                                                : "bg-card/70 border-border/40 hover:bg-muted/40 text-muted-foreground hover:text-foreground"
+                                            }`}
+                                          >
+                                            <div className="flex items-center gap-2 min-w-0">
+                                              <span
+                                                className={`size-1.5 rounded-full shrink-0 ${
+                                                  t.status === "success"
+                                                    ? "bg-emerald-400"
+                                                    : t.status === "running"
+                                                      ? "bg-sky-400 animate-pulse"
+                                                      : "bg-rose-400"
+                                                }`}
+                                              />
+                                              <span className="truncate">{t.serverName}</span>
+                                            </div>
+
+                                            <div className="flex items-center gap-2 text-[10px] text-muted-foreground shrink-0">
+                                              <span>{t.durationMs ? `${t.durationMs}ms` : "—"}</span>
+                                              {isNodeActive && (
+                                                <ChevronRight className="size-3 text-primary" />
+                                              )}
+                                            </div>
+                                          </div>
+                                        );
+                                      })
+                                    )}
+                                  </div>
+                                </div>
+                              )}
+                            </div>
+                          );
+                        })}
+                      </div>
+
+                      {/* 右侧：纯粹沉浸式深色终端输出结果 (7列) */}
+                      <div className="lg:col-span-7 p-4 bg-zinc-950 text-zinc-200 font-mono text-xs flex flex-col justify-between max-h-[600px] overflow-hidden">
+                        {currentBatch && currentBatchActiveTask ? (
+                          <>
+                            {/* 顶部执行状态栏 */}
+                            <div className="pb-3 border-b border-zinc-800 flex items-center justify-between flex-wrap gap-2">
+                              <div>
+                                <div className="flex items-center gap-2">
+                                  <Terminal className="size-4 text-emerald-400" />
+                                  <span className="font-bold text-zinc-100 text-sm">{currentBatchActiveTask.serverName}</span>
+                                  <span className="text-[11px] text-zinc-400 font-normal">({currentBatchActiveTask.serverId})</span>
+                                  {statusBadge(currentBatchActiveTask.status)}
+                                </div>
+                                <div className="text-[11px] text-zinc-400 mt-1 flex items-center gap-3">
+                                  <span>指令: <strong className="text-zinc-200">{currentBatch.command}</strong></span>
+                                  <span>·</span>
+                                  <span>耗时: {durationStr(currentBatchActiveTask.durationMs)}</span>
+                                  <span>·</span>
+                                  <span>退出码: {currentBatchActiveTask.exitCode ?? 0}</span>
+                                </div>
+                              </div>
+
                               <div className="flex items-center gap-2">
-                                <Terminal className="size-4 text-emerald-400" />
-                                <span className="font-bold text-zinc-100">{currentAuditTask.id}</span>
-                                {statusBadge(currentAuditTask.status)}
-                              </div>
-                              <div className="text-[11px] text-zinc-400 mt-1">
-                                目标: <span className="text-zinc-200">{currentAuditTask.serverName}</span> ({currentAuditTask.serverId}) · 耗时: {durationStr(currentAuditTask.durationMs)}
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  className="h-7 text-xs bg-zinc-900 border-zinc-700 text-zinc-200 hover:bg-zinc-800 cursor-pointer"
+                                  onClick={() => {
+                                    setCommandText(currentBatch.command);
+                                    setSelectedServerIds([currentBatchActiveTask.serverId]);
+                                    setActiveTab("dispatch");
+                                    toast.info(`已填入指令并选中目标主机 [${currentBatchActiveTask.serverName}]`);
+                                  }}
+                                >
+                                  再次下发该节点
+                                </Button>
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  className="h-7 text-xs bg-zinc-900 border-zinc-700 text-zinc-200 hover:bg-zinc-800 cursor-pointer"
+                                  onClick={() => {
+                                    if (currentBatchActiveTask.output) {
+                                      navigator.clipboard.writeText(currentBatchActiveTask.output);
+                                      toast.success(`已复制 [${currentBatchActiveTask.serverName}] 的输出回显`);
+                                    }
+                                  }}
+                                >
+                                  <Copy className="size-3 mr-1" /> 复制回显
+                                </Button>
                               </div>
                             </div>
 
-                            <div className="flex items-center gap-2">
-                              <Button
-                                size="sm"
-                                variant="outline"
-                                className="h-7 text-xs bg-zinc-900 border-zinc-700 text-zinc-200 hover:bg-zinc-800 cursor-pointer"
-                                onClick={() => {
-                                  setCommandText(currentAuditTask.command);
-                                  setActiveTab("dispatch");
-                                  toast.info("已填入命令下发编辑器");
-                                }}
-                              >
-                                再次下发
-                              </Button>
-                              <Button
-                                size="sm"
-                                variant="outline"
-                                className="h-7 text-xs bg-zinc-900 border-zinc-700 text-zinc-200 hover:bg-zinc-800 cursor-pointer"
-                                onClick={() => {
-                                  navigator.clipboard.writeText(currentAuditTask.output || currentAuditTask.command);
-                                  toast.success("已复制到剪贴板");
-                                }}
-                              >
-                                <Copy className="size-3 mr-1" /> 复制回显
-                              </Button>
+                            {/* 满屏标准终端命令运行输出 (Stdout Terminal) */}
+                            <div className="flex-1 my-3 p-4 rounded-lg bg-black/80 border border-zinc-800 overflow-y-auto leading-relaxed whitespace-pre-wrap select-text text-zinc-300 shadow-inner font-mono text-xs max-h-[440px]">
+                              {currentBatchActiveTask.output ? (
+                                currentBatchActiveTask.output
+                              ) : (
+                                <span className="text-zinc-500 italic">该机器无输出回显内容</span>
+                              )}
                             </div>
-                          </div>
 
-                          <div className="flex-1 my-3 p-3.5 rounded-lg bg-black/60 border border-zinc-800 overflow-y-auto leading-relaxed whitespace-pre-wrap select-text text-zinc-300 shadow-inner">
-                            {currentAuditTask.output ? (
-                              currentAuditTask.output
-                            ) : (
-                              <span className="text-zinc-500 italic">无输出回显内容</span>
-                            )}
+                            {/* 底部微型信息栏 */}
+                            <div className="pt-2 border-t border-zinc-800 flex items-center justify-between text-[11px] text-zinc-500">
+                              <span>调度发起: {new Date(currentBatchActiveTask.startedAt || currentBatch.startedAt).toLocaleString()}</span>
+                              <span>模式: POSIX Shell (UTF-8) · Smalux Fleet Agent</span>
+                            </div>
+                          </>
+                        ) : (
+                          <div className="text-center py-32 text-zinc-500 flex flex-col items-center gap-2">
+                            <Terminal className="size-8 text-zinc-700" />
+                            <span>请在左侧选择执行批次与目标机器以查看运行结果</span>
                           </div>
-
-                          <div className="pt-2 border-t border-zinc-800 flex items-center justify-between text-[11px] text-zinc-500">
-                            <span>调度发起: {new Date(currentAuditTask.startedAt || Date.now()).toLocaleString()}</span>
-                            <span>退出码: {currentAuditTask.exitCode ?? 0}</span>
-                          </div>
-                        </>
-                      ) : (
-                        <div className="text-center py-24 text-zinc-500">请在左侧选择一条记录以查看回显</div>
-                      )}
+                        )}
+                      </div>
                     </div>
+                  )}
+                </CardContent>
+              </Card>
+            )}
+
+            {logSubTab === "cron" && (
+              <Card>
+                <CardHeader className="flex flex-row items-center justify-between flex-wrap gap-4 pb-3">
+                  <div>
+                    <CardTitle className="text-base flex items-center gap-2">
+                      <Timer className="size-4 text-primary" />
+                      计划任务调度流水记录 ({cronJobGroups.length} 个任务 · {cronLogs.length} 条记录)
+                    </CardTitle>
+                    <CardDescription>
+                      三栏联动视图：<strong>任务名称 ➔ 调度批次(第几次下发) ➔ 机器执行记录与终端</strong>
+                    </CardDescription>
                   </div>
-                )}
-              </CardContent>
-            </Card>
-          </div>
-        )}
+
+                  {/* 顶部搜索与触发源过滤 */}
+                  <div className="flex items-center gap-2 flex-wrap">
+                    <div className="relative">
+                      <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 size-3.5 text-muted-foreground" />
+                      <input
+                        value={cronLogSearchQuery}
+                        onChange={(e) => setCronLogSearchQuery(e.target.value)}
+                        placeholder="搜索任务名 / 主机 / 命令..."
+                        className="h-8 w-48 rounded-lg border border-border/80 bg-muted/40 pl-8 pr-3 text-xs outline-none focus:border-primary text-foreground"
+                      />
+                    </div>
+
+                    <select
+                      value={cronLogTriggerFilter}
+                      onChange={(e) => setCronLogTriggerFilter(e.target.value)}
+                      className="h-8 rounded-lg border border-border/80 bg-muted/40 px-2 text-xs outline-none focus:border-primary text-foreground cursor-pointer"
+                    >
+                      <option value="all">全部触发源</option>
+                      <option value="cron">⏰ 定时自动触发</option>
+                      <option value="manual">⚡ 手动立即执行</option>
+                    </select>
+
+                    <select
+                      value={cronLogStatusFilter}
+                      onChange={(e) => setCronLogStatusFilter(e.target.value)}
+                      className="h-8 rounded-lg border border-border/80 bg-muted/40 px-2 text-xs outline-none focus:border-primary text-foreground cursor-pointer"
+                    >
+                      <option value="all">全部批次状态</option>
+                      <option value="success">全部成功</option>
+                      <option value="failed">存在异常/失败</option>
+                      <option value="running">执行中</option>
+                    </select>
+                  </div>
+                </CardHeader>
+
+                <CardContent className="p-0">
+                  {isLoadingCronLogs ? (
+                    <div className="text-center text-xs text-muted-foreground py-16 flex flex-col items-center gap-2">
+                      <RefreshCw className="size-4 animate-spin text-primary" />
+                      <span>正在加载计划任务执行流水...</span>
+                    </div>
+                  ) : filteredCronJobGroups.length === 0 ? (
+                    <div className="text-center text-xs text-muted-foreground py-16">
+                      {cronLogSearchQuery ? "未匹配到相关计划任务调度记录" : "暂无计划任务调度历史记录"}
+                    </div>
+                  ) : (
+                    <div className="grid grid-cols-1 lg:grid-cols-12 divide-y lg:divide-y-0 lg:divide-x divide-border/60 min-h-[580px]">
+                      {/* ══════════════════════════════════════════════════════ */}
+                      {/* 栏 1：计划任务列表 (等宽侧栏 - 3列)                   */}
+                      {/* ══════════════════════════════════════════════════════ */}
+                      <div className="lg:col-span-3 divide-y divide-border/60 max-h-[640px] overflow-y-auto p-2.5 space-y-2 bg-muted/5">
+                        <div className="text-[11px] font-semibold text-muted-foreground px-1 pb-1 flex items-center justify-between font-mono">
+                          <span>1. 任务列表 ({filteredCronJobGroups.length})</span>
+                          <span>总轮次</span>
+                        </div>
+
+                        {filteredCronJobGroups.map((job) => {
+                          const isJobSelected = (currentCronJob?.cronId || filteredCronJobGroups[0]?.cronId) === job.cronId;
+                          const latestBatch = job.batches[0];
+
+                          return (
+                            <div
+                              key={job.cronId}
+                              onClick={() => {
+                                setSelectedCronJobId(job.cronId);
+                                if (job.batches.length > 0) {
+                                  const firstB = job.batches[0];
+                                  setSelectedCronBatchId(firstB.batchId);
+                                  setExpandedCronBatchId(firstB.batchId);
+                                  setSelectedCronNodeId(firstB.logs[0]?.serverId || null);
+                                }
+                              }}
+                              className={`p-2.5 rounded-xl border transition-all cursor-pointer text-xs space-y-1.5 ${
+                                isJobSelected
+                                  ? "bg-primary/10 border-primary shadow-xs font-semibold"
+                                  : "bg-card/70 border-border/50 hover:bg-muted/40 text-muted-foreground hover:text-foreground"
+                              }`}
+                            >
+                              <div className="flex items-center justify-between gap-1.5">
+                                <div className="flex items-center gap-1.5 min-w-0">
+                                  <span
+                                    className={`size-2 rounded-full shrink-0 ${
+                                      latestBatch?.status === "success"
+                                        ? "bg-emerald-400"
+                                        : latestBatch?.status === "running"
+                                          ? "bg-sky-400 animate-pulse"
+                                          : "bg-rose-400"
+                                    }`}
+                                  />
+                                  <span className="font-bold text-foreground truncate text-xs">{job.cronName}</span>
+                                </div>
+                                <Badge variant="outline" className="text-[9px] px-1.5 py-0 bg-muted/60 text-foreground font-bold shrink-0 font-mono border-border/70">
+                                  {job.totalRuns} 轮
+                                </Badge>
+                              </div>
+
+                              <div className="flex items-center justify-between text-[10px] text-muted-foreground font-mono font-normal">
+                                <span className="text-primary font-semibold truncate pr-1">{job.expression}</span>
+                                <span className="shrink-0">{relativeTime(job.latestRunAt)}</span>
+                              </div>
+                            </div>
+                          );
+                        })}
+                      </div>
+
+                      {/* ══════════════════════════════════════════════════════ */}
+                      {/* 栏 2：当前任务调度明细 (等宽明细 - 3列)              */}
+                      {/* ══════════════════════════════════════════════════════ */}
+                      <div className="lg:col-span-3 divide-y divide-border/60 max-h-[640px] overflow-y-auto p-2.5 space-y-2">
+                        {currentCronJob ? (
+                          <>
+                            {/* 双维度切换 Tab (批次维度 vs 机器维度) */}
+                            <div className="space-y-1.5">
+                              <div className="flex items-center justify-between text-[11px] font-semibold text-muted-foreground px-0.5">
+                                <span className="truncate">2. 「{currentCronJob.cronName}」调度明细</span>
+                                <span className="font-mono text-[10px] text-primary shrink-0">{currentCronJob.expression}</span>
+                              </div>
+
+                              <div className="grid grid-cols-2 gap-1 p-0.5 bg-muted/60 rounded-lg border border-border/60">
+                                <button
+                                  type="button"
+                                  onClick={() => setCronDetailViewMode("batch")}
+                                  className={`py-1 px-1.5 text-[11px] font-semibold rounded-md transition-all cursor-pointer flex items-center justify-center gap-1 ${
+                                    cronDetailViewMode === "batch"
+                                      ? "bg-background text-foreground shadow-xs"
+                                      : "text-muted-foreground hover:text-foreground"
+                                  }`}
+                                >
+                                  <Repeat className="size-3 text-primary" />
+                                  <span>按批次 ({currentCronJob.batches.length})</span>
+                                </button>
+
+                                <button
+                                  type="button"
+                                  onClick={() => setCronDetailViewMode("node")}
+                                  className={`py-1 px-1.5 text-[11px] font-semibold rounded-md transition-all cursor-pointer flex items-center justify-center gap-1 ${
+                                    cronDetailViewMode === "node"
+                                      ? "bg-background text-foreground shadow-xs"
+                                      : "text-muted-foreground hover:text-foreground"
+                                  }`}
+                                >
+                                  <Server className="size-3 text-primary" />
+                                  <span>按机器 ({currentCronJobNodes.length})</span>
+                                </button>
+                              </div>
+
+                              {/* 专属过滤搜索栏 */}
+                              <div className="relative">
+                                <Search className="absolute left-2 top-1/2 -translate-y-1/2 size-2.5 text-muted-foreground" />
+                                <input
+                                  type="text"
+                                  value={cronDetailSearch}
+                                  onChange={(e) => setCronDetailSearch(e.target.value)}
+                                  placeholder={
+                                    cronDetailViewMode === "batch"
+                                      ? "搜索批次编号 / 状态..."
+                                      : "搜索机器名称 / IP / 状态..."
+                                  }
+                                  className="h-6.5 w-full rounded-md border border-border/80 bg-background/80 pl-6.5 pr-2 text-[11px] text-foreground outline-none focus:border-primary placeholder:text-muted-foreground/70"
+                                />
+                              </div>
+                            </div>
+
+                            {/* ── 视图 1：按调度批次查看 (By Batch) ── */}
+                            {cronDetailViewMode === "batch" && (
+                              <div className="space-y-1.5 pt-1">
+                                {currentCronJob.batches
+                                  .filter((b) => {
+                                    if (!cronDetailSearch.trim()) return true;
+                                    const q = cronDetailSearch.toLowerCase().trim();
+                                    const runStr = `#${b.runNumber || ""}`;
+                                    return (
+                                      runStr.includes(q) ||
+                                      b.status.includes(q) ||
+                                      (b.triggerType === "cron" ? "定时" : "手动").includes(q) ||
+                                      b.logs.some((l) => l.serverName.toLowerCase().includes(q))
+                                    );
+                                  })
+                                  .map((batch, index) => {
+                                    const isBatchSelected = (currentCronBatch?.batchId || currentCronJob.batches[0]?.batchId) === batch.batchId;
+                                    const isBatchExpanded = expandedCronBatchId !== null
+                                      ? expandedCronBatchId === batch.batchId
+                                      : (index === 0);
+
+                                    return (
+                                      <div
+                                        key={batch.batchId}
+                                        className={`rounded-xl border transition-all text-xs ${
+                                          isBatchSelected
+                                            ? "bg-primary/5 border-primary/60 shadow-xs"
+                                            : "bg-card/60 border-border/40 hover:bg-muted/40"
+                                        }`}
+                                      >
+                                        {/* 批次头部 */}
+                                        <div
+                                          onClick={() => {
+                                            if (isBatchExpanded) {
+                                              setExpandedCronBatchId("__batch_closed__");
+                                            } else {
+                                              setExpandedCronBatchId(batch.batchId);
+                                              setSelectedCronBatchId(batch.batchId);
+                                              const failedNode = batch.logs.find((l) => l.status === "failed" || l.status === "timeout");
+                                              setSelectedCronNodeId(failedNode ? failedNode.serverId : (batch.logs[0]?.serverId || null));
+                                              setCronNodeStatusFilter("all");
+                                              setCronNodeSearchQuery("");
+                                            }
+                                          }}
+                                          className="p-2.5 cursor-pointer select-none space-y-1 hover:bg-muted/20 transition-colors rounded-xl"
+                                        >
+                                          <div className="flex items-center justify-between gap-1">
+                                            <div className="flex items-center gap-1.5 min-w-0">
+                                              <Badge variant="outline" className="text-[10px] font-mono px-1 py-0 bg-muted text-foreground font-bold border-border/70 shrink-0">
+                                                #{batch.runNumber || (currentCronJob.batches.length - index)}
+                                              </Badge>
+                                              <span className="font-bold text-foreground text-xs truncate">
+                                                {batch.triggerType === "cron" ? "⏰ 定时" : "⚡ 手动"}
+                                              </span>
+                                            </div>
+
+                                            <div className="flex items-center gap-1">
+                                              <span className="text-[10px] text-muted-foreground font-mono">
+                                                {relativeTime(batch.startedAt)}
+                                              </span>
+                                              <ChevronRight
+                                                className={`size-3 transition-transform duration-200 ${
+                                                  isBatchExpanded ? "rotate-90 text-primary" : "text-muted-foreground"
+                                                }`}
+                                              />
+                                            </div>
+                                          </div>
+
+                                          <div className="pt-0.5 flex items-center justify-between text-[10px] text-muted-foreground">
+                                            <div className="flex items-center gap-1 font-mono">
+                                              {batch.status === "success" ? (
+                                                <span className="text-emerald-400 font-medium">🟢 成功</span>
+                                              ) : batch.status === "partial" ? (
+                                                <span className="text-rose-400 font-medium">🟡 部分异常</span>
+                                              ) : (
+                                                <span className="text-rose-400 font-medium">🔴 失败</span>
+                                              )}
+                                              <span>({batch.successNodes}/{batch.totalNodes}台)</span>
+                                            </div>
+                                            <span className="text-zinc-500 font-sans text-[10px]">
+                                              {isBatchExpanded ? "折叠" : `${batch.totalNodes}台`}
+                                            </span>
+                                          </div>
+                                        </div>
+
+                                        {/* 展开内容：机器状态与机器列表 */}
+                                        {isBatchExpanded && (
+                                          <div className="p-2 pt-0 border-t border-border/40 space-y-1.5 bg-muted/15 rounded-b-xl">
+                                            <div className="flex items-center justify-between pt-1.5 flex-wrap gap-1">
+                                              <div className="flex items-center gap-1">
+                                                {[
+                                                  { key: "all" as const, label: "全部", count: batch.totalNodes },
+                                                  { key: "failed" as const, label: "异常", count: batch.failedNodes, isDanger: true },
+                                                  { key: "success" as const, label: "成功", count: batch.successNodes }
+                                                ].map((tab) => {
+                                                  if (tab.count === 0 && tab.key !== "all") return null;
+                                                  const isActive = cronNodeStatusFilter === tab.key;
+
+                                                  return (
+                                                    <button
+                                                      key={tab.key}
+                                                      type="button"
+                                                      onClick={() => setCronNodeStatusFilter(tab.key)}
+                                                      className={`px-1.5 py-0.5 rounded text-[9px] font-medium transition-all cursor-pointer ${
+                                                        isActive
+                                                          ? tab.isDanger && tab.count > 0
+                                                            ? "bg-rose-500/20 text-rose-300 border border-rose-500/40 font-bold"
+                                                            : "bg-primary text-primary-foreground font-bold shadow-2xs"
+                                                          : "text-muted-foreground hover:text-foreground bg-muted/40 hover:bg-muted"
+                                                      }`}
+                                                    >
+                                                      {tab.label} ({tab.count})
+                                                    </button>
+                                                  );
+                                                })}
+                                              </div>
+                                            </div>
+
+                                            <div className="space-y-1 max-h-[220px] overflow-y-auto pr-0.5">
+                                              {filteredCronBatchLogs.map((log) => {
+                                                const isNodeActive = currentCronNodeLog?.serverId === log.serverId;
+
+                                                return (
+                                                  <div
+                                                    key={log.id}
+                                                    onClick={() => {
+                                                      setSelectedCronBatchId(batch.batchId);
+                                                      setSelectedCronNodeId(log.serverId);
+                                                    }}
+                                                    className={`flex items-center justify-between p-1.5 rounded-md border transition-all cursor-pointer text-[10px] font-mono ${
+                                                      isNodeActive
+                                                        ? "bg-primary/15 border-primary text-foreground shadow-2xs font-semibold"
+                                                        : "bg-card/70 border-border/40 hover:bg-muted/40 text-muted-foreground hover:text-foreground"
+                                                    }`}
+                                                  >
+                                                    <div className="flex items-center gap-1.5 min-w-0">
+                                                      <span
+                                                        className={`size-1.5 rounded-full shrink-0 ${
+                                                          log.status === "success"
+                                                            ? "bg-emerald-400"
+                                                            : log.status === "running"
+                                                              ? "bg-sky-400 animate-pulse"
+                                                              : "bg-rose-400"
+                                                        }`}
+                                                      />
+                                                      <span className="truncate">{log.serverName}</span>
+                                                    </div>
+
+                                                    <div className="flex items-center gap-1 text-[9px] text-muted-foreground shrink-0">
+                                                      <span>{durationStr(log.durationMs)}</span>
+                                                      {isNodeActive && (
+                                                        <ChevronRight className="size-2.5 text-primary" />
+                                                      )}
+                                                    </div>
+                                                  </div>
+                                                );
+                                              })}
+                                            </div>
+                                          </div>
+                                        )}
+                                      </div>
+                                    );
+                                  })}
+                              </div>
+                            )}
+
+                            {/* ── 视图 2：按执行机器查看 (By Node) ── */}
+                            {cronDetailViewMode === "node" && (
+                              <div className="space-y-1.5 pt-1">
+                                {currentCronJobNodes
+                                  .filter((node) => {
+                                    if (!cronDetailSearch.trim()) return true;
+                                    const q = cronDetailSearch.toLowerCase().trim();
+                                    return (
+                                      node.serverName.toLowerCase().includes(q) ||
+                                      node.serverId.toLowerCase().includes(q) ||
+                                      node.latestStatus.includes(q)
+                                    );
+                                  })
+                                  .map((node) => {
+                                    const isNodeSelected = currentCronNodeLog?.serverId === node.serverId;
+                                    const isNodeExpanded = expandedCronNodeSummaryId !== null
+                                      ? expandedCronNodeSummaryId === node.serverId
+                                      : (isNodeSelected || currentCronJobNodes[0]?.serverId === node.serverId);
+
+                                    return (
+                                      <div
+                                        key={node.serverId}
+                                        className={`rounded-xl border transition-all text-xs ${
+                                          isNodeSelected
+                                            ? "bg-primary/5 border-primary/60 shadow-xs"
+                                            : "bg-card/60 border-border/40 hover:bg-muted/40"
+                                        }`}
+                                      >
+                                        {/* 机器卡片头部 */}
+                                        <div
+                                          onClick={() => {
+                                            if (isNodeExpanded) {
+                                              setExpandedCronNodeSummaryId("__node_closed__");
+                                            } else {
+                                              setExpandedCronNodeSummaryId(node.serverId);
+                                              setSelectedCronNodeId(node.serverId);
+                                              if (node.runs.length > 0) {
+                                                setSelectedCronBatchId(node.runs[0].batchId);
+                                              }
+                                            }
+                                          }}
+                                          className="p-2.5 cursor-pointer select-none space-y-1 hover:bg-muted/20 transition-colors rounded-xl"
+                                        >
+                                          <div className="flex items-center justify-between gap-1">
+                                            <div className="flex items-center gap-1.5 min-w-0">
+                                              <Server className="size-3 text-primary shrink-0" />
+                                              <span className="font-bold text-foreground truncate text-xs">{node.serverName}</span>
+                                            </div>
+
+                                            <div className="flex items-center gap-1">
+                                              <span className="text-[10px] text-muted-foreground font-mono">
+                                                {relativeTime(node.latestRunAt)}
+                                              </span>
+                                              <ChevronRight
+                                                className={`size-3 transition-transform duration-200 ${
+                                                  isNodeExpanded ? "rotate-90 text-primary" : "text-muted-foreground"
+                                                }`}
+                                              />
+                                            </div>
+                                          </div>
+
+                                          <div className="pt-0.5 flex items-center justify-between text-[10px] text-muted-foreground font-mono">
+                                            <div className="flex items-center gap-1">
+                                              {node.successRuns > 0 && (
+                                                <span className="text-emerald-400 font-medium">
+                                                  🟢 {node.successRuns}成功
+                                                </span>
+                                              )}
+                                              {node.failedRuns > 0 && (
+                                                <span className="text-rose-400 font-medium">
+                                                  · 🔴 {node.failedRuns}异常
+                                                </span>
+                                              )}
+                                            </div>
+                                            <span className="text-zinc-500 font-sans text-[10px]">
+                                              共 {node.totalRuns} 轮
+                                            </span>
+                                          </div>
+                                        </div>
+
+                                        {/* 展开内容：该机器的历次运行列表 */}
+                                        {isNodeExpanded && (
+                                          <div className="p-2 pt-0 border-t border-border/40 space-y-1 bg-muted/15 rounded-b-xl">
+                                            <div className="text-[9px] font-semibold text-muted-foreground pt-1 pb-0.5">
+                                              历次执行记录:
+                                            </div>
+
+                                            <div className="space-y-1 max-h-[220px] overflow-y-auto pr-0.5">
+                                              {node.runs.map((r) => {
+                                                const isRunActive = currentCronBatch?.batchId === r.batchId && currentCronNodeLog?.serverId === node.serverId;
+
+                                                return (
+                                                  <div
+                                                    key={r.batchId}
+                                                    onClick={() => {
+                                                      setSelectedCronBatchId(r.batchId);
+                                                      setSelectedCronNodeId(node.serverId);
+                                                    }}
+                                                    className={`flex items-center justify-between p-1.5 rounded-md border transition-all cursor-pointer text-[10px] font-mono ${
+                                                      isRunActive
+                                                        ? "bg-primary/15 border-primary text-foreground shadow-2xs font-semibold"
+                                                        : "bg-card/70 border-border/40 hover:bg-muted/40 text-muted-foreground hover:text-foreground"
+                                                    }`}
+                                                  >
+                                                    <div className="flex items-center gap-1.5 min-w-0">
+                                                      <span
+                                                        className={`size-1.5 rounded-full shrink-0 ${
+                                                          r.status === "success"
+                                                            ? "bg-emerald-400"
+                                                            : r.status === "running"
+                                                              ? "bg-sky-400 animate-pulse"
+                                                              : "bg-rose-400"
+                                                        }`}
+                                                      />
+                                                      <span>#{r.runNumber || 1}</span>
+                                                      <span className="text-[9px] text-muted-foreground font-sans">
+                                                        ({r.triggerType === "cron" ? "定时" : "手动"})
+                                                      </span>
+                                                    </div>
+
+                                                    <div className="flex items-center gap-1.5 text-[9px] text-muted-foreground shrink-0">
+                                                      <span>{durationStr(r.durationMs)}</span>
+                                                      {isRunActive && (
+                                                        <ChevronRight className="size-2.5 text-primary" />
+                                                      )}
+                                                    </div>
+                                                  </div>
+                                                );
+                                              })}
+                                            </div>
+                                          </div>
+                                        )}
+                                      </div>
+                                    );
+                                  })}
+                              </div>
+                            )}
+                          </>
+                        ) : (
+                          <div className="py-20 text-center text-xs text-muted-foreground">
+                            请在左侧选择计划任务
+                          </div>
+                        )}
+                      </div>
+
+                      {/* ══════════════════════════════════════════════════════ */}
+                      {/* 栏 3：沉浸式深色终端输出结果 (半屏 6列 - 50% 宽度)     */}
+                      {/* ══════════════════════════════════════════════════════ */}
+                      <div className="lg:col-span-6 p-4 bg-zinc-950 text-zinc-200 font-mono text-xs flex flex-col justify-between max-h-[640px] overflow-hidden">
+                        {currentCronJob && currentCronBatch && currentCronNodeLog ? (
+                          <>
+                            {/* 顶部执行状态栏与三级面包屑 */}
+                            <div className="pb-3 border-b border-zinc-800 flex items-center justify-between flex-wrap gap-2">
+                              <div>
+                                {/* 三级面包屑导航 */}
+                                <div className="flex items-center gap-1.5 text-[11px] text-zinc-400 font-mono mb-1 flex-wrap">
+                                  <span className="text-zinc-200 font-bold">{currentCronJob.cronName}</span>
+                                  <span className="text-zinc-600">&gt;</span>
+                                  <span className="text-emerald-400 font-semibold">
+                                    第 #{currentCronBatch.runNumber || 1} 批次
+                                  </span>
+                                  <span className="text-zinc-600">&gt;</span>
+                                  <span className="text-zinc-100 font-bold">{currentCronNodeLog.serverName}</span>
+                                </div>
+
+                                <div className="flex items-center gap-2 flex-wrap">
+                                  <Timer className="size-4 text-emerald-400" />
+                                  <span className="font-bold text-zinc-100 text-sm">{currentCronNodeLog.serverName}</span>
+                                  <span className="text-[11px] text-zinc-400 font-normal">({currentCronNodeLog.serverId})</span>
+                                  {statusBadge(currentCronNodeLog.status)}
+                                </div>
+                                <div className="text-[11px] text-zinc-400 mt-1 flex items-center gap-3 flex-wrap">
+                                  <span>触发: <strong className="text-zinc-200">{currentCronBatch.triggerType === "cron" ? "⏰ 定时自动" : "⚡ 手动立即"}</strong></span>
+                                  <span>·</span>
+                                  <span>耗时: {durationStr(currentCronNodeLog.durationMs)}</span>
+                                  <span>·</span>
+                                  <span>退出码: {currentCronNodeLog.exitCode ?? 0}</span>
+                                </div>
+                              </div>
+
+                              <div className="flex items-center gap-2">
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  className="h-7 text-xs bg-zinc-900 border-zinc-700 text-zinc-200 hover:bg-zinc-800 cursor-pointer"
+                                  onClick={() => {
+                                    const job = crons.find((c) => c.id === currentCronJob.cronId);
+                                    if (job) {
+                                      handleRunCronNow(job);
+                                    } else {
+                                      toast.info("已触发该计划任务重新执行");
+                                    }
+                                  }}
+                                >
+                                  <Play className="size-3 mr-1 text-emerald-400" /> 再次立即下发
+                                </Button>
+                                <Button
+                                  size="sm"
+                                  variant="outline"
+                                  className="h-7 text-xs bg-zinc-900 border-zinc-700 text-zinc-200 hover:bg-zinc-800 cursor-pointer"
+                                  onClick={() => {
+                                    if (currentCronNodeLog.output) {
+                                      navigator.clipboard.writeText(currentCronNodeLog.output);
+                                      toast.success(`已复制 [${currentCronNodeLog.serverName}] 的输出回显`);
+                                    }
+                                  }}
+                                >
+                                  <Copy className="size-3 mr-1" /> 复制回显
+                                </Button>
+                              </div>
+                            </div>
+
+                            {/* 满屏标准终端命令运行输出 (Stdout Terminal) */}
+                            <div className="flex-1 my-3 p-4 rounded-lg bg-black/80 border border-zinc-800 overflow-y-auto leading-relaxed whitespace-pre-wrap select-text text-zinc-300 shadow-inner font-mono text-xs max-h-[460px]">
+                              {currentCronNodeLog.output ? (
+                                currentCronNodeLog.output
+                              ) : (
+                                <span className="text-zinc-500 italic">该机器在此批次下无输出回显内容</span>
+                              )}
+                            </div>
+
+                            {/* 底部微型信息栏 */}
+                            <div className="pt-2 border-t border-zinc-800 flex items-center justify-between text-[11px] text-zinc-500">
+                              <span>调度发起: {new Date(currentCronNodeLog.startedAt || currentCronBatch.startedAt).toLocaleString()}</span>
+                              <span>模式: POSIX Shell · Smalux Distributed Cron</span>
+                            </div>
+                          </>
+                        ) : (
+                          <div className="text-center py-32 text-zinc-500 flex flex-col items-center gap-2">
+                            <Timer className="size-8 text-zinc-700" />
+                            <span>请在左侧选择计划任务批次与目标机器以查看运行结果</span>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            )}
+        </div>
+      )}
+
       </div>
 
       {/* ══════════════════════════════════════════════════════ */}
@@ -1216,10 +2440,10 @@ export function AutomationPage() {
             {/* 分类标签切换 */}
             <div className="flex items-center gap-1.5 pb-1 text-[11px]">
               {[
-                { key: "all", label: "全部", count: DYNAMIC_VARIABLES.length },
-                { key: "host", label: "📡 主机网络", count: DYNAMIC_VARIABLES.filter((v) => v.category === "host").length },
-                { key: "time", label: "⏰ 时间日期", count: DYNAMIC_VARIABLES.filter((v) => v.category === "time").length },
-                { key: "env", label: "🛡️ 环境上下文", count: DYNAMIC_VARIABLES.filter((v) => v.category === "env").length }
+                { key: "all", label: "全部", count: dynamicVariables.length },
+                { key: "host", label: "📡 主机网络", count: dynamicVariables.filter((v) => v.category === "host").length },
+                { key: "time", label: "⏰ 时间日期", count: dynamicVariables.filter((v) => v.category === "time").length },
+                { key: "env", label: "🛡️ 环境上下文", count: dynamicVariables.filter((v) => v.category === "env").length }
               ].map((tab) => (
                 <button
                   key={tab.key}
@@ -1238,7 +2462,12 @@ export function AutomationPage() {
 
             {/* 变量列表 */}
             <div className="flex-1 overflow-y-auto space-y-2 pr-1 -mr-1 max-h-[380px]">
-              {filteredVariables.length === 0 ? (
+              {isLoadingVars ? (
+                <div className="py-12 text-center text-xs text-muted-foreground flex flex-col items-center gap-2">
+                  <RefreshCw className="size-4 animate-spin text-primary" />
+                  <span>正在从服务器动态获取支持的变量字典...</span>
+                </div>
+              ) : filteredVariables.length === 0 ? (
                 <div className="py-12 text-center text-xs text-muted-foreground">未找到相关动态变量</div>
               ) : (
                 filteredVariables.map((v) => (

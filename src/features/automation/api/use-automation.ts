@@ -7,12 +7,14 @@
 export {
   useTasks,
   useTaskTemplates,
+  useTaskVariables,
   useDispatchTask,
   useApproveTask
 } from "@/features/tasks/hooks/use-tasks";
 
 export {
   useCrons,
+  useCronLogs,
   useCreateCron,
   useUpdateCron,
   useToggleCron,

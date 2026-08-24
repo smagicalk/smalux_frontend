@@ -22,6 +22,7 @@ import {
   mockAccounts,
   mockAlertHistory,
   mockAlertRules,
+  mockCronLogs,
   mockCrons,
   mockDeploymentTargets,
   mockLogs,
@@ -31,6 +32,7 @@ import {
   mockPingTargets,
   mockSettings,
   mockTaskTemplates,
+  mockTaskVariables,
   mockTasks,
   mockThemes,
   mockTokens
@@ -507,8 +509,19 @@ class MockBackendImpl implements MockBackend {
       case "task.template.list":
         return { templates: mockTaskTemplates };
 
+      case "task.variables.list":
+        return { variables: mockTaskVariables };
+
       case "cron.list":
         return { crons: mockCrons, total: mockCrons.length };
+
+      case "cron.logs.list": {
+        const p = (params ?? {}) as { cronId?: string; serverId?: string };
+        let logs = mockCronLogs;
+        if (p.cronId) logs = logs.filter((l) => l.cronId === p.cronId);
+        if (p.serverId) logs = logs.filter((l) => l.serverId === p.serverId);
+        return { logs, total: logs.length };
+      }
 
       case "monitor.service.list":
         return { targets: mockPingTargets, total: mockPingTargets.length };
@@ -556,7 +569,7 @@ class MockBackendImpl implements MockBackend {
       // the caller re-fetches the list to see the new state.
       // ---------------------------------------------------------------------
       case "task.dispatch": {
-        const p = (params ?? {}) as { serverId: string; command: string; risk: string; scope: string };
+        const p = (params ?? {}) as { serverId: string; command: string; batchId?: string; risk: string; scope: string };
         const server = this.servers.find((s) => s.id === p.serverId);
 
         // Generate realistic stdout based on command keywords
@@ -576,6 +589,7 @@ class MockBackendImpl implements MockBackend {
 
         mockTasks.unshift({
           id: `t${mockTasks.length + 1}`,
+          batchId: p.batchId,
           serverId: p.serverId,
           serverName: server?.name ?? p.serverId,
           command: p.command,

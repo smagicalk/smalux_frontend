@@ -14,6 +14,7 @@ export type TaskStatus = z.infer<typeof taskStatusSchema>;
 
 export const taskSchema = z.object({
   id: z.string(),
+  batchId: z.string().optional(),
   serverId: z.string(),
   serverName: z.string(),
   command: z.string(),
@@ -49,10 +50,24 @@ export const taskTemplateListResultSchema = z.object({
   templates: z.array(taskTemplateSchema)
 });
 
+export const taskVariableSchema = z.object({
+  key: z.string(),
+  category: z.enum(["host", "time", "env"]),
+  label: z.string(),
+  desc: z.string(),
+  example: z.string()
+});
+export type TaskVariable = z.infer<typeof taskVariableSchema>;
+
+export const taskVariablesResultSchema = z.object({
+  variables: z.array(taskVariableSchema)
+});
+
 // mutations
 export const taskDispatchParamsSchema = z.object({
   serverId: z.string(),
   command: z.string(),
+  batchId: z.string().optional(),
   risk: z.enum(["low", "medium", "high"]).default("low"),
   scope: z.string().default("node:exec")
 });

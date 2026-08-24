@@ -68,12 +68,15 @@ import {
   taskApproveParamsSchema,
   taskDispatchParamsSchema,
   taskListResultSchema,
-  taskTemplateListResultSchema
+  taskTemplateListResultSchema,
+  taskVariablesResultSchema
 } from "./schemas/tasks";
+export type { TaskVariable } from "./schemas/tasks";
 import {
   cronCreateParamsSchema,
   cronDeleteParamsSchema,
   cronListResultSchema,
+  cronLogListResultSchema,
   cronToggleParamsSchema,
   cronUpdateParamsSchema
 } from "./schemas/cron";
@@ -187,8 +190,10 @@ export const methods = {
   "overview.stats": { params: z.unknown(), result: overviewStatsResultSchema },
   "task.list": { params: z.unknown(), result: taskListResultSchema },
   "task.template.list": { params: z.unknown(), result: taskTemplateListResultSchema },
+  "task.variables.list": { params: z.unknown().optional(), result: taskVariablesResultSchema },
 
   "cron.list": { params: z.unknown(), result: cronListResultSchema },
+  "cron.logs.list": { params: z.unknown().optional(), result: cronLogListResultSchema },
 
   "monitor.service.list": { params: z.unknown(), result: pingListResultSchema },
 

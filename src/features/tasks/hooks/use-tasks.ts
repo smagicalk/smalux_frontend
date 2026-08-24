@@ -33,6 +33,20 @@ export function useTaskTemplates() {
 }
 
 /**
+ * 获取系统支持的动态运维注入变量字典 Hook
+ * 
+ * 对应 `task.variables.list` JSON-RPC 方法。
+ */
+export function useTaskVariables() {
+  const { client } = useRpc();
+  return useQuery({
+    queryKey: ["task-variables"],
+    queryFn: () => client.call("task.variables.list", {}, methods["task.variables.list"].result),
+    staleTime: 5 * 60 * 1000
+  });
+}
+
+/**
  * 下发执行远程运维指令/脚本 Hook（Mutation）
  * 
  * 对应 `task.dispatch` JSON-RPC 方法。
@@ -42,7 +56,7 @@ export function useDispatchTask() {
   const { client } = useRpc();
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (params: { serverId: string; command: string; risk: "low" | "medium" | "high"; scope: string }) =>
+    mutationFn: (params: { serverId: string; command: string; batchId?: string; risk?: "low" | "medium" | "high"; scope?: string }) =>
       client.call("task.dispatch", params, methods["task.dispatch"].result),
     onSuccess: () => qc.invalidateQueries({ queryKey: queryKeys.tasks })
   });

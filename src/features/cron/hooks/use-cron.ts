@@ -18,6 +18,19 @@ export function useCrons() {
 }
 
 /**
+ * 获取计划任务历史执行流水记录 Hook
+ * 
+ * 对应 `cron.logs.list` JSON-RPC 方法。
+ */
+export function useCronLogs(params?: { cronId?: string; serverId?: string }) {
+  const { client } = useRpc();
+  return useQuery({
+    queryKey: queryKeys.cronLogs(params),
+    queryFn: () => client.call("cron.logs.list", params ?? {}, methods["cron.logs.list"].result)
+  });
+}
+
+/**
  * 新增定时任务 Hook（Mutation）
  * 
  * 对应 `cron.create` JSON-RPC 方法。

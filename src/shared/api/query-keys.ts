@@ -25,6 +25,7 @@ export const queryKeys = {
   taskList: (params?: { status?: string; search?: string }) =>
     ["tasks", params ?? {}] as const,
   cron: ["cron"] as const,
+  cronLogs: (params?: { cronId?: string; serverId?: string }) => ["cron-logs", params ?? {}] as const,
   ping: ["ping"] as const,
   pingHistory: (serverId: string, range: string) => ["ping-history", serverId, range] as const,
   alerts: ["alerts"] as const,

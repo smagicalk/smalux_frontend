@@ -8,6 +8,7 @@ import type {
   AlertHistory,
   AlertRule,
   Cron,
+  CronLog,
   DeploymentTarget,
   Log,
   NotificationChannel,
@@ -16,6 +17,7 @@ import type {
   Setting,
   Task,
   TaskTemplate,
+  TaskVariable,
   Theme,
   Token
 } from "@/shared/api/methods";
@@ -26,13 +28,48 @@ const hr = 3_600_000;
 const day = 86_400_000;
 
 export const mockTasks: Task[] = [
-  { id: "t1", serverId: "srv-hkg-01", serverName: "edge-hkg-01", command: "systemctl restart nginx", status: "success", risk: "medium", scope: "node:exec", startedAt: now - 2 * hr, finishedAt: now - 2 * hr + 3200, durationMs: 3200, exitCode: 0, output: "nginx: the configuration file /etc/nginx/nginx.conf syntax is ok\nnginx: configuration file /etc/nginx/nginx.conf test is successful\n[OK] Reloaded Nginx Web Server." },
-  { id: "t2", serverId: "srv-tok-01", serverName: "edge-tok-01", command: "df -h && free -m", status: "success", risk: "low", scope: "node:read", startedAt: now - 90 * min, finishedAt: now - 90 * min + 800, durationMs: 800, exitCode: 0, output: "Filesystem      Size  Used Avail Use% Mounted on\n/dev/nvme0n1p1  100G   24G   72G  25% /\n---\nMem: 15.6G total, 3.8G used, 11.8G free" },
-  { id: "t3", serverId: "srv-sgp-02", serverName: "worker-sgp-02", command: "docker system prune -af", status: "success", risk: "high", scope: "node:exec", startedAt: now - 5 * min, finishedAt: now - 5 * min + 4200, durationMs: 4200, exitCode: 0, output: "Deleted Containers: 4\nDeleted Images: 8\nTotal reclaimed space: 12.4GB\n[OK] Docker prune completed." },
-  { id: "t4", serverId: "srv-fra-02", serverName: "edge-fra-02", command: "rm -rf /tmp/cache/*", status: "success", risk: "high", scope: "node:exec", startedAt: now - 40 * min, finishedAt: now - 40 * min + 600, durationMs: 600, exitCode: 0, output: "Removed 142 temporary cache files." },
-  { id: "t5", serverId: "srv-lax-01", serverName: "db-lax-01", command: "pg_dump -U postgres -d main > /backup/main.sql", status: "success", risk: "medium", scope: "node:exec", startedAt: now - 55 * min, finishedAt: now - 55 * min + 8500, durationMs: 8500, exitCode: 0, output: "pg_dump: exporting database schema and tables...\n[OK] Database dump created successfully (248MB)." },
-  { id: "t6", serverId: "srv-sha-01", serverName: "worker-sha-01", command: "docker logs app", status: "failed", risk: "low", scope: "node:read", startedAt: now - 3 * hr, finishedAt: now - 3 * hr + 1500, durationMs: 1500, exitCode: 1, output: "Error response from daemon: No such container: app" },
-  { id: "t7", serverId: "srv-hkg-02", serverName: "core-hkg-02", command: "uptime", status: "timeout", risk: "low", scope: "node:read", startedAt: now - 4 * hr, finishedAt: now - 4 * hr + 30_000, durationMs: 30_000, exitCode: 124, output: "Command timed out after 30s." }
+  // 批次 0: 超大型全集群批量运维巡检与升级 (16台主机，含成功/失败/超时分布)
+  { id: "t0_1", batchId: "b-cluster-upgrade", serverId: "srv-hkg-01", serverName: "edge-hkg-01", command: "smalux-agent --check && free -m", status: "success", risk: "low", scope: "node:read", startedAt: now - 15 * min, finishedAt: now - 15 * min + 620, durationMs: 620, exitCode: 0, output: "[OK] Agent daemon v2.4.0 is healthy.\nMem: 15.6G total, 4.2G used, 11.4G free\nSwap: 0B used" },
+  { id: "t0_2", batchId: "b-cluster-upgrade", serverId: "srv-hkg-02", serverName: "core-hkg-02", command: "smalux-agent --check && free -m", status: "success", risk: "low", scope: "node:read", startedAt: now - 15 * min, finishedAt: now - 15 * min + 580, durationMs: 580, exitCode: 0, output: "[OK] Agent daemon v2.4.0 is healthy.\nMem: 31.8G total, 11.3G used, 20.5G free\nSwap: 0B used" },
+  { id: "t0_3", batchId: "b-cluster-upgrade", serverId: "srv-hkg-03", serverName: "edge-hkg-03", command: "smalux-agent --check && free -m", status: "success", risk: "low", scope: "node:read", startedAt: now - 15 * min, finishedAt: now - 15 * min + 740, durationMs: 740, exitCode: 0, output: "[OK] Agent daemon v2.4.0 is healthy.\nMem: 15.6G total, 3.1G used, 12.5G free\nSwap: 0B used" },
+  { id: "t0_4", batchId: "b-cluster-upgrade", serverId: "srv-tok-01", serverName: "edge-tok-01", command: "smalux-agent --check && free -m", status: "success", risk: "low", scope: "node:read", startedAt: now - 15 * min, finishedAt: now - 15 * min + 690, durationMs: 690, exitCode: 0, output: "[OK] Agent daemon v2.4.0 is healthy.\nMem: 8.0G total, 2.4G used, 5.6G free\nSwap: 0B used" },
+  { id: "t0_5", batchId: "b-cluster-upgrade", serverId: "srv-tok-02", serverName: "worker-tok-02", command: "smalux-agent --check && free -m", status: "success", risk: "low", scope: "node:read", startedAt: now - 15 * min, finishedAt: now - 15 * min + 810, durationMs: 810, exitCode: 0, output: "[OK] Agent daemon v2.4.0 is healthy.\nMem: 16.0G total, 6.8G used, 9.2G free\nSwap: 0B used" },
+  { id: "t0_6", batchId: "b-cluster-upgrade", serverId: "srv-sgp-01", serverName: "edge-sgp-01", command: "smalux-agent --check && free -m", status: "success", risk: "low", scope: "node:read", startedAt: now - 15 * min, finishedAt: now - 15 * min + 920, durationMs: 920, exitCode: 0, output: "[OK] Agent daemon v2.4.0 is healthy.\nMem: 8.0G total, 3.1G used, 4.9G free\nSwap: 0B used" },
+  { id: "t0_7", batchId: "b-cluster-upgrade", serverId: "srv-sgp-02", serverName: "worker-sgp-02", command: "smalux-agent --check && free -m", status: "success", risk: "low", scope: "node:read", startedAt: now - 15 * min, finishedAt: now - 15 * min + 880, durationMs: 880, exitCode: 0, output: "[OK] Agent daemon v2.4.0 is healthy.\nMem: 31.2G total, 14.2G used, 17.0G free\nSwap: 0B used" },
+  { id: "t0_8", batchId: "b-cluster-upgrade", serverId: "srv-sgp-03", serverName: "worker-sgp-03", command: "smalux-agent --check && free -m", status: "success", risk: "low", scope: "node:read", startedAt: now - 15 * min, finishedAt: now - 15 * min + 790, durationMs: 790, exitCode: 0, output: "[OK] Agent daemon v2.4.0 is healthy.\nMem: 16.0G total, 5.2G used, 10.8G free\nSwap: 0B used" },
+  { id: "t0_9", batchId: "b-cluster-upgrade", serverId: "srv-fra-01", serverName: "edge-fra-01", command: "smalux-agent --check && free -m", status: "success", risk: "low", scope: "node:read", startedAt: now - 15 * min, finishedAt: now - 15 * min + 1050, durationMs: 1050, exitCode: 0, output: "[OK] Agent daemon v2.4.0 is healthy.\nMem: 8.0G total, 1.9G used, 6.1G free\nSwap: 0B used" },
+  { id: "t0_10", batchId: "b-cluster-upgrade", serverId: "srv-fra-02", serverName: "edge-fra-02", command: "smalux-agent --check && free -m", status: "success", risk: "low", scope: "node:read", startedAt: now - 15 * min, finishedAt: now - 15 * min + 1120, durationMs: 1120, exitCode: 0, output: "[OK] Agent daemon v2.4.0 is healthy.\nMem: 8.0G total, 2.1G used, 5.9G free\nSwap: 0B used" },
+  { id: "t0_11", batchId: "b-cluster-upgrade", serverId: "srv-fra-03", serverName: "backup-fra-03", command: "smalux-agent --check && free -m", status: "timeout", risk: "low", scope: "node:read", startedAt: now - 15 * min, finishedAt: now - 15 * min + 30000, durationMs: 30000, exitCode: 124, output: "Error: Execution timed out after 30 seconds waiting for agent response." },
+  { id: "t0_12", batchId: "b-cluster-upgrade", serverId: "srv-lax-01", serverName: "db-lax-01", command: "smalux-agent --check && free -m", status: "success", risk: "low", scope: "node:read", startedAt: now - 15 * min, finishedAt: now - 15 * min + 1300, durationMs: 1300, exitCode: 0, output: "[OK] Agent daemon v2.4.0 is healthy.\nMem: 64.0G total, 28.5G used, 35.5G free\nSwap: 0B used" },
+  { id: "t0_13", batchId: "b-cluster-upgrade", serverId: "srv-lax-02", serverName: "db-lax-02", command: "smalux-agent --check && free -m", status: "success", risk: "low", scope: "node:read", startedAt: now - 15 * min, finishedAt: now - 15 * min + 1250, durationMs: 1250, exitCode: 0, output: "[OK] Agent daemon v2.4.0 is healthy.\nMem: 64.0G total, 27.8G used, 36.2G free\nSwap: 0B used" },
+  { id: "t0_14", batchId: "b-cluster-upgrade", serverId: "srv-sha-01", serverName: "worker-sha-01", command: "smalux-agent --check && free -m", status: "failed", risk: "low", scope: "node:read", startedAt: now - 15 * min, finishedAt: now - 15 * min + 850, durationMs: 850, exitCode: 100, output: "E: Could not get lock /var/lib/dpkg/lock-frontend. It is held by process 14201 (unattended-upgr)\nN: Be aware that removing the lock file is not a solution and may break your system." },
+  { id: "t0_15", batchId: "b-cluster-upgrade", serverId: "srv-lon-01", serverName: "edge-lon-01", command: "smalux-agent --check && free -m", status: "success", risk: "low", scope: "node:read", startedAt: now - 15 * min, finishedAt: now - 15 * min + 960, durationMs: 960, exitCode: 0, output: "[OK] Agent daemon v2.4.0 is healthy.\nMem: 8.0G total, 2.7G used, 5.3G free\nSwap: 0B used" },
+  { id: "t0_16", batchId: "b-cluster-upgrade", serverId: "srv-syd-01", serverName: "edge-syd-01", command: "smalux-agent --check && free -m", status: "success", risk: "low", scope: "node:read", startedAt: now - 15 * min, finishedAt: now - 15 * min + 1450, durationMs: 1450, exitCode: 0, output: "[OK] Agent daemon v2.4.0 is healthy.\nMem: 8.0G total, 1.8G used, 6.2G free\nSwap: 0B used" },
+
+  // 批次 1: 批量重启 Nginx (2台主机)
+  { id: "t1_1", batchId: "b-restart-nginx", serverId: "srv-hkg-01", serverName: "edge-hkg-01", command: "systemctl restart nginx", status: "success", risk: "medium", scope: "node:exec", startedAt: now - 2 * hr, finishedAt: now - 2 * hr + 3200, durationMs: 3200, exitCode: 0, output: "nginx: the configuration file /etc/nginx/nginx.conf syntax is ok\nnginx: configuration file /etc/nginx/nginx.conf test is successful\n[OK] Reloaded Nginx Web Server on edge-hkg-01." },
+  { id: "t1_2", batchId: "b-restart-nginx", serverId: "srv-tok-01", serverName: "edge-tok-01", command: "systemctl restart nginx", status: "success", risk: "medium", scope: "node:exec", startedAt: now - 2 * hr, finishedAt: now - 2 * hr + 2900, durationMs: 2900, exitCode: 0, output: "nginx: the configuration file /etc/nginx/nginx.conf syntax is ok\nnginx: configuration file /etc/nginx/nginx.conf test is successful\n[OK] Reloaded Nginx Web Server on edge-tok-01." },
+
+  // 批次 2: 批量系统巡检 (3台主机)
+  { id: "t2_1", batchId: "b-system-check", serverId: "srv-tok-01", serverName: "edge-tok-01", command: "df -h && free -m", status: "success", risk: "low", scope: "node:read", startedAt: now - 90 * min, finishedAt: now - 90 * min + 800, durationMs: 800, exitCode: 0, output: "Filesystem      Size  Used Avail Use% Mounted on\n/dev/nvme0n1p1  100G   24G   72G  25% /\n---\nMem: 15.6G total, 3.8G used, 11.8G free" },
+  { id: "t2_2", batchId: "b-system-check", serverId: "srv-sgp-02", serverName: "worker-sgp-02", command: "df -h && free -m", status: "success", risk: "low", scope: "node:read", startedAt: now - 90 * min, finishedAt: now - 90 * min + 950, durationMs: 950, exitCode: 0, output: "Filesystem      Size  Used Avail Use% Mounted on\n/dev/sda1       200G   68G  132G  34% /\n---\nMem: 31.2G total, 12.4G used, 18.8G free" },
+  { id: "t2_3", batchId: "b-system-check", serverId: "srv-fra-02", serverName: "edge-fra-02", command: "df -h && free -m", status: "success", risk: "low", scope: "node:read", startedAt: now - 90 * min, finishedAt: now - 90 * min + 1100, durationMs: 1100, exitCode: 0, output: "Filesystem      Size  Used Avail Use% Mounted on\n/dev/vda1        80G   18G   62G  23% /\n---\nMem: 8.0G total, 2.1G used, 5.9G free" },
+
+  // 批次 3: Docker 清理 (单台)
+  { id: "t3", batchId: "b-docker-prune", serverId: "srv-sgp-02", serverName: "worker-sgp-02", command: "docker system prune -af", status: "success", risk: "high", scope: "node:exec", startedAt: now - 5 * min, finishedAt: now - 5 * min + 4200, durationMs: 4200, exitCode: 0, output: "Deleted Containers: 4\nDeleted Images: 8\nTotal reclaimed space: 12.4GB\n[OK] Docker prune completed." },
+
+  // 批次 4: 临时文件清理 (单台)
+  { id: "t4", batchId: "b-tmp-clean", serverId: "srv-fra-02", serverName: "edge-fra-02", command: "rm -rf /tmp/cache/*", status: "success", risk: "high", scope: "node:exec", startedAt: now - 40 * min, finishedAt: now - 40 * min + 600, durationMs: 600, exitCode: 0, output: "Removed 142 temporary cache files." },
+
+  // 批次 5: 数据库备份 (单台)
+  { id: "t5", batchId: "b-db-backup", serverId: "srv-lax-01", serverName: "db-lax-01", command: "pg_dump -U postgres -d main > /backup/main.sql", status: "success", risk: "medium", scope: "node:exec", startedAt: now - 55 * min, finishedAt: now - 55 * min + 8500, durationMs: 8500, exitCode: 0, output: "pg_dump: exporting database schema and tables...\n[OK] Database dump created successfully (248MB)." },
+
+  // 批次 6: 容器日志检索 (2台主机，其中1台异常)
+  { id: "t6_1", batchId: "b-docker-logs", serverId: "srv-sha-01", serverName: "worker-sha-01", command: "docker logs app", status: "failed", risk: "low", scope: "node:read", startedAt: now - 3 * hr, finishedAt: now - 3 * hr + 1500, durationMs: 1500, exitCode: 1, output: "Error response from daemon: No such container: app" },
+  { id: "t6_2", batchId: "b-docker-logs", serverId: "srv-hkg-02", serverName: "core-hkg-02", command: "docker logs app", status: "success", risk: "low", scope: "node:read", startedAt: now - 3 * hr, finishedAt: now - 3 * hr + 900, durationMs: 900, exitCode: 0, output: "2026-08-24T18:30:00Z [INFO] Worker pool initialized. Listening on port 8080." },
+
+  // 批次 7: 运行时间检测 (超时)
+  { id: "t7", batchId: "b-uptime", serverId: "srv-hkg-02", serverName: "core-hkg-02", command: "uptime", status: "timeout", risk: "low", scope: "node:read", startedAt: now - 4 * hr, finishedAt: now - 4 * hr + 30_000, durationMs: 30_000, exitCode: 124, output: "Command timed out after 30s." }
 ];
 
 export const mockTaskTemplates: TaskTemplate[] = [
@@ -43,12 +80,300 @@ export const mockTaskTemplates: TaskTemplate[] = [
   { id: "tp5", name: "网络链路连通性检测", command: "ping -c 4 8.8.8.8 && mtr -rn -c 5 1.1.1.1", risk: "low", scope: "node:read", description: "快速测试公网出网延迟与骨干路由跳点损耗" }
 ];
 
+export const mockTaskVariables: TaskVariable[] = [
+  // ── 主机网络与元数据 ──
+  { key: "{{SERVER_IP}}", category: "host", label: "主机 IPv4 地址", desc: "自动注入当前调度目标节点的公网或主内网 IP", example: "185.199.108.153" },
+  { key: "{{SERVER_NAME}}", category: "host", label: "主机 Hostname", desc: "自动注入当前节点的标准主机名称", example: "edge-hkg-01" },
+  { key: "{{SERVER_ID}}", category: "host", label: "主机唯一识别 ID", desc: "系统全局分配的节点唯一标识符", example: "srv-hkg-01" },
+  { key: "{{SERVER_REGION}}", category: "host", label: "主机所属地域/机房", desc: "节点所在的地理区域或数据中心代码", example: "Hong Kong (HKG)" },
+  { key: "{{SERVER_GROUP}}", category: "host", label: "业务分组名称", desc: "节点所属的业务拓扑集群或逻辑分组", example: "网关集群" },
+  { key: "{{SERVER_PORT}}", category: "host", label: "Agent 通信端口", desc: "目标主机上 Agent 服务监听的远程端口", example: "22" },
+
+  // ── 时间戳与格式化日期 ──
+  { key: "{{TIMESTAMP}}", category: "time", label: "Unix 时间戳 (秒)", desc: "当前任务执行开始时的 10 位标准秒级时间戳", example: "1724428800" },
+  { key: "{{TIMESTAMP_MS}}", category: "time", label: "毫秒时间戳 (ms)", desc: "高精度 13 位毫秒级 Unix 时间戳", example: "1724428800123" },
+  { key: "{{DATE}}", category: "time", label: "当前日期 (YYYY-MM-DD)", desc: "以 ISO 格式输出的当天标准公历日期", example: "2026-08-23" },
+  { key: "{{TIME}}", category: "time", label: "当前时间 (HH:mm:ss)", desc: "当前执行时分秒标准时间戳", example: "14:30:00" },
+  { key: "{{DATETIME}}", category: "time", label: "紧凑日期时间", desc: "适合作为日志/备份文件后缀的年月日时间串", example: "20260823_143000" },
+
+  // ── 运行环境与上下文 ──
+  { key: "{{EXEC_USER}}", category: "env", label: "执行操作人", desc: "发起本次运维下发的当前登录管理员工号/角色", example: "root / admin" },
+  { key: "{{TEMP_DIR}}", category: "env", label: "安全临时执行目录", desc: "远程节点上为本次任务开辟的沙箱临时目录", example: "/tmp/smalux_job" },
+  { key: "{{LOG_FILE}}", category: "env", label: "任务专用日志文件", desc: "自动生成的单次指令独立日志输出路径", example: "/var/log/smalux_task.log" },
+  { key: "{{AGENT_VERSION}}", category: "env", label: "Agent 客户端版本", desc: "目标主机上当前运行的 Smalux Fleet 守护版本", example: "v2.4.0" },
+  { key: "{{RANDOM_ID}}", category: "env", label: "随机任务 Hash (8位)", desc: "为防止多节点命名冲突生成的随机十六进制串", example: "9f4a8b2c" }
+];
+
 export const mockCrons: Cron[] = [
   { id: "c1", name: "每日备份", serverId: "srv-lax-01", serverName: "db-lax-01", expression: "0 3 * * *", command: "pg_dump main | gzip > /backup/main.sql.gz", enabled: true, lastRunAt: now - 20 * hr, nextRunAt: now + 4 * hr, lastStatus: "success" },
   { id: "c2", name: "日志清理", serverId: "srv-hkg-01", serverName: "edge-hkg-01", expression: "0 4 * * 0", command: "find /var/log -mtime +30 -delete", enabled: true, lastRunAt: now - 2 * day, nextRunAt: now + 5 * day, lastStatus: "success" },
   { id: "c3", name: "证书续期检查", serverId: "srv-fra-01", serverName: "core-fra-01", expression: "0 0 * * *", command: "certbot renew --dry-run", enabled: false, lastRunAt: now - day, lastStatus: "success" },
   { id: "c4", name: "流量统计上报", serverId: "srv-sgp-01", serverName: "cache-sgp-01", expression: "*/30 * * * *", command: "vnstat --json", enabled: true, lastRunAt: now - 25 * min, nextRunAt: now + 5 * min, lastStatus: "success" },
   { id: "c5", name: "磁盘巡检", serverId: "srv-tok-01", serverName: "edge-tok-01", expression: "0 */6 * * *", command: "df -h | mail ops@smalux", enabled: true, lastRunAt: now - 3 * hr, nextRunAt: now + 3 * hr, lastStatus: "failed" }
+];
+
+export const mockCronLogs: CronLog[] = [
+  // ── 任务 1: 每日备份 (c1) ──
+  {
+    id: "cl-1-1",
+    cronId: "c1",
+    cronName: "每日备份",
+    batchId: "cb-c1-3",
+    runNumber: 3,
+    expression: "0 3 * * *",
+    serverId: "srv-lax-01",
+    serverName: "db-lax-01",
+    command: "pg_dump main | gzip > /backup/main.sql.gz",
+    status: "success",
+    triggerType: "cron",
+    startedAt: now - 20 * hr,
+    finishedAt: now - 20 * hr + 8400,
+    durationMs: 8400,
+    exitCode: 0,
+    output: "pg_dump: dumping database \"main\" schema and data...\npg_dump: compressing stream with gzip level 6\n[OK] Snapshot saved to /backup/main.sql.gz (184.2 MB)\nMD5 Checksum: 7b3a4f8910e52cd80a7146e5912a7f55"
+  },
+  {
+    id: "cl-1-2",
+    cronId: "c1",
+    cronName: "每日备份",
+    batchId: "cb-c1-3",
+    runNumber: 3,
+    expression: "0 3 * * *",
+    serverId: "srv-lax-02",
+    serverName: "db-lax-02",
+    command: "pg_dump main | gzip > /backup/main_replica.sql.gz",
+    status: "success",
+    triggerType: "cron",
+    startedAt: now - 20 * hr,
+    finishedAt: now - 20 * hr + 7900,
+    durationMs: 7900,
+    exitCode: 0,
+    output: "pg_dump: dumping replica database \"main\"...\n[OK] Snapshot saved to /backup/main_replica.sql.gz (183.9 MB)\nMD5 Checksum: 8a1f3c9902e41de90b8235f4901b8a44"
+  },
+  {
+    id: "cl-2-1",
+    cronId: "c1",
+    cronName: "每日备份",
+    batchId: "cb-c1-2",
+    runNumber: 2,
+    expression: "0 3 * * *",
+    serverId: "srv-lax-01",
+    serverName: "db-lax-01",
+    command: "pg_dump main | gzip > /backup/main.sql.gz",
+    status: "success",
+    triggerType: "manual",
+    startedAt: now - 44 * hr,
+    finishedAt: now - 44 * hr + 8900,
+    durationMs: 8900,
+    exitCode: 0,
+    output: "[Manual Trigger] Operator requested manual pre-upgrade snapshot.\npg_dump: database snapshot created successfully (181.9 MB)."
+  },
+  {
+    id: "cl-2-2",
+    cronId: "c1",
+    cronName: "每日备份",
+    batchId: "cb-c1-2",
+    runNumber: 2,
+    expression: "0 3 * * *",
+    serverId: "srv-lax-02",
+    serverName: "db-lax-02",
+    command: "pg_dump main | gzip > /backup/main_replica.sql.gz",
+    status: "success",
+    triggerType: "manual",
+    startedAt: now - 44 * hr,
+    finishedAt: now - 44 * hr + 8600,
+    durationMs: 8600,
+    exitCode: 0,
+    output: "[Manual Trigger] Replica node backup snapshot completed successfully (181.7 MB)."
+  },
+  {
+    id: "cl-0-1",
+    cronId: "c1",
+    cronName: "每日备份",
+    batchId: "cb-c1-1",
+    runNumber: 1,
+    expression: "0 3 * * *",
+    serverId: "srv-lax-01",
+    serverName: "db-lax-01",
+    command: "pg_dump main | gzip > /backup/main.sql.gz",
+    status: "success",
+    triggerType: "cron",
+    startedAt: now - 68 * hr,
+    finishedAt: now - 68 * hr + 8200,
+    durationMs: 8200,
+    exitCode: 0,
+    output: "pg_dump: snapshot created (180.1 MB)."
+  },
+  {
+    id: "cl-0-2",
+    cronId: "c1",
+    cronName: "每日备份",
+    batchId: "cb-c1-1",
+    runNumber: 1,
+    expression: "0 3 * * *",
+    serverId: "srv-fra-01",
+    serverName: "core-fra-01",
+    command: "pg_dump main | gzip > /backup/main.sql.gz",
+    status: "failed",
+    triggerType: "cron",
+    startedAt: now - 68 * hr,
+    finishedAt: now - 68 * hr + 1500,
+    durationMs: 1500,
+    exitCode: 2,
+    output: "pg_dump: [error] could not connect to server: Connection refused\nIs the server running on host \"127.0.0.1\" and accepting TCP/IP connections on port 5432?"
+  },
+
+  // ── 任务 2: 流量统计上报 (c4) ──
+  {
+    id: "cl-3-1",
+    cronId: "c4",
+    cronName: "流量统计上报",
+    batchId: "cb-c4-12",
+    runNumber: 12,
+    expression: "*/30 * * * *",
+    serverId: "srv-sgp-01",
+    serverName: "cache-sgp-01",
+    command: "vnstat --json",
+    status: "success",
+    triggerType: "cron",
+    startedAt: now - 25 * min,
+    finishedAt: now - 25 * min + 350,
+    durationMs: 350,
+    exitCode: 0,
+    output: "{\"vnstatversion\":\"2.6\",\"jsonversion\":\"2\",\"interfaces\":[{\"name\":\"eth0\",\"traffic\":{\"total\":{\"rx\":104857600,\"tx\":419430400}}}]}"
+  },
+  {
+    id: "cl-3-2",
+    cronId: "c4",
+    cronName: "流量统计上报",
+    batchId: "cb-c4-12",
+    runNumber: 12,
+    expression: "*/30 * * * *",
+    serverId: "srv-hkg-01",
+    serverName: "edge-hkg-01",
+    command: "vnstat --json",
+    status: "success",
+    triggerType: "cron",
+    startedAt: now - 25 * min,
+    finishedAt: now - 25 * min + 410,
+    durationMs: 410,
+    exitCode: 0,
+    output: "{\"vnstatversion\":\"2.6\",\"jsonversion\":\"2\",\"interfaces\":[{\"name\":\"eth0\",\"traffic\":{\"total\":{\"rx\":384210000,\"tx\":982000000}}}]}"
+  },
+  {
+    id: "cl-3-3",
+    cronId: "c4",
+    cronName: "流量统计上报",
+    batchId: "cb-c4-12",
+    runNumber: 12,
+    expression: "*/30 * * * *",
+    serverId: "srv-tok-01",
+    serverName: "edge-tok-01",
+    command: "vnstat --json",
+    status: "success",
+    triggerType: "cron",
+    startedAt: now - 25 * min,
+    finishedAt: now - 25 * min + 380,
+    durationMs: 380,
+    exitCode: 0,
+    output: "{\"vnstatversion\":\"2.6\",\"jsonversion\":\"2\",\"interfaces\":[{\"name\":\"eth0\",\"traffic\":{\"total\":{\"rx\":214210000,\"tx\":582000000}}}]}"
+  },
+  {
+    id: "cl-4-1",
+    cronId: "c4",
+    cronName: "流量统计上报",
+    batchId: "cb-c4-11",
+    runNumber: 11,
+    expression: "*/30 * * * *",
+    serverId: "srv-sgp-01",
+    serverName: "cache-sgp-01",
+    command: "vnstat --json",
+    status: "success",
+    triggerType: "cron",
+    startedAt: now - 55 * min,
+    finishedAt: now - 55 * min + 320,
+    durationMs: 320,
+    exitCode: 0,
+    output: "{\"vnstatversion\":\"2.6\",\"jsonversion\":\"2\",\"interfaces\":[{\"name\":\"eth0\",\"traffic\":{\"total\":{\"rx\":98421000,\"tx\":392000000}}}]}"
+  },
+
+  // ── 任务 3: 磁盘巡检 (c5) ──
+  {
+    id: "cl-5-1",
+    cronId: "c5",
+    cronName: "磁盘巡检",
+    batchId: "cb-c5-4",
+    runNumber: 4,
+    expression: "0 */6 * * *",
+    serverId: "srv-tok-01",
+    serverName: "edge-tok-01",
+    command: "df -h | mail ops@smalux",
+    status: "failed",
+    triggerType: "cron",
+    startedAt: now - 3 * hr,
+    finishedAt: now - 3 * hr + 1200,
+    durationMs: 1200,
+    exitCode: 127,
+    output: "/bin/sh: line 1: mail: command not found\n[FATAL] Unable to dispatch alert notification email via local sendmail/mailx."
+  },
+  {
+    id: "cl-5-2",
+    cronId: "c5",
+    cronName: "磁盘巡检",
+    batchId: "cb-c5-4",
+    runNumber: 4,
+    expression: "0 */6 * * *",
+    serverId: "srv-hkg-01",
+    serverName: "edge-hkg-01",
+    command: "df -h | mail ops@smalux",
+    status: "success",
+    triggerType: "cron",
+    startedAt: now - 3 * hr,
+    finishedAt: now - 3 * hr + 950,
+    durationMs: 950,
+    exitCode: 0,
+    output: "Filesystem      Size  Used Avail Use% Mounted on\n/dev/root        50G   18G   30G  38% /\ntmpfs           3.9G     0  3.9G   0% /dev/shm\n[OK] Disk health summary dispatched to ops@smalux successfully."
+  },
+
+  // ── 任务 4: 日志清理 (c2) ──
+  {
+    id: "cl-6-1",
+    cronId: "c2",
+    cronName: "日志清理",
+    batchId: "cb-c2-2",
+    runNumber: 2,
+    expression: "0 4 * * 0",
+    serverId: "srv-hkg-01",
+    serverName: "edge-hkg-01",
+    command: "find /var/log -mtime +30 -delete",
+    status: "success",
+    triggerType: "cron",
+    startedAt: now - 2 * day,
+    finishedAt: now - 2 * day + 1800,
+    durationMs: 1800,
+    exitCode: 0,
+    output: "Scanning directory /var/log for files older than 30 days...\nPruned 28 archived log files.\nFreed disk space: 3.2 GB."
+  },
+
+  // ── 任务 5: 证书续期检查 (c3) ──
+  {
+    id: "cl-7-1",
+    cronId: "c3",
+    cronName: "证书续期检查",
+    batchId: "cb-c3-1",
+    runNumber: 1,
+    expression: "0 0 * * *",
+    serverId: "srv-fra-01",
+    serverName: "core-fra-01",
+    command: "certbot renew --dry-run",
+    status: "success",
+    triggerType: "cron",
+    startedAt: now - day,
+    finishedAt: now - day + 4600,
+    durationMs: 4600,
+    exitCode: 0,
+    output: "Saving debug log to /var/log/letsencrypt/letsencrypt.log\nProcessing /etc/letsencrypt/renewal/smalux.example.com.conf\nSimulating renewal of an existing certificate for *.smalux.example.com\nThe dry run was successful."
+  }
 ];
 
 export const mockPingTargets: PingTarget[] = [
