@@ -1,8 +1,8 @@
 import { useMemo } from "react";
-import { useServers } from "@/features/servers/hooks/use-servers";
-import { useMonitoring } from "@/features/servers/hooks/use-monitoring";
-import { useThrottledMonitoring } from "@/features/servers/hooks/use-throttled-monitoring";
-import { usePingTargets } from "@/features/ping/hooks/use-ping";
+import { useServers } from "@/features/infrastructure/hooks/use-servers";
+import { useMonitoring } from "@/features/infrastructure/hooks/use-monitoring";
+import { useThrottledMonitoring } from "@/features/infrastructure/hooks/use-throttled-monitoring";
+import { usePingTargets } from "@/features/infrastructure/hooks/use-ping";
 import type { HostServer, AgentInstallCommand, SlaTimeRange } from "../types";
 import {
   MOCK_HOST_SERVERS,

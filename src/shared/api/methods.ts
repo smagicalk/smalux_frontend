@@ -251,3 +251,15 @@ export const methods = {
 
 /** Union of every RPC name currently supported by the frontend contract. */
 export type MethodName = keyof typeof methods;
+
+export type TokenListResult = z.infer<typeof tokenListResultSchema>;
+export type AccountListResult = z.infer<typeof accountListResultSchema>;
+export type LogListResult = z.infer<typeof logListResultSchema>;
+export type SettingListResult = z.infer<typeof settingListResultSchema>;
+export type ThemeListResult = z.infer<typeof themeListResultSchema>;
+export type DeploymentListResult = z.infer<typeof deploymentListResultSchema>;
+export type AlertListResult = z.infer<typeof alertListResultSchema>;
+export type NotificationListResult = z.infer<typeof notificationListResultSchema>;
+export type CronListResult = z.infer<typeof cronListResultSchema>;
+export type CronLogListResult = z.infer<typeof cronLogListResultSchema>;
+export type PingListResult = z.infer<typeof pingListResultSchema>;

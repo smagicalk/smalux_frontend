@@ -1,1 +1,1 @@
-export * from "./script-library-widget";
+export * from "@/shared/components/script-library";

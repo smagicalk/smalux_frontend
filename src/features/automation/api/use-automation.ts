@@ -10,7 +10,7 @@ export {
   useTaskVariables,
   useDispatchTask,
   useApproveTask
-} from "@/features/tasks/hooks/use-tasks";
+} from "@/features/automation/hooks/use-tasks";
 
 export {
   useCrons,
@@ -19,4 +19,4 @@ export {
   useUpdateCron,
   useToggleCron,
   useDeleteCron
-} from "@/features/cron/hooks/use-cron";
+} from "@/features/automation/hooks/use-cron";

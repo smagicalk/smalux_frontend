@@ -52,7 +52,7 @@ import {
   useDeleteCron
 } from "../api/use-automation";
 import { useInfrastructureData } from "@/features/infrastructure/api/use-infrastructure-api";
-import { ScriptLibraryWidget } from "../components/script-library-widget";
+import { ScriptLibraryWidget } from "@/shared/components/script-library";
 import type { Task, Cron, CronLog, TaskVariable } from "@/shared/api/methods";
 
 // ─────────────────────────────────────────────────────────────
@@ -2793,6 +2793,14 @@ export function AutomationPage() {
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* 公共脚本库浮动小部件 (HTTP 驱动) */}
+      <ScriptLibraryWidget
+        onSelectScript={(cmd, title) => {
+          setCommandText(cmd);
+          toast.success(`已填入脚本 [${title}] 到命令下发框`);
+        }}
+      />
     </div>
   );
 }

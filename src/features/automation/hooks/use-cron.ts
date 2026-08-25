@@ -1,91 +1,72 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-
-import { methods } from "@/shared/api/methods";
 import { queryKeys } from "@/shared/api/query-keys";
-import { useRpc } from "@/app/providers/rpc-context";
+import { httpClient } from "@/shared/api/http/http-client";
+import type { CronListResult, CronLogListResult } from "@/shared/api/methods";
 
 /**
- * 获取集群分布式定时任务（Cron）列表 Hook
- * 
- * 对应 `cron.list` JSON-RPC 方法。
+ * 获取集群分布式定时任务列表 Hook（HTTP GET /api/v1/crons）
  */
 export function useCrons() {
-  const { client } = useRpc();
   return useQuery({
     queryKey: queryKeys.cron,
-    queryFn: () => client.call("cron.list", {}, methods["cron.list"].result)
+    queryFn: () => httpClient.get<CronListResult>("/api/v1/crons")
   });
 }
 
 /**
- * 获取计划任务历史执行流水记录 Hook
- * 
- * 对应 `cron.logs.list` JSON-RPC 方法。
+ * 获取计划任务历史执行流水记录 Hook（HTTP GET /api/v1/crons/logs）
  */
 export function useCronLogs(params?: { cronId?: string; serverId?: string }) {
-  const { client } = useRpc();
   return useQuery({
     queryKey: queryKeys.cronLogs(params),
-    queryFn: () => client.call("cron.logs.list", params ?? {}, methods["cron.logs.list"].result)
+    queryFn: () => httpClient.get<CronLogListResult>("/api/v1/crons/logs", params)
   });
 }
 
 /**
- * 新增定时任务 Hook（Mutation）
- * 
- * 对应 `cron.create` JSON-RPC 方法。
+ * 新增定时任务 Hook（HTTP POST /api/v1/crons）
  */
 export function useCreateCron() {
-  const { client } = useRpc();
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (params: { name: string; serverId: string; expression: string; command: string }) =>
-      client.call("cron.create", params, methods["cron.create"].result),
+      httpClient.post("/api/v1/crons", params),
     onSuccess: () => qc.invalidateQueries({ queryKey: queryKeys.cron })
   });
 }
 
 /**
- * 更新/编辑定时任务 Hook（Mutation）
- * 
- * 对应 `cron.update` JSON-RPC 方法。
+ * 更新/编辑定时任务 Hook（HTTP PUT /api/v1/crons/:id）
  */
 export function useUpdateCron() {
-  const { client } = useRpc();
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (params: { id: string; name: string; serverId: string; expression: string; command: string }) =>
-      client.call("cron.update", params, methods["cron.update"].result),
+      httpClient.put(`/api/v1/crons/${params.id}`, params),
     onSuccess: () => qc.invalidateQueries({ queryKey: queryKeys.cron })
   });
 }
 
 /**
- * 启用/禁用定时任务 Hook（Mutation）
- * 
- * 对应 `cron.toggle` JSON-RPC 方法。
+ * 启用/禁用定时任务 Hook（HTTP POST /api/v1/crons/:id/toggle）
  */
 export function useToggleCron() {
-  const { client } = useRpc();
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (params: { id: string; enabled: boolean }) =>
-      client.call("cron.toggle", params, methods["cron.toggle"].result),
+      httpClient.post(`/api/v1/crons/${params.id}/toggle`, { enabled: params.enabled }),
     onSuccess: () => qc.invalidateQueries({ queryKey: queryKeys.cron })
   });
 }
 
 /**
- * 删除指定定时任务 Hook（Mutation）
- * 
- * 对应 `cron.delete` JSON-RPC 方法。
+ * 删除指定定时任务 Hook（HTTP DELETE /api/v1/crons/:id）
  */
 export function useDeleteCron() {
-  const { client } = useRpc();
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (id: string) =>
-      client.call("cron.delete", { id }, methods["cron.delete"].result),
+      httpClient.delete(`/api/v1/crons/${id}`),
     onSuccess: () => qc.invalidateQueries({ queryKey: queryKeys.cron })
   });
 }

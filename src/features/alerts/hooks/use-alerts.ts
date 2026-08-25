@@ -1,30 +1,22 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-
-import { methods } from "@/shared/api/methods";
 import { queryKeys } from "@/shared/api/query-keys";
-import { useRpc } from "@/app/providers/rpc-context";
-import type { AlertSeverity } from "@/shared/api/methods";
+import { httpClient } from "@/shared/api/http/http-client";
+import type { AlertSeverity, AlertListResult } from "@/shared/api/methods";
 
 /**
- * 获取集群告警规则与历史触发事件列表 Hook
- * 
- * 对应 `alert.list` JSON-RPC 方法。
+ * 获取集群告警规则与历史触发事件列表 Hook（HTTP GET /api/v1/alerts）
  */
 export function useAlerts() {
-  const { client } = useRpc();
   return useQuery({
     queryKey: queryKeys.alerts,
-    queryFn: () => client.call("alert.list", {}, methods["alert.list"].result)
+    queryFn: () => httpClient.get<AlertListResult>("/api/v1/alerts")
   });
 }
 
 /**
- * 新建告警规则策略 Hook（Mutation）
- * 
- * 对应 `alert.create` JSON-RPC 方法。
+ * 新建告警规则策略 Hook（HTTP POST /api/v1/alerts）
  */
 export function useCreateAlertRule() {
-  const { client } = useRpc();
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (params: {
@@ -35,37 +27,31 @@ export function useCreateAlertRule() {
       windowSec: number;
       severity: AlertSeverity;
       serverId?: string;
-    }) => client.call("alert.create", params, methods["alert.create"].result),
+    }) => httpClient.post("/api/v1/alerts", params),
     onSuccess: () => qc.invalidateQueries({ queryKey: queryKeys.alerts })
   });
 }
 
 /**
- * 静音/取消静音指定告警规则 Hook（Mutation）
- * 
- * 对应 `alert.silence` JSON-RPC 方法。
+ * 静音/取消静音指定告警规则 Hook（HTTP POST /api/v1/alerts/:id/silence）
  */
 export function useSilenceAlert() {
-  const { client } = useRpc();
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (params: { id: string; silenced: boolean }) =>
-      client.call("alert.silence", params, methods["alert.silence"].result),
+      httpClient.post(`/api/v1/alerts/${params.id}/silence`, { silenced: params.silenced }),
     onSuccess: () => qc.invalidateQueries({ queryKey: queryKeys.alerts })
   });
 }
 
 /**
- * 删除指定告警规则 Hook（Mutation）
- * 
- * 对应 `alert.delete` JSON-RPC 方法。
+ * 删除指定告警规则 Hook（HTTP DELETE /api/v1/alerts/:id）
  */
 export function useDeleteAlert() {
-  const { client } = useRpc();
   const qc = useQueryClient();
   return useMutation({
     mutationFn: (id: string) =>
-      client.call("alert.delete", { id }, methods["alert.delete"].result),
+      httpClient.delete(`/api/v1/alerts/${id}`),
     onSuccess: () => qc.invalidateQueries({ queryKey: queryKeys.alerts })
   });
 }

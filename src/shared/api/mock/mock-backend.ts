@@ -1139,7 +1139,8 @@ class MockBackendImpl implements MockBackend {
       diskIoEnabled,
       diskIo,
       disks,
-      ts
+      ts,
+      timestamp: ts
     };
   }
 }

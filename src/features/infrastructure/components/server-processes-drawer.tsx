@@ -695,8 +695,14 @@ export function ServerProcessesDrawer({
           <div className="flex-1 p-4 sm:p-5 overflow-hidden flex flex-col bg-muted/10">
             <div className="flex-1 rounded-xl border border-border/80 bg-card/60 shadow-xs overflow-x-auto overflow-y-auto relative">
               {displayedItemsCount === 0 ? (
-                <div className="p-12 text-center text-xs text-muted-foreground font-mono">
-                  未找到匹配的进程条目
+                <div className="p-16 text-center text-xs text-muted-foreground font-mono flex flex-col items-center justify-center gap-2">
+                  <Radio className="size-6 text-muted-foreground/40 mb-1" />
+                  <span className="font-semibold text-foreground">暂未采集到活跃进程数据</span>
+                  <span className="text-[11px] text-muted-foreground/70">
+                    {!processCollectionEnabled 
+                      ? "该节点未开启实时进程采集，可点击右上角开启或抓取快照"
+                      : "节点当前处于静默状态或未上报活跃进程快照"}
+                  </span>
                 </div>
               ) : (
                 <table className="w-full text-left text-xs font-mono border-collapse min-w-[700px]">

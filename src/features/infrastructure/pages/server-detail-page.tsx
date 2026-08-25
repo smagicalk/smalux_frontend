@@ -53,10 +53,10 @@ import { EChart, type EChartsOption } from "@/shared/charts/echart";
 import type { EChartsType } from "echarts/core";
 import { useThemeStore, resolveThemeMode } from "@/shared/stores/theme-store";
 import { useInfrastructureData } from "../api/use-infrastructure-api";
-import { useMonitoring } from "@/features/servers/hooks/use-monitoring";
+import { useMonitoring } from "@/features/infrastructure/hooks/use-monitoring";
 import { useRpc } from "@/app/providers/rpc-context";
 import { methods } from "@/shared/api/methods";
-import { useServerHardware } from "@/features/servers/hooks/use-server-hardware";
+import { useServerHardware } from "@/features/infrastructure/hooks/use-server-hardware";
 import { MOCK_HOST_SERVERS, getMockServerTelemetry, getMockServerProcesses } from "../mock/infrastructure-mock";
 import { useAgentStatus } from "../api/use-agent-status";
 import { useServerNetworkProbes } from "../api/use-network-probes";
@@ -70,6 +70,7 @@ import {
 } from "../components/asset-billing-lifecycle-section";
 import { DynamicNotifyChannels, type NotifyChannelItem } from "../components/dynamic-notify-channels";
 import { useServerConfig } from "../api/use-server-config";
+import { ScriptLibraryWidget } from "@/shared/components/script-library";
 import { toast } from "sonner";
 import type { HostServer } from "../types";
 
@@ -2813,6 +2814,14 @@ export function ServerDetailPage() {
         server={server}
         open={isReinstallDialogOpen}
         onOpenChange={setIsReinstallDialogOpen}
+      />
+
+      {/* 公共运维脚本库小部件 (按需在服务器详情页展示) */}
+      <ScriptLibraryWidget
+        onSelectScript={(cmd, title) => {
+          navigator.clipboard.writeText(cmd);
+          toast.success(`已复制 [${title}] 指令，可在终端中直接粘贴执行`);
+        }}
       />
     </div>
   );

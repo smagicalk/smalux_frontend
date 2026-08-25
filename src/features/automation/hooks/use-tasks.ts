@@ -1,8 +1,9 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
-
 import { methods } from "@/shared/api/methods";
 import { queryKeys } from "@/shared/api/query-keys";
 import { useRpc } from "@/app/providers/rpc-context";
+import { httpClient } from "@/shared/api/http/http-client";
+import type { TaskVariable } from "@/shared/api/methods";
 
 /**
  * 获取集群批量命令执行与分发任务列表 Hook
@@ -33,15 +34,12 @@ export function useTaskTemplates() {
 }
 
 /**
- * 获取系统支持的动态运维注入变量字典 Hook
- * 
- * 对应 `task.variables.list` JSON-RPC 方法。
+ * 获取系统支持的动态运维注入变量字典 Hook（HTTP GET /api/v1/tasks/variables）
  */
 export function useTaskVariables() {
-  const { client } = useRpc();
   return useQuery({
     queryKey: ["task-variables"],
-    queryFn: () => client.call("task.variables.list", {}, methods["task.variables.list"].result),
+    queryFn: () => httpClient.get<{ variables: TaskVariable[] }>("/api/v1/tasks/variables"),
     staleTime: 5 * 60 * 1000
   });
 }

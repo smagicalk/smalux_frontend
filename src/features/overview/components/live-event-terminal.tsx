@@ -24,22 +24,30 @@ export function LiveEventTerminal({ events }: LiveEventTerminalProps) {
       </CardHeader>
 
       <CardContent className="p-3 font-mono text-xs space-y-1.5 flex-1 overflow-y-auto min-h-0">
-        {events.map((e) => (
-          <div
-            key={e.id}
-            className="flex items-center justify-between hover:bg-muted/30 px-2.5 py-1.5 rounded-lg transition-colors border border-transparent hover:border-border/50"
-          >
-            <div className="flex items-center gap-2.5 truncate pr-2">
-              <span
-                className={`text-[10px] font-bold px-1.5 py-0.5 rounded bg-muted/80 border border-border/70 shrink-0 ${e.color}`}
-              >
-                [{e.tag}]
-              </span>
-              <span className="text-foreground truncate text-xs">{e.text}</span>
-            </div>
-            <span className="text-[10px] text-muted-foreground shrink-0 font-sans">{e.time}</span>
+        {events.length === 0 ? (
+          <div className="h-full flex flex-col items-center justify-center text-xs text-muted-foreground font-mono gap-2 py-8">
+            <Terminal className="size-6 text-muted-foreground/40 mb-1" />
+            <span>暂无最新控制台实时事件流水</span>
+            <span className="text-[10px] text-muted-foreground/60">节点心跳、任务分发与系统操作将在此实时呈现</span>
           </div>
-        ))}
+        ) : (
+          events.map((e) => (
+            <div
+              key={e.id}
+              className="flex items-center justify-between hover:bg-muted/30 px-2.5 py-1.5 rounded-lg transition-colors border border-transparent hover:border-border/50"
+            >
+              <div className="flex items-center gap-2.5 truncate pr-2">
+                <span
+                  className={`text-[10px] font-bold px-1.5 py-0.5 rounded bg-muted/80 border border-border/70 shrink-0 ${e.color}`}
+                >
+                  [{e.tag}]
+                </span>
+                <span className="text-foreground truncate text-xs">{e.text}</span>
+              </div>
+              <span className="text-[10px] text-muted-foreground shrink-0 font-sans">{e.time}</span>
+            </div>
+          ))
+        )}
       </CardContent>
     </Card>
   );
