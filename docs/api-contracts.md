@@ -1,167 +1,100 @@
-# smalux API 契约与接口文档
+# Smalux API 契约与通信协议规范 (API Contracts & Protocol Spec)
 
-本文档定义了 `smalux` 控制台与后端服务通信的唯一事实标准（Single Source of Truth）。
-前后端交互采用 **JSON-RPC 2.0 over WebSocket** 为主通道，以 **HTTP POST `/rpc`** 为兜底通道。
+本文档定义了 `smalux` 控制台与后端服务通信的统一事实标准（Single Source of Truth）。
 
 ---
 
-## 1. 协议基础 (Protocol Foundation)
+## 1. 协议分工与架构总览 (Dual-Protocol Architecture)
 
-### 1.1 JSON-RPC 2.0 请求格式
-客户端发送的所有 RPC 请求均遵循标准 JSON-RPC 2.0 规范，通过唯一的 `id` 实现连接多路复用：
-
-```json
-{
-  "jsonrpc": "2.0",
-  "id": 1,
-  "method": "agent.list",
-  "params": {
-    "status": "online"
-  }
-}
 ```
-
-### 1.2 成功响应
-```json
-{
-  "jsonrpc": "2.0",
-  "id": 1,
-  "result": {
-    "servers": [ ... ],
-    "total": 10
-  }
-}
-```
-
-### 1.3 错误响应
-```json
-{
-  "jsonrpc": "2.0",
-  "id": 1,
-  "error": {
-    "code": -32602,
-    "message": "Invalid params: threshold must be positive",
-    "data": { ... }
-  }
-}
-```
-
-### 1.4 服务端主动推送通知 (Server-Push Notifications)
-对于订阅类通道（如实时遥测、事件流水），服务端主动下发无 `id` 的通知对象：
-```json
-{
-  "jsonrpc": "2.0",
-  "method": "agent.summary.subscribe",
-  "params": {
-    "serverId": "srv-hkg-01",
-    "ts": 1774246800000,
-    "cpu": 34.2,
-    "memory": 58.0,
-    "disk": 44.5,
-    "tcp": 128,
-    "udp": 42
-  }
-}
+┌─────────────────────────────────────────────────────────────┐
+│                       Smalux 前端应用                        │
+└──────────────┬──────────────────────────────┬───────────────┘
+               │                              │
+        (80% 业务操作)                  (20% 高频实时)
+               ▼                              ▼
+  RESTful HTTP (JSON API)          WebSocket (JSON-RPC 2.0)
+  • 运维脚本库维护                  • agent.summary.subscribe (秒级监控)
+  • 计划任务 / 账号 / Token / 日志   • agent.ping.subscribe (实时拨测抖动)
+  • 系统配置 / 主题 / 部署模式       • task.dispatch (交互式终端与命令流)
 ```
 
 ---
 
-## 2. 核心 RPC 接口清单 (Methods Catalog)
+## 2. RESTful HTTP 接口清单 (80% 业务操作)
 
-### 2.1 主机与 Agent 管理 (`agent.*`)
+所有 HTTP 接口均支持 `Authorization: Bearer <token>` 身份鉴权头，返回统一的 JSON 数据结构。
 
-| Method | 权限 Scope | 描述 | 入参 (Params) | 返回结果 (Result) |
+### 2.1 共享运维脚本库 (`/api/v1/scripts`)
+
+| HTTP 方法 | API 路径 | 描述 | 入参 (Body / Query) | 响应格式 |
 | :--- | :--- | :--- | :--- | :--- |
-| `agent.list` | `agent:read` | 获取服务器集群列表 | `{ region?: string, status?: "online" \| "warning" \| "offline", search?: string }` | `{ servers: Server[], total: number }` |
-| `agent.info` | `agent:read` | 获取单个服务器详细元数据 | `{ id: string }` | `Server` 实体 |
-| `agent.register` | `agent:write` | 注册新节点并生成接入命令 | `{ name: string, region: string, note?: string, tags?: string[] }` | `{ server: Server, token: string, installScript: string }` |
-| `agent.update` | `agent:write` | 更新节点计费与操作员维护字段 | `{ id: string, name?: string, note?: string, price?: number, currency?: string, expiresAt?: number, billingCycle?: string }` | `Server` 实体 |
-| `agent.summary.subscribe` | `agent:read` | **订阅实时性能遥测数据流 (1s/Tick)** | `{ serverIds?: string[] }` | *(Stream 推送 `ServerMetrics`)* |
-| `agent.ping.subscribe` | `agent:read` | **订阅多节点 RTT 探测延迟流** | `{ serverIds?: string[] }` | *(Stream 推送 `PingSample`)* |
-| `agent.ping.history` | `agent:read` | 获取指定时段的历史延迟聚合序列 | `{ serverId: string, range: "1h" \| "6h" \| "24h" \| "7d" }` | `{ serverId: string, range: string, points: [number, number][], intervalMs: number }` |
+| `GET` | `/api/v1/scripts` | 脚本列表查询 (支持分组与关键词检索) | `?search=...&group=...` | `{ scripts: ScriptItem[] }` |
+| `POST` | `/api/v1/scripts` | 新增脚本 | `{ name, content, language, group, ... }` | `ScriptItem` |
+| `PUT` | `/api/v1/scripts/:id` | 修改脚本 | `{ name, content, language, group, ... }` | `ScriptItem` |
+| `DELETE` | `/api/v1/scripts/:id` | 删除脚本 | — | `{ ok: true, id: string }` |
+| `GET` | `/api/v1/script-groups` | 脚本分类分组列表 | — | `{ groups: ScriptGroupItem[] }` |
+| `POST` | `/api/v1/script-groups` | 批量保存脚本分组 | `{ groups: ScriptGroupItem[] }` | `{ ok: true }` |
 
----
+### 2.2 定时计划任务 (`/api/v1/crons`)
 
-### 2.2 自动化运维与计划任务 (`task.*` / `crontab.*`)
-
-| Method | 权限 Scope | 描述 | 入参 (Params) | 返回结果 (Result) |
+| HTTP 方法 | API 路径 | 描述 | 入参 (Body / Query) | 响应格式 |
 | :--- | :--- | :--- | :--- | :--- |
-| `task.list` | `task:read` | 获取远程命令执行记录 | `{ limit?: number, offset?: number, search?: string }` | `{ tasks: Task[], total: number }` |
-| `task.dispatch` | `task:exec` | 下发远程指令或模板到目标集群 | `{ command: string, serverIds: string[], timeoutSec?: number, riskLevel?: "safe" \| "warning" \| "danger" }` | `{ taskId: string, dispatchedCount: number }` |
-| `task.result` | `task:read` | 查询执行任务终端回显与退出码 | `{ taskId: string }` | `Task` 实体 (含 `outputs: Record<string, { stdout: string, stderr: string, exitCode: number }>`) |
-| `crontab.list` | `cron:read` | 获取计划任务调度列表 | `{ search?: string, enabled?: boolean }` | `{ crons: CronJob[], total: number }` |
-| `crontab.create` | `cron:write` | 创建或编辑计划调度任务 | `{ name: string, expression: string, command: string, serverIds: string[] }` | `CronJob` 实体 |
-| `crontab.toggle` | `cron:write` | 启用 / 禁用指定计划任务 | `{ id: string, enabled: boolean }` | `{ id: string, enabled: boolean }` |
+| `GET` | `/api/v1/crons` | 获取计划任务列表 | `?search=...&enabled=...` | `{ crons: Cron[], total: number }` |
+| `POST` | `/api/v1/crons` | 新增计划任务 | `{ name, serverId, expression, command }` | `Cron` |
+| `PUT` | `/api/v1/crons/:id` | 修改计划任务 | `{ name, serverId, expression, command }` | `Cron` |
+| `POST` | `/api/v1/crons/:id/toggle` | 启停计划任务 | `{ enabled: boolean }` | `{ ok: true }` |
+| `DELETE` | `/api/v1/crons/:id` | 删除计划任务 | — | `{ ok: true }` |
+| `GET` | `/api/v1/crons/logs` | 查询任务调度历史执行流水 | `?cronId=...&limit=20` | `{ logs: CronLog[], total: number }` |
 
----
+### 2.3 系统账号与访问凭证 (`/api/v1/accounts` & `/api/v1/tokens`)
 
-### 2.3 告警与通知渠道 (`alert.*` / `notification.*`)
-
-| Method | 权限 Scope | 描述 | 入参 (Params) | 返回结果 (Result) |
+| HTTP 方法 | API 路径 | 描述 | 入参 (Body / Query) | 响应格式 |
 | :--- | :--- | :--- | :--- | :--- |
-| `alert.list` | `alert:read` | 获取告警规则与历史流水 | `{}` | `{ rules: AlertRule[], history: AlertHistory[] }` |
-| `alert.create` | `alert:write` | 创建指标阈值告警规则 | `{ name: string, metric: string, operator: ">" \| "<" \| "==" \| "!=", threshold: number, windowSec: number, severity: "info" \| "warning" \| "critical" }` | `AlertRule` 实体 |
-| `alert.silence` | `alert:write` | 静默指定告警事件 (1小时/永久) | `{ id: string, silenced: boolean }` | `{ id: string, silenced: boolean }` |
-| `notification.channel.list` | `notify:read` | 获取通知推送渠道列表 | `{}` | `{ channels: NotificationChannel[] }` |
-| `notification.channel.test` | `notify:write` | 发送连通性测试消息 | `{ channelId: string }` | `{ success: boolean, message: string }` |
+| `GET` | `/api/v1/accounts` | 成员账号列表 | — | `{ accounts: Account[], total: number }` |
+| `POST` | `/api/v1/accounts` | 邀请新成员 | `{ username, role }` | `Account` |
+| `POST` | `/api/v1/accounts/:id/lock` | 锁定/解锁账号 | `{ locked: boolean }` | `{ ok: true }` |
+| `GET` | `/api/v1/tokens` | API Token 列表 | — | `{ tokens: Token[] }` |
+| `POST` | `/api/v1/tokens` | 签发新 API Token | `{ name, scopes, expiresAt? }` | `Token` |
+| `DELETE` | `/api/v1/tokens/:id` | 吊销 API Token | — | `{ ok: true }` |
 
----
+### 2.4 系统全局配置与审计日志 (`/api/v1/system`)
 
-### 2.4 服务探针与 Ping 监控 (`monitor.service.*`)
-
-| Method | 权限 Scope | 描述 | 入参 (Params) | 返回结果 (Result) |
+| HTTP 方法 | API 路径 | 描述 | 入参 (Body / Query) | 响应格式 |
 | :--- | :--- | :--- | :--- | :--- |
-| `monitor.service.list` | `ping:read` | 获取 HTTP/TCP/ICMP 探测目标与 24h SLA | `{}` | `{ targets: PingTarget[], total: number }` |
-| `monitor.service.probe` | `ping:write` | 立即触发全网探活探测 | `{ targetId?: string }` | `{ results: Array<{ targetId: string, latency: number, statusCode?: number, ok: boolean }> }` |
+| `GET` | `/api/v1/system/configs` | 获取全局配置字典 | — | `{ settings: Setting[] }` |
+| `PUT` | `/api/v1/system/configs` | 保存/更新配置项 | `{ key: string, value: string }` | `{ ok: true }` |
+| `GET` | `/api/v1/system/logs` | 查询系统操作审计流水 | `?search=...&module=...&result=...` | `{ logs: Log[], total: number }` |
 
 ---
 
-### 2.5 审计日志与系统安全 (`log.*` / `token.*` / `config.*`)
+## 3. WebSocket / JSON-RPC 2.0 接口清单 (20% 高频实时)
 
-| Method | 权限 Scope | 描述 | 入参 (Params) | 返回结果 (Result) |
-| :--- | :--- | :--- | :--- | :--- |
-| `log.list` | `log:read` | 获取全局操作与登录审计流水 | `{ limit?: number, module?: string, search?: string }` | `{ logs: AuditLog[], total: number }` |
-| `token.list` | `token:manage` | 获取 API Token 密钥列表 | `{}` | `{ tokens: ApiToken[], total: number }` |
-| `token.create` | `token:manage` | 创建指定 Scope 的 API Token | `{ name: string, scopes: string[], expiresDays?: number }` | `{ token: ApiToken, secret: string }` |
-| `config.read` | `config:read` | 读取运行时系统参数 | `{}` | `SystemConfig` 实体 |
-| `config.edit` | `config:write` | 更新运行时系统配置 | `{ appName?: string, theme?: string }` | `SystemConfig` 实体 |
+### 3.1 实时监控流 (`agent.summary.subscribe`)
+- **协议**：WebSocket 双向长连接
+- **推流频率**：1 秒/次（Tick）
+- **数据载荷 (ServerMetrics)**：
+  - `cpuUsage`, `memUsed`, `memTotal`, `diskUsed`, `diskTotal`, `netRxSpeed`, `netTxSpeed`, `uptime`, `loadOne`, `loadFive`, `loadFifteen`
+  - 可选分解字段：`cpuCores`, `networkInterfaces`, `disks`, `processes`
+
+### 3.2 实时拨测抖动流 (`agent.ping.subscribe`)
+- **数据载荷 (PingSample)**：
+  - `serverId`, `ts`, `probes: Array<{ target: string, latencyMs: number | null }>`
 
 ---
 
-## 3. 核心实体模型定义 (Domain Entity Schemas)
+## 4. 数据实体校验与 Schema 规范 (`src/shared/api/schemas/`)
 
-### 3.1 Server 实体
-```typescript
-interface Server {
-  id: string;                      // 唯一节点 ID (如 srv-hkg-01)
-  name: string;                    // 节点名称 (如 hk-gateway-01)
-  region: string;                  // 物理区域 (如 香港, 新加坡)
-  status: "online" | "warning" | "offline"; // 运行状态
-  os: string;                      // 操作系统 (如 Debian 12, Ubuntu 22.04)
-  arch: string;                    // 架构 (如 x86_64, arm64)
-  ipv4: string;                    // 内网/上报 IPv4
-  publicIp?: string | null;        // 公开展示 IP
-  price?: number;                  // 费用
-  currency?: string;               // 币种 (如 CNY, USD)
-  expiresAt?: number;              // 到期时间戳
-  billingCycle?: "monthly" | "quarterly" | "semi-annual" | "annual" | "biennial" | "triennial" | "one-time";
-  lastSeenAt: number;              // 最后心跳时间戳
-}
-```
-
-### 3.2 ServerMetrics 实时遥测实体
-```typescript
-interface ServerMetrics {
-  serverId: string;
-  ts: number;                      // 采样毫秒时间戳
-  cpu: number;                     // 0..100 CPU 利用率
-  memory: number;                  // 0..100 内存使用率
-  disk: number;                    // 0..100 磁盘使用率
-  tcp: number;                     // TCP 活动连接数
-  udp: number;                     // UDP 活动连接数
-  networkInBytes?: number;         // 网卡入站流量 (Bytes/s)
-  networkOutBytes?: number;        // 网卡出站流量 (Bytes/s)
-  diskReadBytes?: number;          // 磁盘读取速度 (Bytes/s)
-  diskWriteBytes?: number;         // 磁盘写入速度 (Bytes/s)
-}
-```
+所有前后端交互数据均在前端声明为标准 Zod Schema，并提供**全字段中文 JSDoc 注释**：
+- `common.ts`：主机资产 `Server`、实时指标 `ServerMetrics`
+- `accounts.ts`：多用户角色 `Account`
+- `cron.ts`：定时任务 `Cron`、调度流水 `CronLog`
+- `tasks.ts`：远程任务 `Task`、模板 `TaskTemplate`、变量 `TaskVariable`
+- `ping.ts`：网络探针 `PingTarget`
+- `alerts.ts`：告警规则 `AlertRule`、历史 `AlertHistory`
+- `notifications.ts`：通知渠道 `NotificationChannel`
+- `logs.ts`：审计流水 `Log`
+- `settings.ts`：系统配置 `Setting`
+- `tokens.ts`：API 令牌 `Token`
+- `deployment.ts`：部署架构 `DeploymentTarget`
+- `overview.ts`：驾驶舱聚合 `OverviewStatsResult`
