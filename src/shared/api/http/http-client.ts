@@ -9,12 +9,14 @@
 import { defaultRuntimeConfig } from "@/app/config/runtime-config";
 import {
   mockAccounts,
+  mockAlertHistory,
   mockAlertRules,
   mockCronLogs,
   mockCrons,
   mockDeploymentTargets,
   mockLogs,
   mockNotificationChannels,
+  mockNotificationEvents,
   mockPingTargets,
   mockSettings,
   mockTaskVariables,
@@ -22,6 +24,8 @@ import {
   mockTokens
 } from "@/shared/api/mock/mock-data";
 import { mockServers } from "@/shared/api/mock/mock-servers";
+import { alertsMockEngine } from "@/features/alerts/mock/alerts-mock";
+import { settingsMockEngine } from "@/features/settings/mock/settings-mock";
 
 export interface HttpResponse<T> {
   data: T;
@@ -166,67 +170,201 @@ class HttpClient {
    */
   private handleMockFallback<T>(method: string, path: string, payload?: unknown): T {
     // 1. Tokens
-    if (path.includes("/api/v1/tokens")) {
-      if (method === "GET") return { tokens: mockTokens } as unknown as T;
-      if (method === "POST") {
-        const p = payload as { name: string; scopes?: string[]; expiresAt?: number };
-        const item = {
-          id: `token-${Date.now()}`,
-          name: p?.name || "API Token",
-          scopes: p?.scopes || ["read"],
-          createdBy: "admin",
-          revoked: false,
-          createdAt: Date.now(),
-          lastUsedAt: undefined,
-          expiresAt: p?.expiresAt
-        };
-        mockTokens.unshift(item);
-        return { ok: true, token: item } as unknown as T;
-      }
+    if (path.startsWith("/api/v1/tokens")) {
+      if (method === "GET") return settingsMockEngine.getTokens() as unknown as T;
+      if (method === "POST") return settingsMockEngine.createToken(payload as any) as unknown as T;
       if (method === "DELETE") {
-        const id = path.split("/").pop();
-        const idx = mockTokens.findIndex((t) => t.id === id);
-        if (idx !== -1) mockTokens.splice(idx, 1);
-        return { ok: true } as unknown as T;
+        const id = path.split("/").pop() || "";
+        return settingsMockEngine.deleteToken(id) as unknown as T;
       }
-    }
-
-    // 2. Accounts
-    if (path.includes("/api/v1/accounts")) {
-      if (method === "GET") return { accounts: mockAccounts } as unknown as T;
       return { ok: true } as unknown as T;
     }
 
-    // 3. System Logs
-    if (path.includes("/api/v1/system/logs")) {
-      return { logs: mockLogs, total: mockLogs.length } as unknown as T;
+    // 2. Accounts
+    if (path.startsWith("/api/v1/accounts")) {
+      if (method === "GET") return settingsMockEngine.getAccounts() as unknown as T;
+      if (method === "POST") return settingsMockEngine.inviteAccount(payload as any) as unknown as T;
+      if (path.includes("/lock")) {
+        const id = path.split("/")[4];
+        return settingsMockEngine.lockAccount(id, (payload as any)?.locked ?? true) as unknown as T;
+      }
+      if (path.includes("/terminate_others")) {
+        return settingsMockEngine.logoutOtherSessions() as unknown as T;
+      }
+      if (method === "PUT") {
+        const id = path.split("/")[4];
+        return settingsMockEngine.updateAccount(id, payload as any) as unknown as T;
+      }
+      return { ok: true } as unknown as T;
     }
 
-    // 4. System Configs
-    if (path.includes("/api/v1/system/configs")) {
-      if (method === "GET") return { configs: mockSettings } as unknown as T;
+    // 3. System Storage & Backups
+    if (path.startsWith("/api/v1/system/storage-stats")) {
+      return settingsMockEngine.getStorageStats() as unknown as T;
+    }
+
+    if (path.startsWith("/api/v1/system/backup-plans")) {
+      if (method === "GET") return settingsMockEngine.getBackupPlans() as unknown as T;
+      if (path.includes("/toggle")) {
+        const id = path.split("/")[4];
+        return settingsMockEngine.toggleBackupPlan(id, (payload as any)?.enabled ?? true) as unknown as T;
+      }
+      if (path.includes("/run")) {
+        const id = path.split("/")[4];
+        return settingsMockEngine.runBackupPlan(id) as unknown as T;
+      }
+      if (method === "POST") return settingsMockEngine.createBackupPlan(payload as any) as unknown as T;
+      if (method === "PUT") {
+        const id = path.split("/")[4];
+        return settingsMockEngine.updateBackupPlan(id, payload as any) as unknown as T;
+      }
+      if (method === "DELETE") {
+        const id = path.split("/")[4];
+        return settingsMockEngine.deleteBackupPlan(id) as unknown as T;
+      }
+      return { ok: true } as unknown as T;
+    }
+
+    if (path.startsWith("/api/v1/system/backups")) {
+      if (method === "GET") return settingsMockEngine.getBackups() as unknown as T;
+      if (path.includes("/prune")) {
+        return settingsMockEngine.pruneBackups((payload as any)?.rule || "older_30d") as unknown as T;
+      }
+      if (path.includes("/restore")) {
+        const id = path.split("/")[4];
+        return settingsMockEngine.restoreBackup(id, (payload as any)?.verifyKey) as unknown as T;
+      }
+      if (method === "POST") return settingsMockEngine.createBackup(payload as any) as unknown as T;
+      if (method === "DELETE") {
+        const id = path.split("/")[4];
+        return settingsMockEngine.deleteBackup(id) as unknown as T;
+      }
+      return { ok: true } as unknown as T;
+    }
+
+    if (path.startsWith("/api/v1/system/data-cleanup")) {
+      const { type, rule } = (payload as any) || {};
+      return settingsMockEngine.cleanData(type, rule) as unknown as T;
+    }
+
+    if (path.startsWith("/api/v1/system/storage/test-remote")) {
+      return settingsMockEngine.testRemoteStorage(payload as any) as unknown as T;
+    }
+
+    // 4. Security & Authentication Center
+    if (path.startsWith("/api/v1/security/overview")) {
+      return settingsMockEngine.getSecurityOverview() as unknown as T;
+    }
+
+    if (path.startsWith("/api/v1/security/totp/setup")) {
+      return settingsMockEngine.setupTotp() as unknown as T;
+    }
+
+    if (path.startsWith("/api/v1/security/totp/verify")) {
+      return settingsMockEngine.verifyTotp((payload as any)?.code || "") as unknown as T;
+    }
+
+    if (path.startsWith("/api/v1/security/totp/disable")) {
+      return settingsMockEngine.disableTotp((payload as any)?.verifyPassword) as unknown as T;
+    }
+
+    if (path.startsWith("/api/v1/security/password/change")) {
+      return settingsMockEngine.changePassword(payload as any) as unknown as T;
+    }
+
+    if (path.startsWith("/api/v1/security/sessions")) {
+      if (method === "GET") return settingsMockEngine.getSessions() as unknown as T;
+      if (path.includes("/terminate-others") || path.includes("/terminate_others")) {
+        return settingsMockEngine.logoutOtherSessions() as unknown as T;
+      }
+      if (method === "DELETE") {
+        const id = path.split("/")[4];
+        return settingsMockEngine.terminateSession(id) as unknown as T;
+      }
+      return { ok: true } as unknown as T;
+    }
+
+    if (path.startsWith("/api/v1/system/network/diagnose")) {
+      return settingsMockEngine.diagnoseNetwork() as unknown as T;
+    }
+
+    // 5. System Logs
+    if (path.startsWith("/api/v1/system/logs")) {
+      return settingsMockEngine.getLogs(payload as any) as unknown as T;
+    }
+
+    // 6. System Configs
+    if (path.startsWith("/api/v1/system/configs")) {
+      if (method === "GET") return settingsMockEngine.getSettings() as unknown as T;
+      if (method === "PUT") {
+        const configs = (payload as any)?.configs || [];
+        return settingsMockEngine.saveSettings(configs) as unknown as T;
+      }
       return { ok: true } as unknown as T;
     }
 
     // 5. Deployments
-    if (path.includes("/api/v1/deployments")) {
-      if (method === "GET") return { deployments: mockDeploymentTargets } as unknown as T;
+    if (path.startsWith("/api/v1/deployments")) {
+      if (method === "GET") return settingsMockEngine.getDeployments() as unknown as T;
       return { ok: true } as unknown as T;
     }
 
     // 6. Themes
-    if (path.includes("/api/v1/themes")) {
-      if (method === "GET") return { themes: mockThemes } as unknown as T;
+    if (path.startsWith("/api/v1/themes")) {
+      if (method === "GET") return settingsMockEngine.getThemes() as unknown as T;
       return { ok: true } as unknown as T;
     }
 
-    // 7. Alerts & Notifications
-    if (path.includes("/api/v1/alerts")) {
-      if (method === "GET") return { alerts: mockAlertRules } as unknown as T;
+    // 7. Alerts & Notifications (Full Responsive Mock Engine)
+    if (path.startsWith("/api/v1/alerts")) {
+      if (method === "GET") {
+        return alertsMockEngine.getAlerts() as unknown as T;
+      }
+      if (path.includes("/toggle")) {
+        const id = path.split("/")[4];
+        return alertsMockEngine.toggleRule(id, (payload as any)?.enabled ?? true) as unknown as T;
+      }
+      if (path.includes("/silence")) {
+        const id = path.split("/")[4];
+        return alertsMockEngine.silenceRule(id, (payload as any)?.silenced ?? true) as unknown as T;
+      }
+      if (path.includes("/events/") && path.includes("/resolve")) {
+        const id = path.split("/")[5];
+        return alertsMockEngine.resolveEvent(id) as unknown as T;
+      }
+      if (method === "POST") {
+        return alertsMockEngine.createRule(payload as any) as unknown as T;
+      }
+      if (method === "PUT") {
+        const id = path.split("/")[4];
+        return alertsMockEngine.updateRule(id, payload as any) as unknown as T;
+      }
+      if (method === "DELETE") {
+        const id = path.split("/")[4];
+        return alertsMockEngine.deleteRule(id) as unknown as T;
+      }
       return { ok: true } as unknown as T;
     }
-    if (path.includes("/api/v1/notifications")) {
-      if (method === "GET") return { notifications: mockNotificationChannels } as unknown as T;
+
+    if (path.startsWith("/api/v1/notifications")) {
+      if (method === "GET") {
+        return alertsMockEngine.getNotifications() as unknown as T;
+      }
+      if (path.includes("/toggle")) {
+        const id = path.split("/")[4];
+        return alertsMockEngine.toggleChannel(id, (payload as any)?.enabled ?? true) as unknown as T;
+      }
+      if (path.includes("/test")) {
+        const id = path.split("/")[4];
+        return alertsMockEngine.testChannel(id) as unknown as T;
+      }
+      if (method === "POST") {
+        return alertsMockEngine.createChannel(payload as any) as unknown as T;
+      }
+      if (method === "DELETE") {
+        const id = path.split("/")[4];
+        return alertsMockEngine.deleteChannel(id) as unknown as T;
+      }
       return { ok: true } as unknown as T;
     }
 

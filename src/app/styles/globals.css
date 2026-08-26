@@ -65,10 +65,14 @@
   --sidebar-border: oklch(0.2 0.008 260);
 }
 
-/* Dynamic Accent Colors */
+/* Dynamic Accent Colors (10 Curated Modern Colorways) */
+[data-accent="indigo"] {
+  --primary: oklch(0.60 0.22 260);
+  --ring: oklch(0.60 0.22 260);
+}
 [data-accent="emerald"] {
-  --primary: oklch(0.65 0.2 155);
-  --ring: oklch(0.65 0.2 155);
+  --primary: oklch(0.65 0.20 155);
+  --ring: oklch(0.65 0.20 155);
 }
 [data-accent="cyan"] {
   --primary: oklch(0.70 0.18 215);
@@ -81,6 +85,26 @@
 [data-accent="rose"] {
   --primary: oklch(0.65 0.23 20);
   --ring: oklch(0.65 0.23 20);
+}
+[data-accent="amber"] {
+  --primary: oklch(0.75 0.18 65);
+  --ring: oklch(0.75 0.18 65);
+}
+[data-accent="teal"] {
+  --primary: oklch(0.68 0.17 180);
+  --ring: oklch(0.68 0.17 180);
+}
+[data-accent="blue"] {
+  --primary: oklch(0.58 0.24 245);
+  --ring: oklch(0.58 0.24 245);
+}
+[data-accent="fuchsia"] {
+  --primary: oklch(0.66 0.26 330);
+  --ring: oklch(0.66 0.26 330);
+}
+[data-accent="orange"] {
+  --primary: oklch(0.68 0.22 45);
+  --ring: oklch(0.68 0.22 45);
 }
 
 @theme inline {

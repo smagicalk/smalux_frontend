@@ -17,7 +17,9 @@ export const alertRuleSchema = z.object({
   id: z.string(),
   /** 规则名称（如 "CPU 使用率过高报警", "磁盘剩余低于10%"） */
   name: z.string(),
-  /** 作用的目标主机 ID（若为空表示作用于全集群所有节点） */
+  /** 作用的目标主机 ID 列表（多选，若为空表示作用于全集群所有节点） */
+  serverIds: z.array(z.string()).optional(),
+  /** 作用的目标主机 ID（单机兼容字段） */
   serverId: z.string().optional(),
   /** 监控指标项（如 "cpu", "memory", "disk", "net_drop"） */
   metric: z.string(),
@@ -46,6 +48,8 @@ export const alertHistorySchema = z.object({
   ruleId: z.string(),
   /** 关联触发的告警规则名称 */
   ruleName: z.string(),
+  /** 触发告警的故障主机 ID */
+  serverId: z.string().optional(),
   /** 触发告警的故障主机名称 */
   serverName: z.string().optional(),
   /** 告警严重级别 */
@@ -87,7 +91,9 @@ export const alertCreateParamsSchema = z.object({
   windowSec: z.number().default(300),
   /** 告警严重级别 */
   severity: alertSeveritySchema,
-  /** 目标主机 ID（可选） */
+  /** 目标主机 ID 列表（多选，可选） */
+  serverIds: z.array(z.string()).optional(),
+  /** 目标主机 ID（单机兼容，可选） */
   serverId: z.string().optional()
 });
 

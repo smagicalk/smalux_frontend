@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { useNavigate } from "@tanstack/react-router";
+import { useState, useEffect } from "react";
+import { useNavigate, useLocation } from "@tanstack/react-router";
 import { Server, Activity, Plus, RefreshCw, Terminal } from "lucide-react";
 import { PageHeader } from "@/shared/ui/page-header";
 import { Button } from "@/shared/ui/button";
@@ -14,6 +14,21 @@ import { CreateProbeDialog } from "../components/create-probe-dialog";
 
 export function InfrastructurePage() {
   const navigate = useNavigate();
+  const location = useLocation();
+
+  // 兼容老路由或外链带参数 ?server=xxx 直达详情页
+  useEffect(() => {
+    try {
+      const searchParams = new URLSearchParams(location.search);
+      const target = searchParams.get("server") || searchParams.get("serverId");
+      if (target) {
+        navigate({
+          to: "/admin/infrastructure/servers/$serverId",
+          params: { serverId: target }
+        });
+      }
+    } catch {}
+  }, [location.search, navigate]);
 
   const [activeTab, setActiveTab] = useState<"servers" | "ping">("servers");
   const [agentDialogOpen, setAgentDialogOpen] = useState(false);

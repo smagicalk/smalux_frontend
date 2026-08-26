@@ -135,12 +135,16 @@ export interface DynamicVariable {
 
 export const DYNAMIC_VARIABLES: DynamicVariable[] = [
   // ── 主机网络与元数据 ──
-  { key: "{{SERVER_IP}}", category: "host", label: "主机 IPv4 地址", desc: "自动注入当前调度目标节点的公网或主内网 IP", example: "185.199.108.153" },
+  { key: "{{SERVER_IPV4}}", category: "host", label: "主机 IPv4 地址", desc: "自动注入当前调度目标节点的公网或主内网 IPv4", example: "185.199.108.153" },
+  { key: "{{SERVER_IPV6}}", category: "host", label: "主机 IPv6 地址", desc: "自动注入当前调度目标节点的 IPv6 地址", example: "2400:cb00:2048:1::c629:d7a2" },
   { key: "{{SERVER_NAME}}", category: "host", label: "主机 Hostname", desc: "自动注入当前节点的标准主机名称", example: "edge-hkg-01" },
   { key: "{{SERVER_ID}}", category: "host", label: "主机唯一识别 ID", desc: "系统全局分配的节点唯一标识符", example: "srv-hkg-01" },
   { key: "{{SERVER_REGION}}", category: "host", label: "主机所属地域/机房", desc: "节点所在的地理区域或数据中心代码", example: "Hong Kong (HKG)" },
   { key: "{{SERVER_GROUP}}", category: "host", label: "业务分组名称", desc: "节点所属的业务拓扑集群或逻辑分组", example: "网关集群" },
   { key: "{{SERVER_PORT}}", category: "host", label: "Agent 通信端口", desc: "目标主机上 Agent 服务监听的远程端口", example: "22" },
+  { key: "{{TRAFFIC_USED}}", category: "host", label: "当月已用流量", desc: "目标主机当前计费周期的公网出入流量累计", example: "3.42 TB" },
+  { key: "{{TRAFFIC_TOTAL}}", category: "host", label: "当月总流量配额", desc: "目标主机的每月月度流量总配额上限", example: "10.00 TB" },
+  { key: "{{TRAFFIC_USAGE_PERCENT}}", category: "host", label: "流量使用率百分比", desc: "已用流量与总配额的实时百分比", example: "34.2%" },
 
   // ── 时间戳与格式化日期 ──
   { key: "{{TIMESTAMP}}", category: "time", label: "Unix 时间戳 (秒)", desc: "当前任务执行开始时的 10 位标准秒级时间戳", example: "1724428800" },
@@ -741,12 +745,16 @@ export function AutomationPage() {
       let finalCommand = commandText;
       if (server) {
         finalCommand = finalCommand
-          .replaceAll("{{SERVER_IP}}", server.ip)
+          .replaceAll("{{SERVER_IPV4}}", server.ip)
+          .replaceAll("{{SERVER_IPV6}}", server.ipv6 || "2400:cb00:2048:1::1")
           .replaceAll("{{SERVER_NAME}}", server.name)
           .replaceAll("{{SERVER_ID}}", server.id)
           .replaceAll("{{SERVER_REGION}}", server.region || "default")
           .replaceAll("{{SERVER_GROUP}}", server.group || "default")
           .replaceAll("{{SERVER_PORT}}", "22")
+          .replaceAll("{{TRAFFIC_USED}}", "3.42 TB")
+          .replaceAll("{{TRAFFIC_TOTAL}}", "10.00 TB")
+          .replaceAll("{{TRAFFIC_USAGE_PERCENT}}", "34.2%")
           .replaceAll("{{TIMESTAMP}}", Math.floor(Date.now() / 1000).toString())
           .replaceAll("{{TIMESTAMP_MS}}", Date.now().toString())
           .replaceAll("{{DATE}}", dateStr)
@@ -998,11 +1006,19 @@ export function AutomationPage() {
 
                     <button
                       type="button"
-                      onClick={() => insertVariable("{{SERVER_IP}}")}
+                      onClick={() => insertVariable("{{SERVER_IPV4}}")}
                       title="目标主机 IPv4 地址"
                       className="rounded-md border border-primary/30 bg-primary/5 px-2 py-1 text-[10px] font-mono text-primary hover:bg-primary/15 cursor-pointer font-medium"
                     >
-                      + IP
+                      + IPv4
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => insertVariable("{{SERVER_IPV6}}")}
+                      title="目标主机 IPv6 地址"
+                      className="rounded-md border border-primary/30 bg-primary/5 px-2 py-1 text-[10px] font-mono text-primary hover:bg-primary/15 cursor-pointer font-medium"
+                    >
+                      + IPv6
                     </button>
                     <button
                       type="button"

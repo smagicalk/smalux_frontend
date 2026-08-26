@@ -195,8 +195,8 @@ function NotificationRow({
 
         <div className="flex items-center justify-between text-[10px] text-muted-foreground font-mono pt-0.5">
           <Link
-            to="/admin/infrastructure"
-            search={{ server: alert.serverId || alert.serverName }}
+            to="/admin/infrastructure/servers/$serverId"
+            params={{ serverId: alert.serverId || alert.serverName || "" }}
             onClick={onClose}
             className="text-foreground/90 hover:text-primary hover:underline flex items-center gap-1 cursor-pointer truncate max-w-[140px]"
           >

@@ -116,8 +116,8 @@ export function IncidentActionHub({
                     </div>
                     <div className="text-[11px] text-muted-foreground font-mono flex flex-wrap items-center gap-x-2">
                       <Link
-                        to="/admin/infrastructure"
-                        search={{ server: targetServerId }}
+                        to="/admin/infrastructure/servers/$serverId"
+                        params={{ serverId: targetServerId }}
                         className="text-foreground font-semibold hover:text-primary hover:underline flex items-center gap-1 cursor-pointer"
                       >
                         <Server className="size-3 text-muted-foreground" />
@@ -158,8 +158,8 @@ export function IncidentActionHub({
                   </div>
 
                   <Link
-                    to="/admin/infrastructure"
-                    search={{ server: targetServerId }}
+                    to="/admin/infrastructure/servers/$serverId"
+                    params={{ serverId: targetServerId }}
                   >
                     <Button
                       size="sm"

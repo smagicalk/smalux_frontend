@@ -26,8 +26,42 @@ export function useCreateAlertRule() {
       threshold: number;
       windowSec: number;
       severity: AlertSeverity;
+      serverIds?: string[];
       serverId?: string;
     }) => httpClient.post("/api/v1/alerts", params),
+    onSuccess: () => qc.invalidateQueries({ queryKey: queryKeys.alerts })
+  });
+}
+
+/**
+ * 更新告警规则策略 Hook（HTTP PUT /api/v1/alerts/:id）
+ */
+export function useUpdateAlertRule() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (params: {
+      id: string;
+      name: string;
+      metric: string;
+      operator: ">" | "<" | "==" | "!=";
+      threshold: number;
+      windowSec: number;
+      severity: AlertSeverity;
+      serverIds?: string[];
+      serverId?: string;
+    }) => httpClient.put(`/api/v1/alerts/${params.id}`, params),
+    onSuccess: () => qc.invalidateQueries({ queryKey: queryKeys.alerts })
+  });
+}
+
+/**
+ * 启用/禁用指定告警规则 Hook（HTTP POST /api/v1/alerts/:id/toggle）
+ */
+export function useToggleAlertRule() {
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: (params: { id: string; enabled: boolean }) =>
+      httpClient.post(`/api/v1/alerts/${params.id}/toggle`, { enabled: params.enabled }),
     onSuccess: () => qc.invalidateQueries({ queryKey: queryKeys.alerts })
   });
 }

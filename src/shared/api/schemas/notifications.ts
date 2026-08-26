@@ -3,18 +3,17 @@ import { alertSeveritySchema } from "./alerts";
 
 /**
  * 告警通知外发推送渠道类型枚举
- * - webhook: 自定义 HTTP Webhook 机器人
- * - telegram: Telegram Bot 频道
- * - discord: Discord Webhook 频道
- * - email: SMTP 邮件通知
- * - wecom: 企业微信群机器人
+ * - webhook: 自定义 HTTP Webhook POST
+ * - telegram: Telegram Bot 频道 (TG Bot)
+ * - email: SMTP 邮件外发通知
+ * - js: JavaScript 自定义处理脚本 (JS Hook)
  */
 export const channelTypeSchema = z.enum([
   "webhook",
   "telegram",
-  "discord",
   "email",
-  "wecom"
+  "js",
+  "tgbot"
 ]);
 export type ChannelType = z.infer<typeof channelTypeSchema>;
 
@@ -30,8 +29,12 @@ export const notificationChannelSchema = z.object({
   type: channelTypeSchema,
   /** 是否启用该推送渠道 */
   enabled: z.boolean(),
-  /** 推送端点地址或 Webhook URL（如 "https://oapi.dingtalk.com/robot/send?access_token=..."） */
+  /** 推送端点地址或 Webhook URL */
   endpoint: z.string(),
+  /** 自定义请求头认证或 Token（如 "Authorization: Bearer xxx" 或 "X-Webhook-Token: xxx"） */
+  headers: z.string().optional(),
+  /** 自定义消息渲染模板或 POST Body JSON 参数（支持 {{SERVER_NAME}}, {{RULE_NAME}}, {{VALUE}} 等动态插值） */
+  template: z.string().optional(),
   /** 最近一次推送发送的时间戳（毫秒） */
   lastDeliveryAt: z.number().optional(),
   /** 最近一次推送是否成功送达 */
@@ -77,7 +80,11 @@ export const notificationCreateParamsSchema = z.object({
   /** 渠道类型 */
   type: channelTypeSchema,
   /** Webhook 或目标推送端点 URL */
-  endpoint: z.string()
+  endpoint: z.string(),
+  /** 自定义 Header Token 鉴权头（可选） */
+  headers: z.string().optional(),
+  /** 自定义消息渲染模板或 POST Body JSON 参数（可选） */
+  template: z.string().optional()
 });
 
 /**

@@ -16,7 +16,8 @@
   RESTful HTTP (JSON API)          WebSocket (JSON-RPC 2.0)
   • 运维脚本库维护                  • agent.summary.subscribe (秒级监控)
   • 计划任务 / 账号 / Token / 日志   • agent.ping.subscribe (实时拨测抖动)
-  • 系统配置 / 主题 / 部署模式       • task.dispatch (交互式终端与命令流)
+  • 会话管理 / TOTP / 备份容灾       • task.dispatch (交互式终端与命令流)
+  • 系统配置 / 主题 / 部署模式
 ```
 
 ---
@@ -25,7 +26,39 @@
 
 所有 HTTP 接口均支持 `Authorization: Bearer <token>` 身份鉴权头，返回统一的 JSON 数据结构。
 
-### 2.1 共享运维脚本库 (`/api/v1/scripts`)
+### 2.1 账户安全与会话管理 (`/api/v1/security`)
+
+| HTTP 方法 | API 路径 | 描述 | 入参 (Body / Query) | 响应格式 |
+| :--- | :--- | :--- | :--- | :--- |
+| `GET` | `/api/v1/security/overview` | 获取管理员账户安全概览与 MFA 状态 | — | `SecurityOverview` |
+| `POST` | `/api/v1/security/totp/setup` | 获取 TOTP 绑定密钥与动态二维码链接 | — | `{ secret: string, otpauthUrl: string }` |
+| `POST` | `/api/v1/security/totp/verify` | 校验 6 位验证码并激活 TOTP | `{ code: string }` | `{ ok: true }` |
+| `POST` | `/api/v1/security/totp/disable` | 校验管理员密码后关闭 TOTP | `{ verifyPassword?: string }` | `{ ok: true }` |
+| `POST` | `/api/v1/security/password/change` | 修改管理员登录密码 (含 TOTP 校验) | `{ oldPassword, newPassword, mfaCode? }` | `{ ok: true }` |
+| `GET` | `/api/v1/security/sessions` | 活跃登录终端与会话列表 | — | `{ sessions: SessionInfo[] }` |
+| `DELETE` | `/api/v1/security/sessions/:id` | 强制注销指定终端会话 | — | `{ ok: true }` |
+| `POST` | `/api/v1/security/sessions/terminate-others` | 强制注销其他所有外部终端会话 | — | `{ ok: true, terminatedCount: number }` |
+
+### 2.2 存储容量、备份与容灾 (`/api/v1/system`)
+
+| HTTP 方法 | API 路径 | 描述 | 入参 (Body / Query) | 响应格式 |
+| :--- | :--- | :--- | :--- | :--- |
+| `GET` | `/api/v1/system/storage-stats` | 各数据模块磁盘容量分布统计 | — | `StorageStats` |
+| `GET` | `/api/v1/system/backup-plans` | 自动备份计划列表 | — | `{ plans: AutoBackupPlan[] }` |
+| `POST` | `/api/v1/system/backup-plans` | 创建自动备份计划 | `Omit<AutoBackupPlan, "id">` | `AutoBackupPlan` |
+| `PUT` | `/api/v1/system/backup-plans/:id` | 更新自动备份计划 | `Partial<AutoBackupPlan>` | `AutoBackupPlan` |
+| `PUT` | `/api/v1/system/backup-plans/:id/toggle` | 启停指定备份计划 | `{ enabled: boolean }` | `{ ok: true }` |
+| `DELETE` | `/api/v1/system/backup-plans/:id` | 删除指定备份计划 | — | `{ ok: true }` |
+| `POST` | `/api/v1/system/backup-plans/:id/run` | 立即触发执行一次备份计划 | — | `{ ok: true, backup?, message }` |
+| `POST` | `/api/v1/system/storage/test-remote` | 测试远程 S3 / WebDAV 连通性 | `RemoteStorageConfig` | `{ ok: true, latencyMs, message }` |
+| `GET` | `/api/v1/system/backups` | 获取已生成的备份快照归档列表 | — | `{ backups: BackupArchive[] }` |
+| `POST` | `/api/v1/system/backups` | 手动创建即时备份快照 | `{ scope, encrypt, notes? }` | `BackupArchive` |
+| `POST` | `/api/v1/system/backups/:id/restore` | 解密覆盖还原系统数据 | `{ verifyKey?: string }` | `{ ok: true }` |
+| `DELETE` | `/api/v1/system/backups/:id` | 删除单条备份快照文件 | — | `{ ok: true }` |
+| `POST` | `/api/v1/system/backups/prune` | 规则批量清理历史快照 | `{ rule: "older_7d" \| "older_30d" \| "only_scheduled" \| "all" }` | `{ ok: true, removedCount }` |
+| `POST` | `/api/v1/system/data-cleanup` | 按范围清理历史业务数据释放磁盘 | `{ type: "metrics" \| "audit" \| "alerts" \| "tasks", rule? }` | `{ ok: true, freedMb }` |
+
+### 2.3 共享运维脚本库 (`/api/v1/scripts`)
 
 | HTTP 方法 | API 路径 | 描述 | 入参 (Body / Query) | 响应格式 |
 | :--- | :--- | :--- | :--- | :--- |
@@ -36,7 +69,7 @@
 | `GET` | `/api/v1/script-groups` | 脚本分类分组列表 | — | `{ groups: ScriptGroupItem[] }` |
 | `POST` | `/api/v1/script-groups` | 批量保存脚本分组 | `{ groups: ScriptGroupItem[] }` | `{ ok: true }` |
 
-### 2.2 定时计划任务 (`/api/v1/crons`)
+### 2.4 定时计划任务 (`/api/v1/crons`)
 
 | HTTP 方法 | API 路径 | 描述 | 入参 (Body / Query) | 响应格式 |
 | :--- | :--- | :--- | :--- | :--- |
@@ -47,7 +80,7 @@
 | `DELETE` | `/api/v1/crons/:id` | 删除计划任务 | — | `{ ok: true }` |
 | `GET` | `/api/v1/crons/logs` | 查询任务调度历史执行流水 | `?cronId=...&limit=20` | `{ logs: CronLog[], total: number }` |
 
-### 2.3 系统账号与访问凭证 (`/api/v1/accounts` & `/api/v1/tokens`)
+### 2.5 成员账号与 API 凭证 (`/api/v1/accounts` & `/api/v1/tokens`)
 
 | HTTP 方法 | API 路径 | 描述 | 入参 (Body / Query) | 响应格式 |
 | :--- | :--- | :--- | :--- | :--- |
@@ -58,12 +91,13 @@
 | `POST` | `/api/v1/tokens` | 签发新 API Token | `{ name, scopes, expiresAt? }` | `Token` |
 | `DELETE` | `/api/v1/tokens/:id` | 吊销 API Token | — | `{ ok: true }` |
 
-### 2.4 系统全局配置与审计日志 (`/api/v1/system`)
+### 2.6 系统全局配置与操作审计 (`/api/v1/system`)
 
 | HTTP 方法 | API 路径 | 描述 | 入参 (Body / Query) | 响应格式 |
 | :--- | :--- | :--- | :--- | :--- |
 | `GET` | `/api/v1/system/configs` | 获取全局配置字典 | — | `{ settings: Setting[] }` |
 | `PUT` | `/api/v1/system/configs` | 保存/更新配置项 | `{ key: string, value: string }` | `{ ok: true }` |
+| `POST` | `/api/v1/system/network/diagnose` | 网络与 DNS 连通性诊断 | — | `{ ok: true, dnsLatency, gatewayLatency, probeMeshLatency }` |
 | `GET` | `/api/v1/system/logs` | 查询系统操作审计流水 | `?search=...&module=...&result=...` | `{ logs: Log[], total: number }` |
 
 ---
@@ -75,26 +109,7 @@
 - **推流频率**：1 秒/次（Tick）
 - **数据载荷 (ServerMetrics)**：
   - `cpuUsage`, `memUsed`, `memTotal`, `diskUsed`, `diskTotal`, `netRxSpeed`, `netTxSpeed`, `uptime`, `loadOne`, `loadFive`, `loadFifteen`
-  - 可选分解字段：`cpuCores`, `networkInterfaces`, `disks`, `processes`
 
 ### 3.2 实时拨测抖动流 (`agent.ping.subscribe`)
 - **数据载荷 (PingSample)**：
   - `serverId`, `ts`, `probes: Array<{ target: string, latencyMs: number | null }>`
-
----
-
-## 4. 数据实体校验与 Schema 规范 (`src/shared/api/schemas/`)
-
-所有前后端交互数据均在前端声明为标准 Zod Schema，并提供**全字段中文 JSDoc 注释**：
-- `common.ts`：主机资产 `Server`、实时指标 `ServerMetrics`
-- `accounts.ts`：多用户角色 `Account`
-- `cron.ts`：定时任务 `Cron`、调度流水 `CronLog`
-- `tasks.ts`：远程任务 `Task`、模板 `TaskTemplate`、变量 `TaskVariable`
-- `ping.ts`：网络探针 `PingTarget`
-- `alerts.ts`：告警规则 `AlertRule`、历史 `AlertHistory`
-- `notifications.ts`：通知渠道 `NotificationChannel`
-- `logs.ts`：审计流水 `Log`
-- `settings.ts`：系统配置 `Setting`
-- `tokens.ts`：API 令牌 `Token`
-- `deployment.ts`：部署架构 `DeploymentTarget`
-- `overview.ts`：驾驶舱聚合 `OverviewStatsResult`

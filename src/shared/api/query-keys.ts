@@ -34,5 +34,10 @@ export const queryKeys = {
   themes: ["themes"] as const,
   deployment: ["deployment"] as const,
   logs: (params?: Record<string, unknown>) => ["logs", params ?? {}] as const,
-  settings: ["settings"] as const
+  settings: ["settings"] as const,
+  storageStats: ["storage-stats"] as const,
+  backupPlans: ["backup-plans"] as const,
+  backups: ["backups"] as const,
+  securityOverview: ["security-overview"] as const,
+  sessions: ["sessions"] as const
 } as const;

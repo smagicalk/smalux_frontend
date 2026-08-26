@@ -54,8 +54,8 @@ export function FleetPulseMatrix({
 
   const handleNodeDoubleClick = (node: NodePulse) => {
     navigate({
-      to: "/admin/infrastructure",
-      search: { server: node.id }
+      to: "/admin/infrastructure/servers/$serverId",
+      params: { serverId: node.id }
     });
   };
 
@@ -291,8 +291,8 @@ export function FleetPulseMatrix({
 
           <div className="flex items-center gap-2">
             <Link
-              to="/admin/infrastructure"
-              search={{ server: selectedNode.id }}
+              to="/admin/infrastructure/servers/$serverId"
+              params={{ serverId: selectedNode.id }}
             >
               <Button size="sm" className="h-7 px-2.5 text-xs font-semibold cursor-pointer">
                 <Terminal className="size-3 mr-1" /> 深度诊断 & Web 终端

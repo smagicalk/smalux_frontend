@@ -298,7 +298,7 @@ export function ServerDetailPage() {
     resetConfig,
     deleteServer
   } = useServerConfig(server?.id, server ?? undefined, {
-    onDeleted: () => navigate({ to: "/infrastructure" })
+    onDeleted: () => navigate({ to: "/admin/infrastructure" })
   });
 
   const [groupInput, setGroupInput] = useState("");

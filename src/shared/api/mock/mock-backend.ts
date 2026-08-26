@@ -688,11 +688,12 @@ class MockBackendImpl implements MockBackend {
       case "alert.create": {
         const p = (params ?? {}) as {
           name: string; metric: string; operator: string; threshold: number;
-          windowSec: number; severity: string; serverId?: string;
+          windowSec: number; severity: string; serverIds?: string[]; serverId?: string;
         };
         mockAlertRules.unshift({
           id: `a${mockAlertRules.length + 1}`,
           name: p.name,
+          serverIds: p.serverIds,
           serverId: p.serverId,
           metric: p.metric,
           operator: p.operator as AlertRule["operator"],
@@ -708,6 +709,33 @@ class MockBackendImpl implements MockBackend {
         const p = (params ?? {}) as { id: string; silenced: boolean };
         const r = mockAlertRules.find((x) => x.id === p.id);
         if (r) r.silenced = p.silenced;
+        return { ok: true };
+      }
+      case "alert.toggle": {
+        const p = (params ?? {}) as { id: string; enabled: boolean };
+        const r = mockAlertRules.find((x) => x.id === p.id);
+        if (r) r.enabled = p.enabled;
+        return { ok: true };
+      }
+      case "alert.update": {
+        const p = (params ?? {}) as {
+          id: string; name: string; metric: string; operator: string;
+          threshold: number; windowSec: number; severity: string;
+          serverIds?: string[]; serverId?: string;
+        };
+        const r = mockAlertRules.find((x) => x.id === p.id);
+        if (r) {
+          Object.assign(r, {
+            name: p.name,
+            metric: p.metric,
+            operator: p.operator as AlertRule["operator"],
+            threshold: p.threshold,
+            windowSec: p.windowSec,
+            severity: p.severity as AlertRule["severity"],
+            serverIds: p.serverIds,
+            serverId: p.serverId
+          });
+        }
         return { ok: true };
       }
       case "alert.delete": {
@@ -733,6 +761,24 @@ class MockBackendImpl implements MockBackend {
         const c = mockNotificationChannels.find((x) => x.id === p.id);
         if (c) c.enabled = p.enabled;
         return { ok: true };
+      }
+      case "notification.delete": {
+        const p = (params ?? {}) as { id: string };
+        const i = mockNotificationChannels.findIndex((x) => x.id === p.id);
+        if (i >= 0) mockNotificationChannels.splice(i, 1);
+        return { ok: true };
+      }
+      case "notification.test": {
+        const p = (params ?? {}) as { id: string; channelName?: string };
+        mockNotificationEvents.unshift({
+          id: `ne${Date.now()}`,
+          channelName: p.channelName || "测试推送渠道",
+          severity: "info",
+          message: "[Manual Test] 连通性探测测试报文已送达",
+          deliveredAt: Date.now(),
+          ok: true
+        });
+        return { ok: true, message: "测试推送成功" };
       }
 
       case "token.create": {

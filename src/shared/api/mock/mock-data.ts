@@ -82,12 +82,16 @@ export const mockTaskTemplates: TaskTemplate[] = [
 
 export const mockTaskVariables: TaskVariable[] = [
   // ── 主机网络与元数据 ──
-  { key: "{{SERVER_IP}}", category: "host", label: "主机 IPv4 地址", desc: "自动注入当前调度目标节点的公网或主内网 IP", example: "185.199.108.153" },
+  { key: "{{SERVER_IPV4}}", category: "host", label: "主机 IPv4 地址", desc: "自动注入当前调度目标节点的公网或主内网 IPv4", example: "185.199.108.153" },
+  { key: "{{SERVER_IPV6}}", category: "host", label: "主机 IPv6 地址", desc: "自动注入当前调度目标节点的 IPv6 地址", example: "2400:cb00:2048:1::c629:d7a2" },
   { key: "{{SERVER_NAME}}", category: "host", label: "主机 Hostname", desc: "自动注入当前节点的标准主机名称", example: "edge-hkg-01" },
   { key: "{{SERVER_ID}}", category: "host", label: "主机唯一识别 ID", desc: "系统全局分配的节点唯一标识符", example: "srv-hkg-01" },
   { key: "{{SERVER_REGION}}", category: "host", label: "主机所属地域/机房", desc: "节点所在的地理区域或数据中心代码", example: "Hong Kong (HKG)" },
   { key: "{{SERVER_GROUP}}", category: "host", label: "业务分组名称", desc: "节点所属的业务拓扑集群或逻辑分组", example: "网关集群" },
   { key: "{{SERVER_PORT}}", category: "host", label: "Agent 通信端口", desc: "目标主机上 Agent 服务监听的远程端口", example: "22" },
+  { key: "{{TRAFFIC_USED}}", category: "host", label: "当月已用流量", desc: "目标主机当前计费周期的公网出入流量累计", example: "3.42 TB" },
+  { key: "{{TRAFFIC_TOTAL}}", category: "host", label: "当月总流量配额", desc: "目标主机的每月月度流量总配额上限", example: "10.00 TB" },
+  { key: "{{TRAFFIC_USAGE_PERCENT}}", category: "host", label: "流量使用率百分比", desc: "已用流量与总配额的实时百分比", example: "34.2%" },
 
   // ── 时间戳与格式化日期 ──
   { key: "{{TIMESTAMP}}", category: "time", label: "Unix 时间戳 (秒)", desc: "当前任务执行开始时的 10 位标准秒级时间戳", example: "1724428800" },
@@ -388,34 +392,104 @@ export const mockPingTargets: PingTarget[] = [
 ];
 
 export const mockAlertRules: AlertRule[] = [
-  { id: "a1", name: "CPU 持续高负载", serverId: "srv-tok-01", metric: "cpuUsage", operator: ">", threshold: 0.85, windowSec: 300, severity: "warning", enabled: true, silenced: false },
-  { id: "a2", name: "内存不足", serverId: "srv-hkg-02", metric: "memUsed/memTotal", operator: ">", threshold: 0.9, windowSec: 120, severity: "critical", enabled: true, silenced: false },
-  { id: "a3", name: "磁盘空间告警", metric: "diskUsed/diskTotal", operator: ">", threshold: 0.9, windowSec: 600, severity: "critical", enabled: true, silenced: true },
-  { id: "a4", name: "节点离线", metric: "status", operator: "==", threshold: 0, windowSec: 60, severity: "critical", enabled: true, silenced: false },
-  { id: "a5", name: "网络出站异常", serverId: "srv-fra-01", metric: "netTxSpeed", operator: ">", threshold: 100_000_000, windowSec: 300, severity: "info", enabled: false, silenced: false }
+  { id: "a1", name: "全网主机 CPU 持续超载预警", metric: "host.cpu.usage", operator: ">", threshold: 85, windowSec: 300, severity: "warning", enabled: true, silenced: false },
+  { id: "a2", name: "生产集群物理内存枯竭告警", metric: "host.mem.usage", operator: ">", threshold: 90, windowSec: 180, severity: "critical", enabled: true, silenced: false },
+  { id: "a3", name: "根分区磁盘空间不足 (>90%)", metric: "host.disk.usage", operator: ">", threshold: 90, windowSec: 600, severity: "critical", enabled: true, silenced: false },
+  { id: "a4", name: "主机 Agent 守护进程失联超时", metric: "agent.offline.timeout", operator: ">", threshold: 60, windowSec: 60, severity: "critical", enabled: true, silenced: false },
+  { id: "a5", name: "核心数据库节点专属磁盘预警 (db-lax-01)", serverId: "srv-lax-01", metric: "host.disk.usage", operator: ">", threshold: 85, windowSec: 300, severity: "warning", enabled: true, silenced: false },
+  { id: "a6", name: "新加坡节点出网流量突增 (>100MB/s)", serverId: "srv-sgp-01", metric: "host.net.txSpeed", operator: ">", threshold: 100, windowSec: 300, severity: "warning", enabled: true, silenced: false },
+  { id: "a7", name: "香港网关出网带宽激增预警", serverId: "srv-hkg-01", metric: "host.net.txSpeed", operator: ">", threshold: 200, windowSec: 180, severity: "info", enabled: true, silenced: true }
 ];
 
 export const mockAlertHistory: AlertHistory[] = [
-  { id: "ah1", ruleId: "a1", ruleName: "CPU 持续高负载", serverName: "edge-tok-01", severity: "warning", triggeredAt: now - 35 * min, resolvedAt: now - 30 * min, value: 0.92, message: "CPU 92% 持续 5 分钟" },
-  { id: "ah2", ruleId: "a4", ruleName: "节点离线", serverName: "worker-sgp-02", severity: "critical", triggeredAt: now - 2 * hr, resolvedAt: undefined, value: 0, message: "agent 失联超过 60s" },
-  { id: "ah3", ruleId: "a4", ruleName: "节点离线", serverName: "worker-sha-01", severity: "critical", triggeredAt: now - 30 * min, resolvedAt: undefined, value: 0, message: "agent 失联超过 60s" },
-  { id: "ah4", ruleId: "a2", ruleName: "内存不足", serverName: "core-hkg-02", severity: "critical", triggeredAt: now - 5 * hr, resolvedAt: now - 5 * hr + 8 * min, value: 0.94, message: "内存 94%" }
+  {
+    id: "ah1",
+    ruleId: "a1",
+    ruleName: "全网主机 CPU 持续超载预警",
+    serverName: "edge-tok-01",
+    serverId: "srv-tok-01",
+    severity: "warning",
+    triggeredAt: now - 18 * min,
+    resolvedAt: undefined,
+    value: 0.92,
+    message: "edge-tok-01 (东京接入节点) 连续 5 分钟 CPU 利用率超过 85% (瞬时采样 92.4%)，请关注计算负载。"
+  },
+  {
+    id: "ah2",
+    ruleId: "a4",
+    ruleName: "主机 Agent 守护进程失联超时",
+    serverName: "worker-sgp-02",
+    serverId: "srv-sgp-02",
+    severity: "critical",
+    triggeredAt: now - 42 * min,
+    resolvedAt: undefined,
+    value: 0,
+    message: "worker-sgp-02 (新加坡工作节点) 心跳汇报中断超过 60 秒，节点状态已置为离线，可能发生系统宕机或网络中断。"
+  },
+  {
+    id: "ah3",
+    ruleId: "a2",
+    ruleName: "生产集群物理内存枯竭告警",
+    serverName: "core-fra-01",
+    serverId: "srv-fra-01",
+    severity: "critical",
+    triggeredAt: now - 3 * hr,
+    resolvedAt: now - 2 * hr - 45 * min,
+    value: 0.94,
+    message: "core-fra-01 (法兰克福核心节点) 物理内存占用达 94.2%，触发 P0 级严重警报，已被 OOM 杀进程后内存回落至正常水位。"
+  },
+  {
+    id: "ah4",
+    ruleId: "a3",
+    ruleName: "根分区磁盘空间不足 (>90%)",
+    serverName: "edge-hkg-01",
+    serverId: "srv-hkg-01",
+    severity: "critical",
+    triggeredAt: now - 8 * hr,
+    resolvedAt: now - 7 * hr - 15 * min,
+    value: 0.91,
+    message: "edge-hkg-01 (香港边缘节点) / 根分区磁盘已用 91.8%，经自动执行日志清理任务释放 8.4GB 空间后已自动恢复。"
+  },
+  {
+    id: "ah5",
+    ruleId: "a6",
+    ruleName: "新加坡节点出网流量突增 (>100MB/s)",
+    serverName: "cache-sgp-01",
+    serverId: "srv-sgp-01",
+    severity: "warning",
+    triggeredAt: now - 14 * hr,
+    resolvedAt: now - 13 * hr - 50 * min,
+    value: 0.85,
+    message: "cache-sgp-01 出站网络带宽激增至 124MB/s，持续 5 分钟后大文件同步传输完毕已自动回落至正常水位。"
+  },
+  {
+    id: "ah6",
+    ruleId: "a5",
+    ruleName: "核心数据库节点专属磁盘预警 (db-lax-01)",
+    serverName: "db-lax-01",
+    serverId: "srv-lax-01",
+    severity: "warning",
+    triggeredAt: now - 22 * hr,
+    resolvedAt: now - 21 * hr - 40 * min,
+    value: 0.88,
+    message: "db-lax-01 (洛杉矶主数据库) 数据盘占用率达到 88.0%，完成 WAL 归档日志同步并清理后已恢复。"
+  }
 ];
 
 export const mockNotificationChannels: NotificationChannel[] = [
-  { id: "n1", name: "运维 Telegram", type: "telegram", enabled: true, endpoint: "@smalux_ops", lastDeliveryAt: now - 35 * min, lastOk: true },
-  { id: "n2", name: "Discord 频道", type: "discord", enabled: true, endpoint: "#alerts", lastDeliveryAt: now - 2 * hr, lastOk: true },
-  { id: "n3", name: "邮件通知", type: "email", enabled: true, endpoint: "ops@smalux.example.com", lastDeliveryAt: now - 5 * hr, lastOk: true },
-  { id: "n4", name: "企业微信", type: "wecom", enabled: false, endpoint: "smalux群", lastDeliveryAt: now - day, lastOk: false },
-  { id: "n5", name: "通用 Webhook", type: "webhook", enabled: true, endpoint: "https://hooks.example.com/smalux", lastDeliveryAt: now - 30 * min, lastOk: true }
+  { id: "n1", name: "Telegram 个人应急报警 Bot", type: "telegram", enabled: true, endpoint: "https://api.telegram.org/bot72819283:AAE.../sendMessage?chat_id=100829182", lastDeliveryAt: now - 18 * min, lastOk: true },
+  { id: "n2", name: "生产自愈自动化 Webhook 接口", type: "webhook", enabled: true, endpoint: "https://ops-gateway.internal.smalux/v1/auto-remediation", lastDeliveryAt: now - 42 * min, lastOk: true },
+  { id: "n3", name: "个人主力邮箱 SMTP 外发", type: "email", enabled: true, endpoint: "admin@smalux.internal", lastDeliveryAt: now - 3 * hr, lastOk: true },
+  { id: "n4", name: "动态 JavaScript 自定义转发脚本", type: "js", enabled: true, endpoint: "export default async function(evt) { await fetch('https://api.custom.com', { method: 'POST', body: JSON.stringify(evt) }); }", lastDeliveryAt: now - 8 * hr, lastOk: true }
 ];
 
 export const mockNotificationEvents: NotificationEvent[] = [
-  { id: "ne1", channelName: "运维 Telegram", severity: "critical", message: "worker-sgp-02 节点离线", deliveredAt: now - 2 * hr, ok: true },
-  { id: "ne2", channelName: "Discord 频道", severity: "warning", message: "edge-tok-01 CPU 92%", deliveredAt: now - 35 * min, ok: true },
-  { id: "ne3", channelName: "企业微信", severity: "critical", message: "worker-sha-01 节点离线", deliveredAt: now - 30 * min, ok: false },
-  { id: "ne4", channelName: "邮件通知", severity: "critical", message: "core-hkg-02 内存 94%", deliveredAt: now - 5 * hr, ok: true },
-  { id: "ne5", channelName: "通用 Webhook", severity: "info", message: "每日备份完成", deliveredAt: now - 20 * hr, ok: true }
+  { id: "ne1", channelName: "Telegram 个人应急报警 Bot", severity: "warning", message: "edge-tok-01 CPU 利用率达 92.4% (持续 5m)", deliveredAt: now - 18 * min, ok: true },
+  { id: "ne2", channelName: "生产自愈自动化 Webhook 接口", severity: "critical", message: "worker-sgp-02 主机心跳离线中断超过 60s", deliveredAt: now - 42 * min, ok: true },
+  { id: "ne3", channelName: "个人主力邮箱 SMTP 外发", severity: "critical", message: "core-fra-01 物理内存占用超过 94.2% 紧急预警", deliveredAt: now - 3 * hr, ok: true },
+  { id: "ne4", channelName: "动态 JavaScript 自定义转发脚本", severity: "critical", message: "edge-hkg-01 根分区磁盘空间占用超 90%", deliveredAt: now - 8 * hr, ok: true },
+  { id: "ne5", channelName: "个人主力邮箱 SMTP 外发", severity: "warning", message: "cache-sgp-01 出站网络带宽达到 124MB/s", deliveredAt: now - 14 * hr, ok: true },
+  { id: "ne6", channelName: "Telegram 个人应急报警 Bot", severity: "info", message: "每日数据库全量冷备份已就绪 (184.2MB)", deliveredAt: now - 20 * hr, ok: true }
 ];
 
 export const mockLogs: Log[] = [
@@ -458,16 +532,37 @@ export const mockThemes: Theme[] = [
 
 export const mockSettings: Setting[] = [
   { key: "site.name", label: "站点名称", value: "smalux", group: "general", editable: true },
+  { key: "site.subTitle", label: "副标题标语", value: "Console", group: "general", editable: true },
+  { key: "site.icon", label: "站点图标", value: "zap", group: "general", editable: true },
   { key: "site.locale", label: "默认语言", value: "zh-CN", group: "general", editable: true },
-  { key: "security.httpsOnly", label: "强制 HTTPS", value: "true", group: "security", editable: true },
-  { key: "security.cookieHttpOnly", label: "HttpOnly Cookie", value: "true", group: "security", editable: false },
-  { key: "security.csrfProtection", label: "CSRF 防护", value: "true", group: "security", editable: true },
-  { key: "limits.taskConcurrency", label: "任务并发上限", value: "16", group: "limits", editable: true },
+  { key: "network.agentIngressUrl", label: "Agent 通信网关端点", value: "wss://smalux.example.com/ws/agent", group: "network", editable: false },
+  { key: "network.realIpHeader", label: "真实客户端 IP 请求头", value: "X-Forwarded-For", group: "network", editable: true },
+  // 执行限制
+  { key: "limits.taskTimeoutSec", label: "单任务超时时间(秒)", value: "300", group: "limits", editable: true },
+  { key: "limits.taskLogMaxLines", label: "任务日志行数上限", value: "2000", group: "limits", editable: true },
+  // 全局存储配额
+  { key: "storage.maxDbSizeGb", label: "数据库磁盘容量上限(GB)", value: "20", group: "limits", editable: true },
+  // 单项指标与数据保存时长 (天)
+  { key: "storage.cpuRetentionDays", label: "CPU 负载时序留存(天)", value: "30", group: "limits", editable: true },
+  { key: "storage.memoryRetentionDays", label: "内存/Swap 时序留存(天)", value: "30", group: "limits", editable: true },
+  { key: "storage.diskRetentionDays", label: "磁盘 I/O与容量留存(天)", value: "30", group: "limits", editable: true },
+  { key: "storage.networkRetentionDays", label: "网络带宽吞吐留存(天)", value: "30", group: "limits", editable: true },
+  { key: "storage.pingRetentionDays", label: "网络拨测延时留存(天)", value: "30", group: "limits", editable: true },
+  { key: "storage.processRetentionDays", label: "进程快照数据留存(天)", value: "7", group: "limits", editable: true },
+  { key: "storage.auditRetentionDays", label: "审计操作日志留存(天)", value: "90", group: "limits", editable: true },
+  { key: "storage.alertRetentionDays", label: "历史告警事件留存(天)", value: "30", group: "limits", editable: true },
+  // 探针生命周期
   { key: "limits.agentRegisterTokenTtl", label: "注册 Token 有效期(秒)", value: "300", group: "limits", editable: true },
+  { key: "storage.agentOfflineTimeoutSec", label: "探针失联判定超时(秒)", value: "60", group: "limits", editable: true },
+  { key: "storage.inactiveNodePruneDays", label: "离线废弃节点清理(天)", value: "30", group: "limits", editable: true },
   { key: "limits.themeUploadSizeMb", label: "主题上传上限(MB)", value: "8", group: "limits", editable: true },
-  { key: "limits.logRetentionDays", label: "日志保留(天)", value: "90", group: "limits", editable: true },
-  { key: "network.pingIntervalSec", label: "Ping 间隔(秒)", value: "30", group: "network", editable: true },
-  { key: "network.monitoringCadenceSec", label: "监控上报间隔(秒)", value: "1", group: "network", editable: true }
+  // 安全防御基线与高危操作提权策略
+  { key: "security.totpEnabled", label: "TOTP 开启状态", value: "true", group: "security", editable: false },
+  { key: "security.ipWhitelist", label: "控制台 IP 访问白名单", value: "", group: "security", editable: true },
+  { key: "security.stepUpSessionTtlMinutes", label: "高危操作提权时效(分钟)", value: "15", group: "security", editable: true },
+  { key: "security.stepUpVerificationMode", label: "高危操作验证模式", value: "totp_or_password", group: "security", editable: true },
+  { key: "security.maxFailedAttempts", label: "连续鉴权失败锁定次数", value: "5", group: "security", editable: true },
+  { key: "security.cookieHttpOnly", label: "HttpOnly Cookie", value: "true", group: "security", editable: false }
 ];
 
 export const mockDeploymentTargets: DeploymentTarget[] = [
