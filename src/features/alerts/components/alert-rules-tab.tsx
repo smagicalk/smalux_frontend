@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import {
   Sliders,
   Plus,
@@ -17,7 +17,10 @@ import {
   HardDrive,
   Network,
   Radio,
-  Copy
+  Copy,
+  Send,
+  ChevronLeft,
+  ChevronRight
 } from "lucide-react";
 import { Card, CardHeader, CardTitle, CardContent } from "@/shared/ui/card";
 import { Button } from "@/shared/ui/button";
@@ -48,6 +51,8 @@ export function AlertRulesTab({
   const [scopeFilter, setScopeFilter] = useState<"all" | "global" | "custom">("all");
   const [severityFilter, setSeverityFilter] = useState<string>("all");
   const [silenceRuleTarget, setSilenceRuleTarget] = useState<AlertRule | null>(null);
+  const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(5);
 
   const silenceMutation = useSilenceAlert();
   const deleteMutation = useDeleteAlert();
@@ -127,6 +132,18 @@ export function AlertRulesTab({
     });
   }, [rules, severityFilter, scopeFilter, searchQuery]);
 
+  // 当筛选条件改变时，重置分页到第 1 页
+  useEffect(() => {
+    setPage(1);
+  }, [searchQuery, scopeFilter, severityFilter]);
+
+  const totalPages = Math.max(1, Math.ceil(filteredRules.length / pageSize));
+
+  const paginatedRules = useMemo(() => {
+    const start = (page - 1) * pageSize;
+    return filteredRules.slice(start, start + pageSize);
+  }, [filteredRules, page, pageSize]);
+
   return (
     <div className="space-y-4">
       {/* 顶部极简单行工具栏 */}
@@ -200,11 +217,11 @@ export function AlertRulesTab({
             <thead className="bg-muted/40 text-muted-foreground border-b border-border/70 select-none">
               <tr>
                 <th className="px-4 py-3 font-semibold w-64 min-w-[200px]">策略规则名称</th>
-                <th className="px-3.5 py-3 font-semibold w-28 text-center">级别</th>
+                <th className="px-3.5 py-3 font-semibold w-24 text-center">级别</th>
                 <th className="px-3.5 py-3 font-semibold min-w-[240px]">触发判定条件 (Condition)</th>
                 <th className="px-3.5 py-3 font-semibold w-36">生效目标</th>
-                <th className="px-3.5 py-3 font-semibold w-24 text-center">静默状态</th>
-                <th className="px-3.5 py-3 font-semibold w-20 text-center">启用</th>
+                <th className="px-3 py-3 font-semibold w-20 text-center">渠道数</th>
+                <th className="px-3 py-3 font-semibold w-18 text-center">启用</th>
                 <th className="px-4 py-3 font-semibold text-right w-28 sticky right-0 bg-card/90 backdrop-blur-md">
                   操作
                 </th>
@@ -229,7 +246,7 @@ export function AlertRulesTab({
                   </td>
                 </tr>
               ) : (
-                filteredRules.map((rule) => {
+                paginatedRules.map((rule) => {
                   const isCrit = rule.severity === "critical";
                   const isWarn = rule.severity === "warning";
 
@@ -237,7 +254,7 @@ export function AlertRulesTab({
                     <tr
                       key={rule.id}
                       className={`hover:bg-muted/30 transition-colors ${
-                        !rule.enabled ? "opacity-50" : rule.silenced ? "opacity-75 bg-muted/15" : ""
+                        !rule.enabled ? "opacity-50" : ""
                       }`}
                     >
                       {/* 规则名称 */}
@@ -276,66 +293,79 @@ export function AlertRulesTab({
                               ? "s"
                               : "%"}
                           </span>
-                          <span className="text-[10px] text-muted-foreground bg-muted/60 px-1 py-0.2 rounded">
+                          <span className="text-[10px] text-muted-foreground bg-muted/60 px-1 py-0.5 rounded border border-border/40">
                             持续 {rule.windowSec >= 60 && rule.windowSec % 60 === 0 ? `${rule.windowSec / 60}m` : `${rule.windowSec}s`}
+                          </span>
+                          <span
+                            className={`text-[10px] px-1.5 py-0.5 rounded border font-mono ${
+                              rule.repeatIntervalSec && rule.repeatIntervalSec > 0
+                                ? "bg-amber-500/10 text-amber-500 border-amber-500/30"
+                                : "bg-muted/40 text-muted-foreground/80 border-border/40"
+                            }`}
+                            title={
+                              rule.repeatIntervalSec && rule.repeatIntervalSec > 0
+                                ? `持续未静默时，每隔 ${rule.repeatIntervalSec >= 3600 ? rule.repeatIntervalSec / 3600 + "小时" : rule.repeatIntervalSec / 60 + "分钟"} 循环催办发送通知`
+                                : "单次通知（仅触发与恢复各通知1次，不循环重复）"
+                            }
+                          >
+                            {rule.repeatIntervalSec && rule.repeatIntervalSec > 0
+                              ? `每 ${rule.repeatIntervalSec >= 3600 ? `${rule.repeatIntervalSec / 3600}h` : `${rule.repeatIntervalSec / 60}m`} 催办`
+                              : "单次通知"}
                           </span>
                         </div>
                       </td>
 
-                      {/* 生效目标 */}
-                      <td className="px-3.5 py-3 text-muted-foreground">
-                        {rule.serverIds && rule.serverIds.length > 1 ? (
-                          <span
-                            className="text-primary font-medium bg-primary/10 px-2 py-0.5 rounded-md border border-primary/30 text-[11px] cursor-help inline-flex items-center gap-1"
-                            title={`生效于 ${rule.serverIds.length} 台主机:\n${rule.serverIds.join(", ")}`}
-                          >
-                            🖥️ 指定 {rule.serverIds.length} 台节点
-                          </span>
-                        ) : (rule.serverIds && rule.serverIds.length === 1) || rule.serverId ? (
-                          <span className="text-foreground font-medium bg-muted/60 px-1.5 py-0.5 rounded border border-border/50 text-[11px]">
-                            🖥️ {rule.serverIds?.[0] || rule.serverId}
-                          </span>
+                      {/* 生效范围 */}
+                      <td className="px-3.5 py-3">
+                        {rule.serverIds && rule.serverIds.length > 0 ? (
+                          <div className="flex items-center gap-1.5">
+                            <Badge variant="outline" className="text-[10px] bg-primary/5 text-primary border-primary/30">
+                              {rule.serverIds.length} 台指定主机
+                            </Badge>
+                          </div>
+                        ) : rule.serverId ? (
+                          <div className="flex items-center gap-1">
+                            <Badge variant="outline" className="text-[10px] font-mono">
+                              {rule.serverId}
+                            </Badge>
+                          </div>
                         ) : (
-                          <span className="text-primary/90 font-medium text-[11px]">🌐 全集群所有节点</span>
+                          <Badge variant="secondary" className="text-[10px] bg-muted/60 text-muted-foreground">
+                            全网集群节点
+                          </Badge>
                         )}
                       </td>
 
-                      {/* 静默状态 */}
-                      <td className="px-3.5 py-3 text-center">
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          onClick={() => handleToggleSilence(rule)}
-                          className={`h-6 px-2 text-[10px] cursor-pointer ${
-                            rule.silenced ? "text-amber-400 bg-amber-500/10" : "text-muted-foreground hover:text-foreground"
+                      {/* 渠道个数 (表格直接显示数字) */}
+                      <td className="px-3 py-3 text-center">
+                        <span
+                          className={`inline-flex items-center justify-center font-mono font-bold text-xs rounded-md size-6 border ${
+                            rule.channelIds && rule.channelIds.length > 0
+                              ? "bg-cyan-500/10 text-cyan-400 border-cyan-500/30"
+                              : "bg-muted/60 text-muted-foreground/60 border-border/50"
                           }`}
-                          title={rule.silenced ? "点击解除静默" : "点击开启临时静默"}
+                          title={
+                            rule.channelIds && rule.channelIds.length > 0
+                              ? `关联 ${rule.channelIds.length} 个推送渠道`
+                              : "未关联额外渠道（仅系统控制台记录）"
+                          }
                         >
-                          {rule.silenced ? (
-                            <>
-                              <VolumeX className="size-3 mr-1 text-amber-400" />
-                              已静默
-                            </>
-                          ) : (
-                            <>
-                              <Volume2 className="size-3 mr-1" />
-                              正常
-                            </>
-                          )}
-                        </Button>
+                          {rule.channelIds?.length ?? 0}
+                        </span>
                       </td>
 
-                      {/* 启用 Switch */}
-                      <td className="px-3.5 py-3 text-center">
+                      {/* 规则启用开关 */}
+                      <td className="px-3 py-3 text-center">
                         <Switch
                           checked={rule.enabled}
                           onCheckedChange={() => handleToggleEnable(rule)}
-                          aria-label={`启用 ${rule.name}`}
+                          aria-label={`切换告警规则 ${rule.name}`}
+                          className="scale-90"
                         />
                       </td>
 
-                      {/* 操作 */}
-                      <td className="px-4 py-3 text-right sticky right-0 bg-card/90 backdrop-blur-md">
+                      {/* 右侧快捷操作：克隆 / 编辑 / 删除 */}
+                      <td className="px-4 py-3 text-right">
                         <div className="flex items-center justify-end gap-1">
                           <Button
                             size="sm"
@@ -373,6 +403,55 @@ export function AlertRulesTab({
             </tbody>
           </table>
         </div>
+
+        {/* 分页控制栏 */}
+        {filteredRules.length > 0 && (
+          <div className="p-3 border-t border-border/60 bg-muted/10 flex flex-wrap items-center justify-between gap-3 text-xs font-mono">
+            <div className="flex items-center gap-2 text-muted-foreground">
+              <span>共 <strong>{filteredRules.length}</strong> 条策略</span>
+              <span>·</span>
+              <span>第 <strong>{page}</strong> / {totalPages} 页</span>
+              <span>·</span>
+              <div className="flex items-center gap-1">
+                <span>每页:</span>
+                <select
+                  value={pageSize}
+                  onChange={(e) => {
+                    setPageSize(Number(e.target.value));
+                    setPage(1);
+                  }}
+                  className="bg-muted/40 border border-border/80 rounded px-1.5 py-0.5 outline-none font-semibold text-foreground cursor-pointer"
+                >
+                  <option value={5}>5 条</option>
+                  <option value={10}>10 条</option>
+                  <option value={20}>20 条</option>
+                  <option value={50}>50 条</option>
+                </select>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-1.5">
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => setPage((p) => Math.max(1, p - 1))}
+                disabled={page <= 1}
+                className="h-7.5 px-2.5 text-xs gap-1 cursor-pointer"
+              >
+                <ChevronLeft className="size-3.5" /> 上一页
+              </Button>
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+                disabled={page >= totalPages}
+                className="h-7.5 px-2.5 text-xs gap-1 cursor-pointer"
+              >
+                下一页 <ChevronRight className="size-3.5" />
+              </Button>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* 设定静默时长弹窗 */}

@@ -6,6 +6,7 @@ import {
   Play,
   Plus,
   Copy,
+  ChevronLeft,
   ChevronRight,
   Search,
   Server,
@@ -390,13 +391,28 @@ export function AutomationPage() {
     });
   }, [batchGroups, logSearchQuery, logStatusFilter]);
 
+  // 即时下发记录分页
+  const [adhocLogPage, setAdhocLogPage] = useState(1);
+  const [adhocLogPageSize, setAdhocLogPageSize] = useState(5);
+
+  const totalAdhocPages = Math.max(1, Math.ceil(filteredBatchGroups.length / adhocLogPageSize));
+  const paginatedBatchGroups = useMemo(() => {
+    const start = (adhocLogPage - 1) * adhocLogPageSize;
+    return filteredBatchGroups.slice(start, start + adhocLogPageSize);
+  }, [filteredBatchGroups, adhocLogPage, adhocLogPageSize]);
+
+  // 当搜索或过滤条件变化时重置即时下发记录分页到第 1 页
+  useEffect(() => {
+    setAdhocLogPage(1);
+  }, [logSearchQuery, logStatusFilter]);
+
   const currentBatch = useMemo<TaskBatchGroup | null>(() => {
     if (selectedBatchId) {
-      const found = batchGroups.find((g) => g.id === selectedBatchId);
+      const found = paginatedBatchGroups.find((g) => g.id === selectedBatchId) || filteredBatchGroups.find((g) => g.id === selectedBatchId);
       if (found) return found;
     }
-    return filteredBatchGroups[0] || batchGroups[0] || null;
-  }, [batchGroups, filteredBatchGroups, selectedBatchId]);
+    return paginatedBatchGroups[0] || filteredBatchGroups[0] || batchGroups[0] || null;
+  }, [batchGroups, filteredBatchGroups, paginatedBatchGroups, selectedBatchId]);
 
   const filteredBatchTasks = useMemo(() => {
     if (!currentBatch) return [];
@@ -532,14 +548,31 @@ export function AutomationPage() {
     });
   }, [cronJobGroups, cronLogTriggerFilter, cronLogStatusFilter, cronLogSearchQuery]);
 
+  // ── 计划调度记录分页状态 ──
+  const [cronJobLogPage, setCronJobLogPage] = useState(1);
+  const [cronJobLogPageSize, setCronJobLogPageSize] = useState(5);
+  const [cronBatchLogPage, setCronBatchLogPage] = useState(1);
+  const [cronBatchLogPageSize, setCronBatchLogPageSize] = useState(5);
+
+  // 当计划调度记录搜索或触发源/状态过滤条件改变时重置任务列表分页
+  useEffect(() => {
+    setCronJobLogPage(1);
+  }, [cronLogSearchQuery, cronLogTriggerFilter, cronLogStatusFilter]);
+
+  const totalCronJobLogPages = Math.max(1, Math.ceil(filteredCronJobGroups.length / cronJobLogPageSize));
+  const paginatedCronJobGroups = useMemo(() => {
+    const start = (cronJobLogPage - 1) * cronJobLogPageSize;
+    return filteredCronJobGroups.slice(start, start + cronJobLogPageSize);
+  }, [filteredCronJobGroups, cronJobLogPage, cronJobLogPageSize]);
+
   // 当前选中的 Cron Job
   const currentCronJob = useMemo<CronJobLogGroup | null>(() => {
     if (selectedCronJobId) {
-      const found = filteredCronJobGroups.find((j) => j.cronId === selectedCronJobId);
+      const found = paginatedCronJobGroups.find((j) => j.cronId === selectedCronJobId) || filteredCronJobGroups.find((j) => j.cronId === selectedCronJobId);
       if (found) return found;
     }
-    return filteredCronJobGroups[0] || null;
-  }, [filteredCronJobGroups, selectedCronJobId]);
+    return paginatedCronJobGroups[0] || filteredCronJobGroups[0] || null;
+  }, [filteredCronJobGroups, paginatedCronJobGroups, selectedCronJobId]);
 
   // ── 针对当前 Job 下按「机器维度 (By Node)」聚合历次调度记录 ──
   const currentCronJobNodes = useMemo(() => {
@@ -606,15 +639,42 @@ export function AutomationPage() {
     return Array.from(map.values()).sort((a, b) => b.latestRunAt - a.latestRunAt);
   }, [currentCronJob]);
 
+  // 当前选中任务下过滤后的调度批次
+  const filteredCronBatches = useMemo(() => {
+    if (!currentCronJob) return [];
+    return currentCronJob.batches.filter((b) => {
+      if (!cronDetailSearch.trim()) return true;
+      const q = cronDetailSearch.toLowerCase().trim();
+      const runStr = `#${b.runNumber || ""}`;
+      return (
+        runStr.includes(q) ||
+        b.status.includes(q) ||
+        (b.triggerType === "cron" ? "定时" : "手动").includes(q) ||
+        b.logs.some((l) => l.serverName.toLowerCase().includes(q))
+      );
+    });
+  }, [currentCronJob, cronDetailSearch]);
+
+  // 任务切换或批次搜索改变时重置批次分页
+  useEffect(() => {
+    setCronBatchLogPage(1);
+  }, [selectedCronJobId, cronDetailSearch, cronDetailViewMode]);
+
+  const totalCronBatchPages = Math.max(1, Math.ceil(filteredCronBatches.length / cronBatchLogPageSize));
+  const paginatedCronBatches = useMemo(() => {
+    const start = (cronBatchLogPage - 1) * cronBatchLogPageSize;
+    return filteredCronBatches.slice(start, start + cronBatchLogPageSize);
+  }, [filteredCronBatches, cronBatchLogPage, cronBatchLogPageSize]);
+
   // 当前选中的批次 (在当前选中的 Job 之下)
   const currentCronBatch = useMemo<CronBatchLogGroup | null>(() => {
-    if (!currentCronJob || currentCronJob.batches.length === 0) return null;
+    if (!currentCronJob || filteredCronBatches.length === 0) return null;
     if (selectedCronBatchId) {
-      const found = currentCronJob.batches.find((b) => b.batchId === selectedCronBatchId);
+      const found = paginatedCronBatches.find((b) => b.batchId === selectedCronBatchId) || filteredCronBatches.find((b) => b.batchId === selectedCronBatchId);
       if (found) return found;
     }
-    return currentCronJob.batches[0] || null;
-  }, [currentCronJob, selectedCronBatchId]);
+    return paginatedCronBatches[0] || filteredCronBatches[0] || null;
+  }, [currentCronJob, filteredCronBatches, paginatedCronBatches, selectedCronBatchId]);
 
   // 当前选中批次下过滤的节点任务
   const filteredCronBatchLogs = useMemo(() => {
@@ -866,6 +926,9 @@ export function AutomationPage() {
     }, 250);
   };
 
+  const [cronPage, setCronPage] = useState(1);
+  const [cronPageSize, setCronPageSize] = useState(5);
+
   const filteredCrons = useMemo(() => {
     return crons.filter((c) => {
       const matchSearch =
@@ -879,6 +942,17 @@ export function AutomationPage() {
       return matchSearch && matchStatus;
     });
   }, [crons, cronSearchQuery, cronFilterStatus]);
+
+  // 当搜索或过滤条件改变时重置计划任务分页到第 1 页
+  useEffect(() => {
+    setCronPage(1);
+  }, [cronSearchQuery, cronFilterStatus]);
+
+  const totalCronPages = Math.max(1, Math.ceil(filteredCrons.length / cronPageSize));
+  const paginatedCrons = useMemo(() => {
+    const start = (cronPage - 1) * cronPageSize;
+    return filteredCrons.slice(start, start + cronPageSize);
+  }, [filteredCrons, cronPage, cronPageSize]);
 
   const activeConsoleServerTasks = useMemo(() => {
     if (!activeBatchResult) return [];
@@ -1401,82 +1475,131 @@ export function AutomationPage() {
                   {cronSearchQuery ? "未匹配到相关计划任务" : "暂无配置的计划任务，点击右上角新建"}
                 </div>
               ) : (
-                <div className="divide-y divide-border/60">
-                  {filteredCrons.map((job) => (
-                    <div
-                      key={job.id}
-                      className="flex flex-col sm:flex-row sm:items-center justify-between py-4 gap-3 hover:bg-muted/10 px-2 rounded-lg transition-colors"
-                    >
-                      <div className="space-y-1.5 min-w-0 flex-1">
-                        <div className="flex items-center gap-2 flex-wrap">
-                          <span className="text-xs font-semibold text-foreground">{job.name}</span>
-                          <span className="rounded bg-muted/80 px-2 py-0.5 text-[10px] font-mono text-primary font-bold border border-border/60">
-                            {job.expression}
-                          </span>
-                          <span className="text-[11px] text-muted-foreground">
-                            ({parseCronDescription(job.expression)})
-                          </span>
-                          {job.lastStatus && statusBadge(job.lastStatus)}
+                <div className="space-y-4">
+                  <div className="divide-y divide-border/60">
+                    {paginatedCrons.map((job) => (
+                      <div
+                        key={job.id}
+                        className="flex flex-col sm:flex-row sm:items-center justify-between py-4 gap-3 hover:bg-muted/10 px-2 rounded-lg transition-colors"
+                      >
+                        <div className="space-y-1.5 min-w-0 flex-1">
+                          <div className="flex items-center gap-2 flex-wrap">
+                            <span className="text-xs font-semibold text-foreground">{job.name}</span>
+                            <span className="rounded bg-muted/80 px-2 py-0.5 text-[10px] font-mono text-primary font-bold border border-border/60">
+                              {job.expression}
+                            </span>
+                            <span className="text-[11px] text-muted-foreground">
+                              ({parseCronDescription(job.expression)})
+                            </span>
+                            {job.lastStatus && statusBadge(job.lastStatus)}
+                          </div>
+
+                          <div className="text-[11px] font-mono text-muted-foreground truncate">
+                            指令: <span className="text-zinc-300 font-semibold">{job.command}</span> · 目标主机: <span className="text-zinc-300">{job.serverName}</span>
+                          </div>
+
+                          <div className="flex items-center gap-4 text-[10px] text-muted-foreground">
+                            <span>上次执行: {relativeTime(job.lastRunAt)}</span>
+                            {job.nextRunAt && (
+                              <span>下次预计: {new Date(job.nextRunAt).toLocaleTimeString()}</span>
+                            )}
+                          </div>
                         </div>
 
-                        <div className="text-[11px] font-mono text-muted-foreground truncate">
-                          指令: <span className="text-zinc-300 font-semibold">{job.command}</span> · 目标主机: <span className="text-zinc-300">{job.serverName}</span>
-                        </div>
+                        <div className="flex items-center gap-2.5 shrink-0">
+                          <div className="flex items-center gap-1.5 text-xs text-muted-foreground mr-1">
+                            <span>{job.enabled ? "运行中" : "已暂停"}</span>
+                            <Switch
+                              checked={job.enabled}
+                              onCheckedChange={(enabled) => {
+                                toggleCron.mutate({ id: job.id, enabled });
+                                toast.info(`已${enabled ? "启用" : "暂停"}计划任务 [${job.name}]`);
+                              }}
+                            />
+                          </div>
 
-                        <div className="flex items-center gap-4 text-[10px] text-muted-foreground">
-                          <span>上次执行: {relativeTime(job.lastRunAt)}</span>
-                          {job.nextRunAt && (
-                            <span>下次预计: {new Date(job.nextRunAt).toLocaleTimeString()}</span>
-                          )}
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="h-7 text-xs px-2.5 cursor-pointer"
+                            onClick={() => handleRunCronNow(job)}
+                          >
+                            <Play className="size-3 mr-1 text-emerald-400" /> 立即运行
+                          </Button>
+
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            className="h-7 w-7 p-0 text-muted-foreground hover:text-primary cursor-pointer"
+                            onClick={() => handleOpenEditCron(job)}
+                            title="编辑任务"
+                          >
+                            <Edit2 className="size-3.5" />
+                          </Button>
+
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            className="h-7 w-7 p-0 text-muted-foreground hover:text-rose-500 cursor-pointer"
+                            onClick={() => {
+                              deleteCron.mutate(job.id);
+                              toast.success(`已删除计划任务: ${job.name}`);
+                            }}
+                            title="删除任务"
+                          >
+                            <Trash2 className="size-3.5" />
+                          </Button>
                         </div>
                       </div>
+                    ))}
+                  </div>
 
-                      <div className="flex items-center gap-2.5 shrink-0">
-                        <div className="flex items-center gap-1.5 text-xs text-muted-foreground mr-1">
-                          <span>{job.enabled ? "运行中" : "已暂停"}</span>
-                          <Switch
-                            checked={job.enabled}
-                            onCheckedChange={(enabled) => {
-                              toggleCron.mutate({ id: job.id, enabled });
-                              toast.info(`已${enabled ? "启用" : "暂停"}计划任务 [${job.name}]`);
-                            }}
-                          />
-                        </div>
-
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          className="h-7 text-xs px-2.5 cursor-pointer"
-                          onClick={() => handleRunCronNow(job)}
-                        >
-                          <Play className="size-3 mr-1 text-emerald-400" /> 立即运行
-                        </Button>
-
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          className="h-7 w-7 p-0 text-muted-foreground hover:text-primary cursor-pointer"
-                          onClick={() => handleOpenEditCron(job)}
-                          title="编辑任务"
-                        >
-                          <Edit2 className="size-3.5" />
-                        </Button>
-
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          className="h-7 w-7 p-0 text-muted-foreground hover:text-rose-500 cursor-pointer"
-                          onClick={() => {
-                            deleteCron.mutate(job.id);
-                            toast.success(`已删除计划任务: ${job.name}`);
+                  {/* 分布式计划任务分页控制栏 */}
+                  <div className="pt-3 border-t border-border/60 flex flex-wrap items-center justify-between gap-3 text-xs font-mono">
+                    <div className="flex items-center gap-2 text-muted-foreground">
+                      <span>共 <strong>{filteredCrons.length}</strong> 条计划任务</span>
+                      <span>·</span>
+                      <span>第 <strong>{cronPage}</strong> / {totalCronPages} 页</span>
+                      <span>·</span>
+                      <div className="flex items-center gap-1">
+                        <span>每页:</span>
+                        <select
+                          value={cronPageSize}
+                          onChange={(e) => {
+                            setCronPageSize(Number(e.target.value));
+                            setCronPage(1);
                           }}
-                          title="删除任务"
+                          className="bg-muted/40 border border-border/80 rounded px-1.5 py-0.5 outline-none font-semibold text-foreground cursor-pointer"
                         >
-                          <Trash2 className="size-3.5" />
-                        </Button>
+                          <option value={5}>5 条</option>
+                          <option value={10}>10 条</option>
+                          <option value={20}>20 条</option>
+                          <option value={50}>50 条</option>
+                        </select>
                       </div>
                     </div>
-                  ))}
+
+                    <div className="flex items-center gap-1.5">
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => setCronPage((p) => Math.max(1, p - 1))}
+                        disabled={cronPage <= 1}
+                        className="h-7.5 px-2.5 text-xs gap-1 cursor-pointer"
+                      >
+                        <ChevronLeft className="size-3.5" /> 上一页
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => setCronPage((p) => Math.min(totalCronPages, p + 1))}
+                        disabled={cronPage >= totalCronPages}
+                        className="h-7.5 px-2.5 text-xs gap-1 cursor-pointer"
+                      >
+                        下一页 <ChevronRight className="size-3.5" />
+                      </Button>
+                    </div>
+                  </div>
                 </div>
               )}
             </CardContent>
@@ -1567,177 +1690,235 @@ export function AutomationPage() {
                   ) : (
                     <div className="grid grid-cols-1 lg:grid-cols-12 divide-y lg:divide-y-0 lg:divide-x divide-border/60 min-h-[500px]">
                       {/* 左侧：执行批次列表 + 手风琴展开层级机器选择 (5列) */}
-                      <div className="lg:col-span-5 divide-y divide-border/60 max-h-[600px] overflow-y-auto p-2.5 space-y-2">
-                        {filteredBatchGroups.map((group, index) => {
-                          const isSelected = currentBatch?.id === group.id;
-                          const isExpanded = expandedBatchId !== null ? expandedBatchId === group.id : (index === 0);
+                      <div className="lg:col-span-5 flex flex-col justify-between max-h-[600px] overflow-hidden">
+                        <div className="flex-1 overflow-y-auto p-2.5 space-y-2 divide-y divide-border/60">
+                          {paginatedBatchGroups.map((group, index) => {
+                            const isSelected = currentBatch?.id === group.id;
+                            const isExpanded = expandedBatchId !== null ? expandedBatchId === group.id : (index === 0);
 
-                          return (
-                            <div
-                              key={group.id}
-                              className={`rounded-xl border transition-all text-xs ${
-                                isSelected
-                                  ? "bg-primary/5 border-primary/60 shadow-xs"
-                                  : "bg-card/60 border-border/40 hover:bg-muted/40"
-                              }`}
-                            >
-                              {/* 批次头部卡片触发区（手风琴头部） */}
+                            return (
                               <div
-                                onClick={() => {
-                                  if (isExpanded) {
-                                    setExpandedBatchId("__closed__");
-                                  } else {
-                                    setExpandedBatchId(group.id);
-                                    setSelectedBatchId(group.id);
-                                    const failedNode = group.tasks.find((t) => t.status === "failed" || t.status === "timeout");
-                                    setSelectedNodeIdInBatch(failedNode ? failedNode.serverId : (group.tasks[0]?.serverId || null));
-                                    setNodeStatusFilter("all");
-                                    setNodeSearchQuery("");
-                                  }
-                                }}
-                                className="p-3 cursor-pointer select-none space-y-1.5 hover:bg-muted/20 transition-colors rounded-xl"
+                                key={group.id}
+                                className={`rounded-xl border transition-all text-xs ${
+                                  isSelected
+                                    ? "bg-primary/5 border-primary/60 shadow-xs"
+                                    : "bg-card/60 border-border/40 hover:bg-muted/40"
+                                }`}
                               >
-                                <div className="flex items-center justify-between gap-2">
-                                  {batchStatusBadge(group)}
-                                  <div className="flex items-center gap-1.5">
-                                    <span className="text-[11px] text-muted-foreground font-mono">
-                                      {relativeTime(group.startedAt)}
+                                {/* 批次头部卡片触发区（手风琴头部） */}
+                                <div
+                                  onClick={() => {
+                                    if (isExpanded) {
+                                      setExpandedBatchId("__closed__");
+                                    } else {
+                                      setExpandedBatchId(group.id);
+                                      setSelectedBatchId(group.id);
+                                      const failedNode = group.tasks.find((t) => t.status === "failed" || t.status === "timeout");
+                                      setSelectedNodeIdInBatch(failedNode ? failedNode.serverId : (group.tasks[0]?.serverId || null));
+                                      setNodeStatusFilter("all");
+                                      setNodeSearchQuery("");
+                                    }
+                                  }}
+                                  className="p-3 cursor-pointer select-none space-y-1.5 hover:bg-muted/20 transition-colors rounded-xl"
+                                >
+                                  <div className="flex items-center justify-between gap-2">
+                                    {batchStatusBadge(group)}
+                                    <div className="flex items-center gap-1.5">
+                                      <span className="text-[11px] text-muted-foreground font-mono">
+                                        {relativeTime(group.startedAt)}
+                                      </span>
+                                      <ChevronRight
+                                        className={`size-3.5 transition-transform duration-200 ${
+                                          isExpanded ? "rotate-90 text-primary" : "text-muted-foreground"
+                                        }`}
+                                      />
+                                    </div>
+                                  </div>
+
+                                  <div className="font-mono text-xs font-semibold text-foreground truncate">
+                                    {group.command}
+                                  </div>
+
+                                  {/* 紧凑统计摘要 */}
+                                  <div className="pt-1 flex items-center justify-between text-[10px] text-muted-foreground">
+                                    <div className="flex items-center gap-1.5 font-mono">
+                                      {group.successNodes > 0 && (
+                                        <span className="text-emerald-400">
+                                          {group.successNodes} 成功
+                                        </span>
+                                      )}
+                                      {group.failedNodes > 0 && (
+                                        <span className="text-rose-400">
+                                          · {group.failedNodes} 失败
+                                        </span>
+                                      )}
+                                      {group.runningNodes > 0 && (
+                                        <span className="text-sky-400">
+                                          · {group.runningNodes} 运行中
+                                        </span>
+                                      )}
+                                    </div>
+                                    <span className="text-zinc-500 font-sans">
+                                      共 {group.totalNodes} 台机器 {isExpanded ? "(已展开)" : "(点击展开)"}
                                     </span>
-                                    <ChevronRight
-                                      className={`size-3.5 transition-transform duration-200 ${
-                                        isExpanded ? "rotate-90 text-primary" : "text-muted-foreground"
-                                      }`}
-                                    />
                                   </div>
                                 </div>
 
-                                <div className="font-mono text-xs font-semibold text-foreground truncate">
-                                  {group.command}
-                                </div>
+                                {/* 手风琴展开内容：机器状态筛选与机器列表 */}
+                                {isExpanded && (
+                                  <div className="p-2.5 pt-0 border-t border-border/40 space-y-2 bg-muted/15 rounded-b-xl">
+                                    {/* 状态快速分类切换 (全部 / 失败 / 成功) */}
+                                    <div className="flex items-center justify-between pt-2 flex-wrap gap-1.5">
+                                      <div className="flex items-center gap-1">
+                                        {[
+                                          { key: "all" as const, label: "全部", count: group.totalNodes },
+                                          { key: "failed" as const, label: "异常", count: group.failedNodes, isDanger: true },
+                                          { key: "success" as const, label: "成功", count: group.successNodes },
+                                          { key: "running" as const, label: "运行中", count: group.runningNodes }
+                                        ].map((tab) => {
+                                          if (tab.count === 0 && tab.key !== "all") return null;
+                                          const isActive = nodeStatusFilter === tab.key;
 
-                                {/* 紧凑统计摘要 */}
-                                <div className="pt-1 flex items-center justify-between text-[10px] text-muted-foreground">
-                                  <div className="flex items-center gap-1.5 font-mono">
-                                    {group.successNodes > 0 && (
-                                      <span className="text-emerald-400">
-                                        {group.successNodes} 成功
-                                      </span>
-                                    )}
-                                    {group.failedNodes > 0 && (
-                                      <span className="text-rose-400">
-                                        · {group.failedNodes} 失败
-                                      </span>
-                                    )}
-                                    {group.runningNodes > 0 && (
-                                      <span className="text-sky-400">
-                                        · {group.runningNodes} 运行中
-                                      </span>
-                                    )}
-                                  </div>
-                                  <span className="text-zinc-500 font-sans">
-                                    共 {group.totalNodes} 台机器 {isExpanded ? "(已展开)" : "(点击展开)"}
-                                  </span>
-                                </div>
-                              </div>
+                                          return (
+                                            <button
+                                              key={tab.key}
+                                              type="button"
+                                              onClick={() => setNodeStatusFilter(tab.key)}
+                                              className={`px-1.5 py-0.5 rounded text-[10px] font-medium transition-all cursor-pointer ${
+                                                isActive
+                                                  ? tab.isDanger && tab.count > 0
+                                                    ? "bg-rose-500/20 text-rose-300 border border-rose-500/40 font-bold"
+                                                    : "bg-primary text-primary-foreground font-bold shadow-2xs"
+                                                  : "text-muted-foreground hover:text-foreground bg-muted/40 hover:bg-muted"
+                                              }`}
+                                            >
+                                              {tab.label} ({tab.count})
+                                            </button>
+                                          );
+                                        })}
+                                      </div>
 
-                              {/* 手风琴展开内容：机器状态筛选与机器列表 */}
-                              {isExpanded && (
-                                <div className="p-2.5 pt-0 border-t border-border/40 space-y-2 bg-muted/15 rounded-b-xl">
-                                  {/* 状态快速分类切换 (全部 / 失败 / 成功) */}
-                                  <div className="flex items-center justify-between pt-2 flex-wrap gap-1.5">
-                                    <div className="flex items-center gap-1">
-                                      {[
-                                        { key: "all" as const, label: "全部", count: group.totalNodes },
-                                        { key: "failed" as const, label: "异常", count: group.failedNodes, isDanger: true },
-                                        { key: "success" as const, label: "成功", count: group.successNodes },
-                                        { key: "running" as const, label: "运行中", count: group.runningNodes }
-                                      ].map((tab) => {
-                                        if (tab.count === 0 && tab.key !== "all") return null;
-                                        const isActive = nodeStatusFilter === tab.key;
-
-                                        return (
-                                          <button
-                                            key={tab.key}
-                                            type="button"
-                                            onClick={() => setNodeStatusFilter(tab.key)}
-                                            className={`px-1.5 py-0.5 rounded text-[10px] font-medium transition-all cursor-pointer ${
-                                              isActive
-                                                ? tab.isDanger && tab.count > 0
-                                                  ? "bg-rose-500/20 text-rose-300 border border-rose-500/40 font-bold"
-                                                  : "bg-primary text-primary-foreground font-bold shadow-2xs"
-                                                : "text-muted-foreground hover:text-foreground bg-muted/40 hover:bg-muted"
-                                            }`}
-                                          >
-                                            {tab.label} ({tab.count})
-                                          </button>
-                                        );
-                                      })}
+                                      {/* 机器数量多时提供微型过滤输入框 */}
+                                      {group.totalNodes > 3 && (
+                                        <div className="relative">
+                                          <Search className="absolute left-1.5 top-1/2 -translate-y-1/2 size-2.5 text-muted-foreground" />
+                                          <input
+                                            type="text"
+                                            value={nodeSearchQuery}
+                                            onChange={(e) => setNodeSearchQuery(e.target.value)}
+                                            placeholder="过滤主机..."
+                                            className="h-5.5 w-24 rounded bg-background border border-border/80 pl-5 pr-1.5 text-[10px] text-foreground outline-none focus:border-primary"
+                                          />
+                                        </div>
+                                      )}
                                     </div>
 
-                                    {/* 机器数量多时提供微型过滤输入框 */}
-                                    {group.totalNodes > 3 && (
-                                      <div className="relative">
-                                        <Search className="absolute left-1.5 top-1/2 -translate-y-1/2 size-2.5 text-muted-foreground" />
-                                        <input
-                                          type="text"
-                                          value={nodeSearchQuery}
-                                          onChange={(e) => setNodeSearchQuery(e.target.value)}
-                                          placeholder="过滤主机..."
-                                          className="h-5.5 w-24 rounded bg-background border border-border/80 pl-5 pr-1.5 text-[10px] text-foreground outline-none focus:border-primary"
-                                        />
-                                      </div>
-                                    )}
-                                  </div>
+                                    {/* 执行机器竖向列表 */}
+                                    <div className="space-y-1 max-h-[220px] overflow-y-auto pr-0.5">
+                                      {filteredBatchTasks.length === 0 ? (
+                                        <div className="py-3 text-center text-[10px] text-muted-foreground italic">
+                                          该状态下无匹配机器
+                                        </div>
+                                      ) : (
+                                        filteredBatchTasks.map((t) => {
+                                          const isNodeActive = currentBatchActiveTask?.serverId === t.serverId;
 
-                                  {/* 执行机器竖向列表 */}
-                                  <div className="space-y-1 max-h-[220px] overflow-y-auto pr-0.5">
-                                    {filteredBatchTasks.length === 0 ? (
-                                      <div className="py-3 text-center text-[10px] text-muted-foreground italic">
-                                        该状态下无匹配机器
-                                      </div>
-                                    ) : (
-                                      filteredBatchTasks.map((t) => {
-                                        const isNodeActive = currentBatchActiveTask?.serverId === t.serverId;
+                                          return (
+                                            <div
+                                              key={t.id}
+                                              onClick={() => setSelectedNodeIdInBatch(t.serverId)}
+                                              className={`flex items-center justify-between p-2 rounded-lg border transition-all cursor-pointer text-[11px] font-mono ${
+                                                isNodeActive
+                                                  ? "bg-primary/15 border-primary text-foreground shadow-2xs font-semibold"
+                                                  : "bg-card/70 border-border/40 hover:bg-muted/40 text-muted-foreground hover:text-foreground"
+                                              }`}
+                                            >
+                                              <div className="flex items-center gap-2 min-w-0">
+                                                <span
+                                                  className={`size-1.5 rounded-full shrink-0 ${
+                                                    t.status === "success"
+                                                      ? "bg-emerald-400"
+                                                      : t.status === "running"
+                                                        ? "bg-sky-400 animate-pulse"
+                                                        : "bg-rose-400"
+                                                  }`}
+                                                />
+                                                <span className="truncate">{t.serverName}</span>
+                                              </div>
 
-                                        return (
-                                          <div
-                                            key={t.id}
-                                            onClick={() => setSelectedNodeIdInBatch(t.serverId)}
-                                            className={`flex items-center justify-between p-2 rounded-lg border transition-all cursor-pointer text-[11px] font-mono ${
-                                              isNodeActive
-                                                ? "bg-primary/15 border-primary text-foreground shadow-2xs font-semibold"
-                                                : "bg-card/70 border-border/40 hover:bg-muted/40 text-muted-foreground hover:text-foreground"
-                                            }`}
-                                          >
-                                            <div className="flex items-center gap-2 min-w-0">
-                                              <span
-                                                className={`size-1.5 rounded-full shrink-0 ${
-                                                  t.status === "success"
-                                                    ? "bg-emerald-400"
-                                                    : t.status === "running"
-                                                      ? "bg-sky-400 animate-pulse"
-                                                      : "bg-rose-400"
-                                                }`}
-                                              />
-                                              <span className="truncate">{t.serverName}</span>
+                                              <div className="flex items-center gap-2 text-[10px] text-muted-foreground shrink-0">
+                                                <span>{t.durationMs ? `${t.durationMs}ms` : "—"}</span>
+                                                {isNodeActive && (
+                                                  <ChevronRight className="size-3 text-primary" />
+                                                )}
+                                              </div>
                                             </div>
-
-                                            <div className="flex items-center gap-2 text-[10px] text-muted-foreground shrink-0">
-                                              <span>{t.durationMs ? `${t.durationMs}ms` : "—"}</span>
-                                              {isNodeActive && (
-                                                <ChevronRight className="size-3 text-primary" />
-                                              )}
-                                            </div>
-                                          </div>
-                                        );
-                                      })
-                                    )}
+                                          );
+                                        })
+                                      )}
+                                    </div>
                                   </div>
-                                </div>
-                              )}
+                                )}
+                              </div>
+                            );
+                          })}
+                        </div>
+
+                        {/* 即时下发记录分页控制栏 */}
+                        {filteredBatchGroups.length > 0 && (
+                          <div className="p-2.5 border-t border-border/60 bg-muted/20 flex items-center justify-between gap-2 text-xs font-mono select-none">
+                            <div className="flex items-center gap-1.5 text-muted-foreground text-[11px]">
+                              <span>共 <strong>{filteredBatchGroups.length}</strong> 次</span>
+                              <span>·</span>
+                              <span>第 <strong>{adhocLogPage}</strong> / {totalAdhocPages} 页</span>
+                              <span>·</span>
+                              <select
+                                value={adhocLogPageSize}
+                                onChange={(e) => {
+                                  setAdhocLogPageSize(Number(e.target.value));
+                                  setAdhocLogPage(1);
+                                  setSelectedBatchId(null);
+                                  setExpandedBatchId(null);
+                                }}
+                                className="bg-muted/40 border border-border/80 rounded px-1 py-0.5 text-[11px] outline-none font-semibold text-foreground cursor-pointer"
+                              >
+                                <option value={3}>3 次/页</option>
+                                <option value={5}>5 次/页</option>
+                                <option value={10}>10 次/页</option>
+                                <option value={20}>20 次/页</option>
+                              </select>
                             </div>
-                          );
-                        })}
+
+                            <div className="flex items-center gap-1">
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => {
+                                  setAdhocLogPage((p) => Math.max(1, p - 1));
+                                  setSelectedBatchId(null);
+                                  setExpandedBatchId(null);
+                                }}
+                                disabled={adhocLogPage <= 1}
+                                className="h-6.5 px-2 text-[11px] gap-1 cursor-pointer"
+                              >
+                                <ChevronLeft className="size-3" /> 上页
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => {
+                                  setAdhocLogPage((p) => Math.min(totalAdhocPages, p + 1));
+                                  setSelectedBatchId(null);
+                                  setExpandedBatchId(null);
+                                }}
+                                disabled={adhocLogPage >= totalAdhocPages}
+                                className="h-6.5 px-2 text-[11px] gap-1 cursor-pointer"
+                              >
+                                下页 <ChevronRight className="size-3" />
+                              </Button>
+                            </div>
+                          </div>
+                        )}
                       </div>
 
                       {/* 右侧：纯粹沉浸式深色终端输出结果 (7列) */}
@@ -1883,420 +2064,498 @@ export function AutomationPage() {
                       {/* ══════════════════════════════════════════════════════ */}
                       {/* 栏 1：计划任务列表 (等宽侧栏 - 3列)                   */}
                       {/* ══════════════════════════════════════════════════════ */}
-                      <div className="lg:col-span-3 divide-y divide-border/60 max-h-[640px] overflow-y-auto p-2.5 space-y-2 bg-muted/5">
-                        <div className="text-[11px] font-semibold text-muted-foreground px-1 pb-1 flex items-center justify-between font-mono">
-                          <span>1. 任务列表 ({filteredCronJobGroups.length})</span>
-                          <span>总轮次</span>
+                      <div className="lg:col-span-3 flex flex-col justify-between max-h-[640px] overflow-hidden bg-muted/5">
+                        <div className="flex-1 overflow-y-auto p-2.5 space-y-2 divide-y divide-border/60">
+                          <div className="text-[11px] font-semibold text-muted-foreground px-1 pb-1 flex items-center justify-between font-mono">
+                            <span>1. 任务列表 ({filteredCronJobGroups.length})</span>
+                            <span>总轮次</span>
+                          </div>
+
+                          {paginatedCronJobGroups.map((job) => {
+                            const isJobSelected = currentCronJob?.cronId === job.cronId;
+                            const latestBatch = job.batches[0];
+
+                            return (
+                              <div
+                                key={job.cronId}
+                                onClick={() => {
+                                  setSelectedCronJobId(job.cronId);
+                                  if (job.batches.length > 0) {
+                                    const firstB = job.batches[0];
+                                    setSelectedCronBatchId(firstB.batchId);
+                                    setExpandedCronBatchId(firstB.batchId);
+                                    setSelectedCronNodeId(firstB.logs[0]?.serverId || null);
+                                  }
+                                }}
+                                className={`p-2.5 rounded-xl border transition-all cursor-pointer text-xs space-y-1.5 ${
+                                  isJobSelected
+                                    ? "bg-primary/10 border-primary shadow-xs font-semibold"
+                                    : "bg-card/70 border-border/50 hover:bg-muted/40 text-muted-foreground hover:text-foreground"
+                                }`}
+                              >
+                                <div className="flex items-center justify-between gap-1.5">
+                                  <div className="flex items-center gap-1.5 min-w-0">
+                                    <span
+                                      className={`size-2 rounded-full shrink-0 ${
+                                        latestBatch?.status === "success"
+                                          ? "bg-emerald-400"
+                                          : latestBatch?.status === "running"
+                                            ? "bg-sky-400 animate-pulse"
+                                            : "bg-rose-400"
+                                      }`}
+                                    />
+                                    <span className="font-bold text-foreground truncate text-xs">{job.cronName}</span>
+                                  </div>
+                                  <Badge variant="outline" className="text-[9px] px-1.5 py-0 bg-muted/60 text-foreground font-bold shrink-0 font-mono border-border/70">
+                                    {job.totalRuns} 轮
+                                  </Badge>
+                                </div>
+
+                                <div className="flex items-center justify-between text-[10px] text-muted-foreground font-mono font-normal">
+                                  <span className="text-primary font-semibold truncate pr-1">{job.expression}</span>
+                                  <span className="shrink-0">{relativeTime(job.latestRunAt)}</span>
+                                </div>
+                              </div>
+                            );
+                          })}
                         </div>
 
-                        {filteredCronJobGroups.map((job) => {
-                          const isJobSelected = (currentCronJob?.cronId || filteredCronJobGroups[0]?.cronId) === job.cronId;
-                          const latestBatch = job.batches[0];
-
-                          return (
-                            <div
-                              key={job.cronId}
-                              onClick={() => {
-                                setSelectedCronJobId(job.cronId);
-                                if (job.batches.length > 0) {
-                                  const firstB = job.batches[0];
-                                  setSelectedCronBatchId(firstB.batchId);
-                                  setExpandedCronBatchId(firstB.batchId);
-                                  setSelectedCronNodeId(firstB.logs[0]?.serverId || null);
-                                }
-                              }}
-                              className={`p-2.5 rounded-xl border transition-all cursor-pointer text-xs space-y-1.5 ${
-                                isJobSelected
-                                  ? "bg-primary/10 border-primary shadow-xs font-semibold"
-                                  : "bg-card/70 border-border/50 hover:bg-muted/40 text-muted-foreground hover:text-foreground"
-                              }`}
-                            >
-                              <div className="flex items-center justify-between gap-1.5">
-                                <div className="flex items-center gap-1.5 min-w-0">
-                                  <span
-                                    className={`size-2 rounded-full shrink-0 ${
-                                      latestBatch?.status === "success"
-                                        ? "bg-emerald-400"
-                                        : latestBatch?.status === "running"
-                                          ? "bg-sky-400 animate-pulse"
-                                          : "bg-rose-400"
-                                    }`}
-                                  />
-                                  <span className="font-bold text-foreground truncate text-xs">{job.cronName}</span>
-                                </div>
-                                <Badge variant="outline" className="text-[9px] px-1.5 py-0 bg-muted/60 text-foreground font-bold shrink-0 font-mono border-border/70">
-                                  {job.totalRuns} 轮
-                                </Badge>
-                              </div>
-
-                              <div className="flex items-center justify-between text-[10px] text-muted-foreground font-mono font-normal">
-                                <span className="text-primary font-semibold truncate pr-1">{job.expression}</span>
-                                <span className="shrink-0">{relativeTime(job.latestRunAt)}</span>
-                              </div>
+                        {/* 栏 1 任务列表分页控制栏 */}
+                        {filteredCronJobGroups.length > 0 && (
+                          <div className="p-2 border-t border-border/60 bg-muted/20 flex items-center justify-between gap-1 text-xs font-mono select-none">
+                            <div className="flex items-center gap-1 text-muted-foreground text-[10px]">
+                              <span>共 <strong>{filteredCronJobGroups.length}</strong> 项</span>
+                              <span>·</span>
+                              <span><strong>{cronJobLogPage}</strong>/{totalCronJobLogPages}页</span>
                             </div>
-                          );
-                        })}
+
+                            <div className="flex items-center gap-1">
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => {
+                                  setCronJobLogPage((p) => Math.max(1, p - 1));
+                                  setSelectedCronBatchId(null);
+                                  setExpandedCronBatchId(null);
+                                }}
+                                disabled={cronJobLogPage <= 1}
+                                className="h-6 px-1.5 text-[10px] gap-0.5 cursor-pointer"
+                              >
+                                <ChevronLeft className="size-3" /> 上页
+                              </Button>
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => {
+                                  setCronJobLogPage((p) => Math.min(totalCronJobLogPages, p + 1));
+                                  setSelectedCronBatchId(null);
+                                  setExpandedCronBatchId(null);
+                                }}
+                                disabled={cronJobLogPage >= totalCronJobLogPages}
+                                className="h-6 px-1.5 text-[10px] gap-0.5 cursor-pointer"
+                              >
+                                下页 <ChevronRight className="size-3" />
+                              </Button>
+                            </div>
+                          </div>
+                        )}
                       </div>
 
                       {/* ══════════════════════════════════════════════════════ */}
                       {/* 栏 2：当前任务调度明细 (等宽明细 - 3列)              */}
                       {/* ══════════════════════════════════════════════════════ */}
-                      <div className="lg:col-span-3 divide-y divide-border/60 max-h-[640px] overflow-y-auto p-2.5 space-y-2">
+                      <div className="lg:col-span-3 flex flex-col justify-between max-h-[640px] overflow-hidden">
                         {currentCronJob ? (
                           <>
-                            {/* 双维度切换 Tab (批次维度 vs 机器维度) */}
-                            <div className="space-y-1.5">
-                              <div className="flex items-center justify-between text-[11px] font-semibold text-muted-foreground px-0.5">
-                                <span className="truncate">2. 「{currentCronJob.cronName}」调度明细</span>
-                                <span className="font-mono text-[10px] text-primary shrink-0">{currentCronJob.expression}</span>
+                            <div className="flex-1 overflow-y-auto p-2.5 space-y-2 divide-y divide-border/60">
+                              {/* 双维度切换 Tab (批次维度 vs 机器维度) */}
+                              <div className="space-y-1.5">
+                                <div className="flex items-center justify-between text-[11px] font-semibold text-muted-foreground px-0.5">
+                                  <span className="truncate">2. 「{currentCronJob.cronName}」调度明细</span>
+                                  <span className="font-mono text-[10px] text-primary shrink-0">{currentCronJob.expression}</span>
+                                </div>
+
+                                <div className="grid grid-cols-2 gap-1 p-0.5 bg-muted/60 rounded-lg border border-border/60">
+                                  <button
+                                    type="button"
+                                    onClick={() => setCronDetailViewMode("batch")}
+                                    className={`py-1 px-1.5 text-[11px] font-semibold rounded-md transition-all cursor-pointer flex items-center justify-center gap-1 ${
+                                      cronDetailViewMode === "batch"
+                                        ? "bg-background text-foreground shadow-xs"
+                                        : "text-muted-foreground hover:text-foreground"
+                                    }`}
+                                  >
+                                    <Repeat className="size-3 text-primary" />
+                                    <span>按批次 ({filteredCronBatches.length})</span>
+                                  </button>
+
+                                  <button
+                                    type="button"
+                                    onClick={() => setCronDetailViewMode("node")}
+                                    className={`py-1 px-1.5 text-[11px] font-semibold rounded-md transition-all cursor-pointer flex items-center justify-center gap-1 ${
+                                      cronDetailViewMode === "node"
+                                        ? "bg-background text-foreground shadow-xs"
+                                        : "text-muted-foreground hover:text-foreground"
+                                    }`}
+                                  >
+                                    <Server className="size-3 text-primary" />
+                                    <span>按机器 ({currentCronJobNodes.length})</span>
+                                  </button>
+                                </div>
+
+                                {/* 专属过滤搜索栏 */}
+                                <div className="relative">
+                                  <Search className="absolute left-2 top-1/2 -translate-y-1/2 size-2.5 text-muted-foreground" />
+                                  <input
+                                    type="text"
+                                    value={cronDetailSearch}
+                                    onChange={(e) => setCronDetailSearch(e.target.value)}
+                                    placeholder={
+                                      cronDetailViewMode === "batch"
+                                        ? "搜索批次编号 / 状态..."
+                                        : "搜索机器名称 / IP / 状态..."
+                                    }
+                                    className="h-6.5 w-full rounded-md border border-border/80 bg-background/80 pl-6.5 pr-2 text-[11px] text-foreground outline-none focus:border-primary placeholder:text-muted-foreground/70"
+                                  />
+                                </div>
                               </div>
 
-                              <div className="grid grid-cols-2 gap-1 p-0.5 bg-muted/60 rounded-lg border border-border/60">
-                                <button
-                                  type="button"
-                                  onClick={() => setCronDetailViewMode("batch")}
-                                  className={`py-1 px-1.5 text-[11px] font-semibold rounded-md transition-all cursor-pointer flex items-center justify-center gap-1 ${
-                                    cronDetailViewMode === "batch"
-                                      ? "bg-background text-foreground shadow-xs"
-                                      : "text-muted-foreground hover:text-foreground"
-                                  }`}
-                                >
-                                  <Repeat className="size-3 text-primary" />
-                                  <span>按批次 ({currentCronJob.batches.length})</span>
-                                </button>
+                              {/* ── 视图 1：按调度批次查看 (By Batch) ── */}
+                              {cronDetailViewMode === "batch" && (
+                                <div className="space-y-1.5 pt-1">
+                                  {paginatedCronBatches.length === 0 ? (
+                                    <div className="py-6 text-center text-[10px] text-muted-foreground">
+                                      未匹配到相关调度批次
+                                    </div>
+                                  ) : (
+                                    paginatedCronBatches.map((batch, index) => {
+                                      const isBatchSelected = (currentCronBatch?.batchId || paginatedCronBatches[0]?.batchId) === batch.batchId;
+                                      const isBatchExpanded = expandedCronBatchId !== null
+                                        ? expandedCronBatchId === batch.batchId
+                                        : (index === 0);
 
-                                <button
-                                  type="button"
-                                  onClick={() => setCronDetailViewMode("node")}
-                                  className={`py-1 px-1.5 text-[11px] font-semibold rounded-md transition-all cursor-pointer flex items-center justify-center gap-1 ${
-                                    cronDetailViewMode === "node"
-                                      ? "bg-background text-foreground shadow-xs"
-                                      : "text-muted-foreground hover:text-foreground"
-                                  }`}
-                                >
-                                  <Server className="size-3 text-primary" />
-                                  <span>按机器 ({currentCronJobNodes.length})</span>
-                                </button>
-                              </div>
-
-                              {/* 专属过滤搜索栏 */}
-                              <div className="relative">
-                                <Search className="absolute left-2 top-1/2 -translate-y-1/2 size-2.5 text-muted-foreground" />
-                                <input
-                                  type="text"
-                                  value={cronDetailSearch}
-                                  onChange={(e) => setCronDetailSearch(e.target.value)}
-                                  placeholder={
-                                    cronDetailViewMode === "batch"
-                                      ? "搜索批次编号 / 状态..."
-                                      : "搜索机器名称 / IP / 状态..."
-                                  }
-                                  className="h-6.5 w-full rounded-md border border-border/80 bg-background/80 pl-6.5 pr-2 text-[11px] text-foreground outline-none focus:border-primary placeholder:text-muted-foreground/70"
-                                />
-                              </div>
-                            </div>
-
-                            {/* ── 视图 1：按调度批次查看 (By Batch) ── */}
-                            {cronDetailViewMode === "batch" && (
-                              <div className="space-y-1.5 pt-1">
-                                {currentCronJob.batches
-                                  .filter((b) => {
-                                    if (!cronDetailSearch.trim()) return true;
-                                    const q = cronDetailSearch.toLowerCase().trim();
-                                    const runStr = `#${b.runNumber || ""}`;
-                                    return (
-                                      runStr.includes(q) ||
-                                      b.status.includes(q) ||
-                                      (b.triggerType === "cron" ? "定时" : "手动").includes(q) ||
-                                      b.logs.some((l) => l.serverName.toLowerCase().includes(q))
-                                    );
-                                  })
-                                  .map((batch, index) => {
-                                    const isBatchSelected = (currentCronBatch?.batchId || currentCronJob.batches[0]?.batchId) === batch.batchId;
-                                    const isBatchExpanded = expandedCronBatchId !== null
-                                      ? expandedCronBatchId === batch.batchId
-                                      : (index === 0);
-
-                                    return (
-                                      <div
-                                        key={batch.batchId}
-                                        className={`rounded-xl border transition-all text-xs ${
-                                          isBatchSelected
-                                            ? "bg-primary/5 border-primary/60 shadow-xs"
-                                            : "bg-card/60 border-border/40 hover:bg-muted/40"
-                                        }`}
-                                      >
-                                        {/* 批次头部 */}
+                                      return (
                                         <div
-                                          onClick={() => {
-                                            if (isBatchExpanded) {
-                                              setExpandedCronBatchId("__batch_closed__");
-                                            } else {
-                                              setExpandedCronBatchId(batch.batchId);
-                                              setSelectedCronBatchId(batch.batchId);
-                                              const failedNode = batch.logs.find((l) => l.status === "failed" || l.status === "timeout");
-                                              setSelectedCronNodeId(failedNode ? failedNode.serverId : (batch.logs[0]?.serverId || null));
-                                              setCronNodeStatusFilter("all");
-                                              setCronNodeSearchQuery("");
-                                            }
-                                          }}
-                                          className="p-2.5 cursor-pointer select-none space-y-1 hover:bg-muted/20 transition-colors rounded-xl"
+                                          key={batch.batchId}
+                                          className={`rounded-xl border transition-all text-xs ${
+                                            isBatchSelected
+                                              ? "bg-primary/5 border-primary/60 shadow-xs"
+                                              : "bg-card/60 border-border/40 hover:bg-muted/40"
+                                          }`}
                                         >
-                                          <div className="flex items-center justify-between gap-1">
-                                            <div className="flex items-center gap-1.5 min-w-0">
-                                              <Badge variant="outline" className="text-[10px] font-mono px-1 py-0 bg-muted text-foreground font-bold border-border/70 shrink-0">
-                                                #{batch.runNumber || (currentCronJob.batches.length - index)}
-                                              </Badge>
-                                              <span className="font-bold text-foreground text-xs truncate">
-                                                {batch.triggerType === "cron" ? "⏰ 定时" : "⚡ 手动"}
-                                              </span>
-                                            </div>
+                                          {/* 批次头部 */}
+                                          <div
+                                            onClick={() => {
+                                              if (isBatchExpanded) {
+                                                setExpandedCronBatchId("__batch_closed__");
+                                              } else {
+                                                setExpandedCronBatchId(batch.batchId);
+                                                setSelectedCronBatchId(batch.batchId);
+                                                const failedNode = batch.logs.find((l) => l.status === "failed" || l.status === "timeout");
+                                                setSelectedCronNodeId(failedNode ? failedNode.serverId : (batch.logs[0]?.serverId || null));
+                                                setCronNodeStatusFilter("all");
+                                                setCronNodeSearchQuery("");
+                                              }
+                                            }}
+                                            className="p-2.5 cursor-pointer select-none space-y-1 hover:bg-muted/20 transition-colors rounded-xl"
+                                          >
+                                            <div className="flex items-center justify-between gap-1">
+                                              <div className="flex items-center gap-1.5 min-w-0">
+                                                <Badge variant="outline" className="text-[10px] font-mono px-1 py-0 bg-muted text-foreground font-bold border-border/70 shrink-0">
+                                                  #{batch.runNumber || (filteredCronBatches.length - index)}
+                                                </Badge>
+                                                <span className="font-bold text-foreground text-xs truncate">
+                                                  {batch.triggerType === "cron" ? "⏰ 定时" : "⚡ 手动"}
+                                                </span>
+                                              </div>
 
-                                            <div className="flex items-center gap-1">
-                                              <span className="text-[10px] text-muted-foreground font-mono">
-                                                {relativeTime(batch.startedAt)}
-                                              </span>
-                                              <ChevronRight
-                                                className={`size-3 transition-transform duration-200 ${
-                                                  isBatchExpanded ? "rotate-90 text-primary" : "text-muted-foreground"
-                                                }`}
-                                              />
-                                            </div>
-                                          </div>
-
-                                          <div className="pt-0.5 flex items-center justify-between text-[10px] text-muted-foreground">
-                                            <div className="flex items-center gap-1 font-mono">
-                                              {batch.status === "success" ? (
-                                                <span className="text-emerald-400 font-medium">🟢 成功</span>
-                                              ) : batch.status === "partial" ? (
-                                                <span className="text-rose-400 font-medium">🟡 部分异常</span>
-                                              ) : (
-                                                <span className="text-rose-400 font-medium">🔴 失败</span>
-                                              )}
-                                              <span>({batch.successNodes}/{batch.totalNodes}台)</span>
-                                            </div>
-                                            <span className="text-zinc-500 font-sans text-[10px]">
-                                              {isBatchExpanded ? "折叠" : `${batch.totalNodes}台`}
-                                            </span>
-                                          </div>
-                                        </div>
-
-                                        {/* 展开内容：机器状态与机器列表 */}
-                                        {isBatchExpanded && (
-                                          <div className="p-2 pt-0 border-t border-border/40 space-y-1.5 bg-muted/15 rounded-b-xl">
-                                            <div className="flex items-center justify-between pt-1.5 flex-wrap gap-1">
                                               <div className="flex items-center gap-1">
-                                                {[
-                                                  { key: "all" as const, label: "全部", count: batch.totalNodes },
-                                                  { key: "failed" as const, label: "异常", count: batch.failedNodes, isDanger: true },
-                                                  { key: "success" as const, label: "成功", count: batch.successNodes }
-                                                ].map((tab) => {
-                                                  if (tab.count === 0 && tab.key !== "all") return null;
-                                                  const isActive = cronNodeStatusFilter === tab.key;
+                                                <span className="text-[10px] text-muted-foreground font-mono">
+                                                  {relativeTime(batch.startedAt)}
+                                                </span>
+                                                <ChevronRight
+                                                  className={`size-3 transition-transform duration-200 ${
+                                                    isBatchExpanded ? "rotate-90 text-primary" : "text-muted-foreground"
+                                                  }`}
+                                                />
+                                              </div>
+                                            </div>
+
+                                            <div className="pt-0.5 flex items-center justify-between text-[10px] text-muted-foreground">
+                                              <div className="flex items-center gap-1 font-mono">
+                                                {batch.status === "success" ? (
+                                                  <span className="text-emerald-400 font-medium">🟢 成功</span>
+                                                ) : batch.status === "partial" ? (
+                                                  <span className="text-rose-400 font-medium">🟡 部分异常</span>
+                                                ) : (
+                                                  <span className="text-rose-400 font-medium">🔴 失败</span>
+                                                )}
+                                                <span>({batch.successNodes}/{batch.totalNodes}台)</span>
+                                              </div>
+                                              <span className="text-zinc-500 font-sans text-[10px]">
+                                                {isBatchExpanded ? "折叠" : `${batch.totalNodes}台`}
+                                              </span>
+                                            </div>
+                                          </div>
+
+                                          {/* 展开内容：机器状态与机器列表 */}
+                                          {isBatchExpanded && (
+                                            <div className="p-2 pt-0 border-t border-border/40 space-y-1.5 bg-muted/15 rounded-b-xl">
+                                              <div className="flex items-center justify-between pt-1.5 flex-wrap gap-1">
+                                                <div className="flex items-center gap-1">
+                                                  {[
+                                                    { key: "all" as const, label: "全部", count: batch.totalNodes },
+                                                    { key: "failed" as const, label: "异常", count: batch.failedNodes, isDanger: true },
+                                                    { key: "success" as const, label: "成功", count: batch.successNodes }
+                                                  ].map((tab) => {
+                                                    if (tab.count === 0 && tab.key !== "all") return null;
+                                                    const isActive = cronNodeStatusFilter === tab.key;
+
+                                                    return (
+                                                      <button
+                                                        key={tab.key}
+                                                        type="button"
+                                                        onClick={() => setCronNodeStatusFilter(tab.key)}
+                                                        className={`px-1.5 py-0.5 rounded text-[9px] font-medium transition-all cursor-pointer ${
+                                                          isActive
+                                                            ? tab.isDanger && tab.count > 0
+                                                              ? "bg-rose-500/20 text-rose-300 border border-rose-500/40 font-bold"
+                                                              : "bg-primary text-primary-foreground font-bold shadow-2xs"
+                                                            : "text-muted-foreground hover:text-foreground bg-muted/40 hover:bg-muted"
+                                                        }`}
+                                                      >
+                                                        {tab.label} ({tab.count})
+                                                      </button>
+                                                    );
+                                                  })}
+                                                </div>
+                                              </div>
+
+                                              <div className="space-y-1 max-h-[220px] overflow-y-auto pr-0.5">
+                                                {filteredCronBatchLogs.map((log) => {
+                                                  const isNodeActive = currentCronNodeLog?.serverId === log.serverId;
 
                                                   return (
-                                                    <button
-                                                      key={tab.key}
-                                                      type="button"
-                                                      onClick={() => setCronNodeStatusFilter(tab.key)}
-                                                      className={`px-1.5 py-0.5 rounded text-[9px] font-medium transition-all cursor-pointer ${
-                                                        isActive
-                                                          ? tab.isDanger && tab.count > 0
-                                                            ? "bg-rose-500/20 text-rose-300 border border-rose-500/40 font-bold"
-                                                            : "bg-primary text-primary-foreground font-bold shadow-2xs"
-                                                          : "text-muted-foreground hover:text-foreground bg-muted/40 hover:bg-muted"
+                                                    <div
+                                                      key={log.id}
+                                                      onClick={() => {
+                                                        setSelectedCronBatchId(batch.batchId);
+                                                        setSelectedCronNodeId(log.serverId);
+                                                      }}
+                                                      className={`flex items-center justify-between p-1.5 rounded-md border transition-all cursor-pointer text-[10px] font-mono ${
+                                                        isNodeActive
+                                                          ? "bg-primary/15 border-primary text-foreground shadow-2xs font-semibold"
+                                                          : "bg-card/70 border-border/40 hover:bg-muted/40 text-muted-foreground hover:text-foreground"
                                                       }`}
                                                     >
-                                                      {tab.label} ({tab.count})
-                                                    </button>
+                                                      <div className="flex items-center gap-1.5 min-w-0">
+                                                        <span
+                                                          className={`size-1.5 rounded-full shrink-0 ${
+                                                            log.status === "success"
+                                                              ? "bg-emerald-400"
+                                                              : log.status === "running"
+                                                                ? "bg-sky-400 animate-pulse"
+                                                                : "bg-rose-400"
+                                                          }`}
+                                                        />
+                                                        <span className="truncate">{log.serverName}</span>
+                                                      </div>
+
+                                                      <div className="flex items-center gap-1 text-[9px] text-muted-foreground shrink-0">
+                                                        <span>{durationStr(log.durationMs)}</span>
+                                                        {isNodeActive && (
+                                                          <ChevronRight className="size-2.5 text-primary" />
+                                                        )}
+                                                      </div>
+                                                    </div>
                                                   );
                                                 })}
                                               </div>
                                             </div>
-
-                                            <div className="space-y-1 max-h-[220px] overflow-y-auto pr-0.5">
-                                              {filteredCronBatchLogs.map((log) => {
-                                                const isNodeActive = currentCronNodeLog?.serverId === log.serverId;
-
-                                                return (
-                                                  <div
-                                                    key={log.id}
-                                                    onClick={() => {
-                                                      setSelectedCronBatchId(batch.batchId);
-                                                      setSelectedCronNodeId(log.serverId);
-                                                    }}
-                                                    className={`flex items-center justify-between p-1.5 rounded-md border transition-all cursor-pointer text-[10px] font-mono ${
-                                                      isNodeActive
-                                                        ? "bg-primary/15 border-primary text-foreground shadow-2xs font-semibold"
-                                                        : "bg-card/70 border-border/40 hover:bg-muted/40 text-muted-foreground hover:text-foreground"
-                                                    }`}
-                                                  >
-                                                    <div className="flex items-center gap-1.5 min-w-0">
-                                                      <span
-                                                        className={`size-1.5 rounded-full shrink-0 ${
-                                                          log.status === "success"
-                                                            ? "bg-emerald-400"
-                                                            : log.status === "running"
-                                                              ? "bg-sky-400 animate-pulse"
-                                                              : "bg-rose-400"
-                                                        }`}
-                                                      />
-                                                      <span className="truncate">{log.serverName}</span>
-                                                    </div>
-
-                                                    <div className="flex items-center gap-1 text-[9px] text-muted-foreground shrink-0">
-                                                      <span>{durationStr(log.durationMs)}</span>
-                                                      {isNodeActive && (
-                                                        <ChevronRight className="size-2.5 text-primary" />
-                                                      )}
-                                                    </div>
-                                                  </div>
-                                                );
-                                              })}
-                                            </div>
-                                          </div>
-                                        )}
-                                      </div>
-                                    );
-                                  })}
-                              </div>
-                            )}
-
-                            {/* ── 视图 2：按执行机器查看 (By Node) ── */}
-                            {cronDetailViewMode === "node" && (
-                              <div className="space-y-1.5 pt-1">
-                                {currentCronJobNodes
-                                  .filter((node) => {
-                                    if (!cronDetailSearch.trim()) return true;
-                                    const q = cronDetailSearch.toLowerCase().trim();
-                                    return (
-                                      node.serverName.toLowerCase().includes(q) ||
-                                      node.serverId.toLowerCase().includes(q) ||
-                                      node.latestStatus.includes(q)
-                                    );
-                                  })
-                                  .map((node) => {
-                                    const isNodeSelected = currentCronNodeLog?.serverId === node.serverId;
-                                    const isNodeExpanded = expandedCronNodeSummaryId !== null
-                                      ? expandedCronNodeSummaryId === node.serverId
-                                      : (isNodeSelected || currentCronJobNodes[0]?.serverId === node.serverId);
-
-                                    return (
-                                      <div
-                                        key={node.serverId}
-                                        className={`rounded-xl border transition-all text-xs ${
-                                          isNodeSelected
-                                            ? "bg-primary/5 border-primary/60 shadow-xs"
-                                            : "bg-card/60 border-border/40 hover:bg-muted/40"
-                                        }`}
-                                      >
-                                        {/* 机器卡片头部 */}
-                                        <div
-                                          onClick={() => {
-                                            if (isNodeExpanded) {
-                                              setExpandedCronNodeSummaryId("__node_closed__");
-                                            } else {
-                                              setExpandedCronNodeSummaryId(node.serverId);
-                                              setSelectedCronNodeId(node.serverId);
-                                              if (node.runs.length > 0) {
-                                                setSelectedCronBatchId(node.runs[0].batchId);
-                                              }
-                                            }
-                                          }}
-                                          className="p-2.5 cursor-pointer select-none space-y-1 hover:bg-muted/20 transition-colors rounded-xl"
-                                        >
-                                          <div className="flex items-center justify-between gap-1">
-                                            <div className="flex items-center gap-1.5 min-w-0">
-                                              <Server className="size-3 text-primary shrink-0" />
-                                              <span className="font-bold text-foreground truncate text-xs">{node.serverName}</span>
-                                            </div>
-
-                                            <div className="flex items-center gap-1">
-                                              <span className="text-[10px] text-muted-foreground font-mono">
-                                                {relativeTime(node.latestRunAt)}
-                                              </span>
-                                              <ChevronRight
-                                                className={`size-3 transition-transform duration-200 ${
-                                                  isNodeExpanded ? "rotate-90 text-primary" : "text-muted-foreground"
-                                                }`}
-                                              />
-                                            </div>
-                                          </div>
-
-                                          <div className="pt-0.5 flex items-center justify-between text-[10px] text-muted-foreground font-mono">
-                                            <div className="flex items-center gap-1">
-                                              {node.successRuns > 0 && (
-                                                <span className="text-emerald-400 font-medium">
-                                                  🟢 {node.successRuns}成功
-                                                </span>
-                                              )}
-                                              {node.failedRuns > 0 && (
-                                                <span className="text-rose-400 font-medium">
-                                                  · 🔴 {node.failedRuns}异常
-                                                </span>
-                                              )}
-                                            </div>
-                                            <span className="text-zinc-500 font-sans text-[10px]">
-                                              共 {node.totalRuns} 轮
-                                            </span>
-                                          </div>
+                                          )}
                                         </div>
+                                      );
+                                    })
+                                  )}
+                                </div>
+                              )}
 
-                                        {/* 展开内容：该机器的历次运行列表 */}
-                                        {isNodeExpanded && (
-                                          <div className="p-2 pt-0 border-t border-border/40 space-y-1 bg-muted/15 rounded-b-xl">
-                                            <div className="text-[9px] font-semibold text-muted-foreground pt-1 pb-0.5">
-                                              历次执行记录:
+                              {/* ── 视图 2：按执行机器查看 (By Node) ── */}
+                              {cronDetailViewMode === "node" && (
+                                <div className="space-y-1.5 pt-1">
+                                  {currentCronJobNodes
+                                    .filter((node) => {
+                                      if (!cronDetailSearch.trim()) return true;
+                                      const q = cronDetailSearch.toLowerCase().trim();
+                                      return (
+                                        node.serverName.toLowerCase().includes(q) ||
+                                        node.serverId.toLowerCase().includes(q) ||
+                                        node.latestStatus.includes(q)
+                                      );
+                                    })
+                                    .map((node) => {
+                                      const isNodeSelected = currentCronNodeLog?.serverId === node.serverId;
+                                      const isNodeExpanded = expandedCronNodeSummaryId !== null
+                                        ? expandedCronNodeSummaryId === node.serverId
+                                        : (isNodeSelected || currentCronJobNodes[0]?.serverId === node.serverId);
+
+                                      return (
+                                        <div
+                                          key={node.serverId}
+                                          className={`rounded-xl border transition-all text-xs ${
+                                            isNodeSelected
+                                              ? "bg-primary/5 border-primary/60 shadow-xs"
+                                              : "bg-card/60 border-border/40 hover:bg-muted/40"
+                                          }`}
+                                        >
+                                          {/* 机器卡片头部 */}
+                                          <div
+                                            onClick={() => {
+                                              if (isNodeExpanded) {
+                                                setExpandedCronNodeSummaryId("__node_closed__");
+                                              } else {
+                                                setExpandedCronNodeSummaryId(node.serverId);
+                                                setSelectedCronNodeId(node.serverId);
+                                                if (node.runs.length > 0) {
+                                                  setSelectedCronBatchId(node.runs[0].batchId);
+                                                }
+                                              }
+                                            }}
+                                            className="p-2.5 cursor-pointer select-none space-y-1 hover:bg-muted/20 transition-colors rounded-xl"
+                                          >
+                                            <div className="flex items-center justify-between gap-1">
+                                              <div className="flex items-center gap-1.5 min-w-0">
+                                                <Server className="size-3 text-primary shrink-0" />
+                                                <span className="font-bold text-foreground truncate text-xs">{node.serverName}</span>
+                                              </div>
+
+                                              <div className="flex items-center gap-1">
+                                                <span className="text-[10px] text-muted-foreground font-mono">
+                                                  {relativeTime(node.latestRunAt)}
+                                                </span>
+                                                <ChevronRight
+                                                  className={`size-3 transition-transform duration-200 ${
+                                                    isNodeExpanded ? "rotate-90 text-primary" : "text-muted-foreground"
+                                                  }`}
+                                                />
+                                              </div>
                                             </div>
 
-                                            <div className="space-y-1 max-h-[220px] overflow-y-auto pr-0.5">
-                                              {node.runs.map((r) => {
-                                                const isRunActive = currentCronBatch?.batchId === r.batchId && currentCronNodeLog?.serverId === node.serverId;
-
-                                                return (
-                                                  <div
-                                                    key={r.batchId}
-                                                    onClick={() => {
-                                                      setSelectedCronBatchId(r.batchId);
-                                                      setSelectedCronNodeId(node.serverId);
-                                                    }}
-                                                    className={`flex items-center justify-between p-1.5 rounded-md border transition-all cursor-pointer text-[10px] font-mono ${
-                                                      isRunActive
-                                                        ? "bg-primary/15 border-primary text-foreground shadow-2xs font-semibold"
-                                                        : "bg-card/70 border-border/40 hover:bg-muted/40 text-muted-foreground hover:text-foreground"
-                                                    }`}
-                                                  >
-                                                    <div className="flex items-center gap-1.5 min-w-0">
-                                                      <span
-                                                        className={`size-1.5 rounded-full shrink-0 ${
-                                                          r.status === "success"
-                                                            ? "bg-emerald-400"
-                                                            : r.status === "running"
-                                                              ? "bg-sky-400 animate-pulse"
-                                                              : "bg-rose-400"
-                                                        }`}
-                                                      />
-                                                      <span>#{r.runNumber || 1}</span>
-                                                      <span className="text-[9px] text-muted-foreground font-sans">
-                                                        ({r.triggerType === "cron" ? "定时" : "手动"})
-                                                      </span>
-                                                    </div>
-
-                                                    <div className="flex items-center gap-1.5 text-[9px] text-muted-foreground shrink-0">
-                                                      <span>{durationStr(r.durationMs)}</span>
-                                                      {isRunActive && (
-                                                        <ChevronRight className="size-2.5 text-primary" />
-                                                      )}
-                                                    </div>
-                                                  </div>
-                                                );
-                                              })}
+                                            <div className="pt-0.5 flex items-center justify-between text-[10px] text-muted-foreground font-mono">
+                                              <div className="flex items-center gap-1">
+                                                {node.successRuns > 0 && (
+                                                  <span className="text-emerald-400 font-medium">
+                                                    🟢 {node.successRuns}成功
+                                                  </span>
+                                                )}
+                                                {node.failedRuns > 0 && (
+                                                  <span className="text-rose-400 font-medium">
+                                                    · 🔴 {node.failedRuns}异常
+                                                  </span>
+                                                )}
+                                              </div>
+                                              <span className="text-zinc-500 font-sans text-[10px]">
+                                                共 {node.totalRuns} 轮
+                                              </span>
                                             </div>
                                           </div>
-                                        )}
-                                      </div>
-                                    );
-                                  })}
+
+                                          {/* 展开内容：该机器的历次运行列表 */}
+                                          {isNodeExpanded && (
+                                            <div className="p-2 pt-0 border-t border-border/40 space-y-1 bg-muted/15 rounded-b-xl">
+                                              <div className="text-[9px] font-semibold text-muted-foreground pt-1 pb-0.5">
+                                                历次执行记录:
+                                              </div>
+
+                                              <div className="space-y-1 max-h-[220px] overflow-y-auto pr-0.5">
+                                                {node.runs.map((r) => {
+                                                  const isRunActive = currentCronBatch?.batchId === r.batchId && currentCronNodeLog?.serverId === node.serverId;
+
+                                                  return (
+                                                    <div
+                                                      key={r.batchId}
+                                                      onClick={() => {
+                                                        setSelectedCronBatchId(r.batchId);
+                                                        setSelectedCronNodeId(node.serverId);
+                                                      }}
+                                                      className={`flex items-center justify-between p-1.5 rounded-md border transition-all cursor-pointer text-[10px] font-mono ${
+                                                        isRunActive
+                                                          ? "bg-primary/15 border-primary text-foreground shadow-2xs font-semibold"
+                                                          : "bg-card/70 border-border/40 hover:bg-muted/40 text-muted-foreground hover:text-foreground"
+                                                      }`}
+                                                    >
+                                                      <div className="flex items-center gap-1.5 min-w-0">
+                                                        <span
+                                                          className={`size-1.5 rounded-full shrink-0 ${
+                                                            r.status === "success"
+                                                              ? "bg-emerald-400"
+                                                              : r.status === "running"
+                                                                ? "bg-sky-400 animate-pulse"
+                                                                : "bg-rose-400"
+                                                          }`}
+                                                        />
+                                                        <span>#{r.runNumber || 1}</span>
+                                                        <span className="text-[9px] text-muted-foreground font-sans">
+                                                          ({r.triggerType === "cron" ? "定时" : "手动"})
+                                                        </span>
+                                                      </div>
+
+                                                      <div className="flex items-center gap-1.5 text-[9px] text-muted-foreground shrink-0">
+                                                        <span>{durationStr(r.durationMs)}</span>
+                                                        {isRunActive && (
+                                                          <ChevronRight className="size-2.5 text-primary" />
+                                                        )}
+                                                      </div>
+                                                    </div>
+                                                  );
+                                                })}
+                                              </div>
+                                            </div>
+                                          )}
+                                        </div>
+                                      );
+                                    })}
+                                </div>
+                              )}
+                            </div>
+
+                            {/* 栏 2 批次列表分页控制栏 (仅在 batch 模式下) */}
+                            {cronDetailViewMode === "batch" && filteredCronBatches.length > 0 && (
+                              <div className="p-2 border-t border-border/60 bg-muted/20 flex items-center justify-between gap-1 text-xs font-mono select-none">
+                                <div className="flex items-center gap-1 text-muted-foreground text-[10px]">
+                                  <span>共 <strong>{filteredCronBatches.length}</strong> 轮</span>
+                                  <span>·</span>
+                                  <span><strong>{cronBatchLogPage}</strong>/{totalCronBatchPages}页</span>
+                                </div>
+
+                                <div className="flex items-center gap-1">
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
+                                    onClick={() => {
+                                      setCronBatchLogPage((p) => Math.max(1, p - 1));
+                                      setSelectedCronBatchId(null);
+                                      setExpandedCronBatchId(null);
+                                    }}
+                                    disabled={cronBatchLogPage <= 1}
+                                    className="h-6 px-1.5 text-[10px] gap-0.5 cursor-pointer"
+                                  >
+                                    <ChevronLeft className="size-3" /> 上页
+                                  </Button>
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
+                                    onClick={() => {
+                                      setCronBatchLogPage((p) => Math.min(totalCronBatchPages, p + 1));
+                                      setSelectedCronBatchId(null);
+                                      setExpandedCronBatchId(null);
+                                    }}
+                                    disabled={cronBatchLogPage >= totalCronBatchPages}
+                                    className="h-6 px-1.5 text-[10px] gap-0.5 cursor-pointer"
+                                  >
+                                    下页 <ChevronRight className="size-3" />
+                                  </Button>
+                                </div>
                               </div>
                             )}
                           </>

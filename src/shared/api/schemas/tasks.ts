@@ -60,6 +60,25 @@ export const taskSchema = z.object({
 export type Task = z.infer<typeof taskSchema>;
 
 /**
+ * 任务列表查询入参契约
+ */
+export const taskListParamsSchema = z.object({
+  /** 搜索关键词（匹配指令、主机名等） */
+  search: z.string().optional(),
+  /** 执行状态筛选 */
+  status: z.string().optional(),
+  /** 目标主机 ID 筛选 */
+  serverId: z.string().optional(),
+  /** 批次 ID 筛选 */
+  batchId: z.string().optional(),
+  /** 当前页码 */
+  page: z.number().optional(),
+  /** 每页条数 */
+  pageSize: z.number().optional()
+}).optional();
+export type TaskListParams = z.infer<typeof taskListParamsSchema>;
+
+/**
  * 任务列表查询响应契约
  */
 export const taskListResultSchema = z.object({

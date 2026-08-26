@@ -67,6 +67,7 @@ import {
 import {
   taskApproveParamsSchema,
   taskDispatchParamsSchema,
+  taskListParamsSchema,
   taskListResultSchema,
   taskTemplateListResultSchema,
   taskVariablesResultSchema
@@ -75,7 +76,9 @@ export type { TaskVariable } from "./schemas/tasks";
 import {
   cronCreateParamsSchema,
   cronDeleteParamsSchema,
+  cronListParamsSchema,
   cronListResultSchema,
+  cronLogListParamsSchema,
   cronLogListResultSchema,
   cronToggleParamsSchema,
   cronUpdateParamsSchema
@@ -88,6 +91,7 @@ import {
 import {
   alertCreateParamsSchema,
   alertDeleteParamsSchema,
+  alertListParamsSchema,
   alertListResultSchema,
   alertSilenceParamsSchema
 } from "./schemas/alerts";
@@ -188,16 +192,16 @@ export const methods = {
 
   // Read models used by administrative feature modules.
   "overview.stats": { params: z.unknown(), result: overviewStatsResultSchema },
-  "task.list": { params: z.unknown(), result: taskListResultSchema },
+  "task.list": { params: taskListParamsSchema, result: taskListResultSchema },
   "task.template.list": { params: z.unknown(), result: taskTemplateListResultSchema },
   "task.variables.list": { params: z.unknown().optional(), result: taskVariablesResultSchema },
 
-  "cron.list": { params: z.unknown(), result: cronListResultSchema },
-  "cron.logs.list": { params: z.unknown().optional(), result: cronLogListResultSchema },
+  "cron.list": { params: cronListParamsSchema, result: cronListResultSchema },
+  "cron.logs.list": { params: cronLogListParamsSchema, result: cronLogListResultSchema },
 
   "monitor.service.list": { params: z.unknown(), result: pingListResultSchema },
 
-  "alert.list": { params: z.unknown(), result: alertListResultSchema },
+  "alert.list": { params: alertListParamsSchema, result: alertListResultSchema },
 
   "notification.list": { params: z.unknown(), result: notificationListResultSchema },
 

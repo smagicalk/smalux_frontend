@@ -2,15 +2,15 @@ import { useMemo, useState } from "react";
 import { useAlerts, useCreateAlertRule, useSilenceAlert, useDeleteAlert } from "../hooks/use-alerts";
 import { useNotifications, useCreateChannel, useToggleChannel } from "../hooks/use-notifications";
 import type { AlertRuleItem, AlertHistoryEvent, NotificationChannelItem } from "../types";
-import type { AlertRule, AlertHistory } from "@/shared/api/methods";
+import type { AlertRule, AlertHistory, AlertListParams } from "@/shared/api/methods";
 import {
   MOCK_ALERT_RULES,
   MOCK_ALERT_HISTORY,
   MOCK_NOTIFICATION_CHANNELS
 } from "../mock/alerts-mock";
 
-export function useAlertsData() {
-  const { data: rpcAlertsData, isLoading: alertsLoading, refetch: refetchAlerts } = useAlerts();
+export function useAlertsData(params?: AlertListParams) {
+  const { data: rpcAlertsData, isLoading: alertsLoading, refetch: refetchAlerts } = useAlerts(params);
   const { data: rpcNotificationsData, isLoading: notificationsLoading, refetch: refetchNotifications } = useNotifications();
 
   const createRule = useCreateAlertRule();
@@ -41,7 +41,9 @@ export function useAlertsData() {
       severity: r.severity as AlertRuleItem["severity"],
       enabled: r.enabled,
       silenced: r.silenced,
-      channels: ["chan-1"]
+      repeatIntervalSec: r.repeatIntervalSec,
+      channelIds: r.channelIds,
+      channels: r.channelIds ?? ["chan-1"]
     }));
   }, [rpcAlertsData]);
 

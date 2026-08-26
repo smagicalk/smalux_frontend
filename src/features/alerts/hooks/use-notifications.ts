@@ -51,10 +51,13 @@ export function useDeleteChannel() {
 
 /**
  * 发送单次连通性测试通知 Hook（HTTP POST /api/v1/notifications/:id/test）
+ * 测试成功后自动刷新通知渠道列表（更新 lastDeliveryAt / lastOk）
  */
 export function useTestChannel() {
+  const qc = useQueryClient();
   return useMutation({
     mutationFn: (params: { id: string; channelName: string }) =>
-      httpClient.post<{ ok: boolean; message?: string }>(`/api/v1/notifications/${params.id}/test`, {})
+      httpClient.post<{ ok: boolean; message?: string }>(`/api/v1/notifications/${params.id}/test`, {}),
+    onSuccess: () => qc.invalidateQueries({ queryKey: queryKeys.notifications })
   });
 }

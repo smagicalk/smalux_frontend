@@ -34,7 +34,11 @@ export const alertRuleSchema = z.object({
   /** 规则是否处于开启状态 */
   enabled: z.boolean(),
   /** 当前是否已被值班人员临时静默 */
-  silenced: z.boolean().default(false)
+  silenced: z.boolean().default(false),
+  /** 持续未静默时的循环重复通知间隔（秒，如 1800 表示每 30 分钟重复通知一次，0 为不重复通知） */
+  repeatIntervalSec: z.number().default(0).optional(),
+  /** 关联的通知推送渠道 ID 列表 */
+  channelIds: z.array(z.string()).default([]).optional()
 });
 export type AlertRule = z.infer<typeof alertRuleSchema>;
 
@@ -66,13 +70,34 @@ export const alertHistorySchema = z.object({
 export type AlertHistory = z.infer<typeof alertHistorySchema>;
 
 /**
+ * 告警规则与触发历史查询入参契约
+ */
+export const alertListParamsSchema = z.object({
+  /** 搜索关键词（匹配规则名、指标项、主机名等） */
+  search: z.string().optional(),
+  /** 严重级别过滤 */
+  severity: z.string().optional(),
+  /** 作用范围过滤 */
+  scope: z.enum(["all", "global", "custom"]).optional(),
+  /** 当前页码 */
+  page: z.number().optional(),
+  /** 每页条数 */
+  pageSize: z.number().optional()
+}).optional();
+export type AlertListParams = z.infer<typeof alertListParamsSchema>;
+
+/**
  * 告警规则与触发历史查询响应契约
  */
 export const alertListResultSchema = z.object({
   /** 告警规则列表 */
   rules: z.array(alertRuleSchema),
   /** 告警触发历史记录列表 */
-  history: z.array(alertHistorySchema)
+  history: z.array(alertHistorySchema),
+  /** 匹配的规则总数 */
+  totalRules: z.number().optional(),
+  /** 匹配的历史记录总数 */
+  totalHistory: z.number().optional()
 });
 
 /**
@@ -89,8 +114,12 @@ export const alertCreateParamsSchema = z.object({
   threshold: z.number(),
   /** 持续判定窗口（秒，默认 300） */
   windowSec: z.number().default(300),
+  /** 持续未静默时的循环重复通知间隔（秒，默认 0） */
+  repeatIntervalSec: z.number().default(0).optional(),
   /** 告警严重级别 */
   severity: alertSeveritySchema,
+  /** 关联的通知推送渠道 ID 列表 */
+  channelIds: z.array(z.string()).optional(),
   /** 目标主机 ID 列表（多选，可选） */
   serverIds: z.array(z.string()).optional(),
   /** 目标主机 ID（单机兼容，可选） */

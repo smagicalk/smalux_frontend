@@ -12,8 +12,7 @@ export const channelTypeSchema = z.enum([
   "webhook",
   "telegram",
   "email",
-  "js",
-  "tgbot"
+  "js"
 ]);
 export type ChannelType = z.infer<typeof channelTypeSchema>;
 

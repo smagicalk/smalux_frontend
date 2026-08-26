@@ -1,4 +1,4 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import {
   Database,
   Download,
@@ -32,7 +32,15 @@ import {
   Layers,
   Edit2,
   ExternalLink,
-  Code2
+  Code2,
+  ChevronDown,
+  KeyRound,
+  Cpu,
+  Network,
+  Radio,
+  FileCode,
+  Gauge,
+  Save
 } from "lucide-react";
 import { Card, CardHeader, CardTitle, CardContent, CardDescription } from "@/shared/ui/card";
 import { Button } from "@/shared/ui/button";
@@ -58,6 +66,7 @@ import {
   useCleanData,
   useTestRemoteStorage
 } from "@/features/settings/hooks/use-backup";
+import { useSettings, useSaveSettings } from "@/features/settings/hooks/use-settings";
 import type {
   BackupArchive,
   AutoBackupPlan,
@@ -66,6 +75,449 @@ import type {
 } from "@/features/settings/mock/settings-mock";
 
 export type { BackupArchive, AutoBackupPlan, RemoteStorageConfig, StorageStats };
+
+interface CleanupTimeSelectorProps {
+  category: "metrics" | "audit" | "alerts" | "tasks" | "apilogs";
+  value: string;
+  onChange: (val: string) => void;
+}
+
+/** 格式化生成人性化展示文本 */
+function getCleanupDisplayLabel(value: string, category: "metrics" | "audit" | "alerts" | "tasks" | "apilogs"): string {
+  if (value.startsWith("custom_")) {
+    const parts = value.split("_");
+    const num = parts[1] || "14";
+    const unit = parts[2] === "h" ? "小时" : parts[2] === "m" ? "个月" : "天";
+    return `自定义: 清理 ${num} ${unit}前`;
+  }
+  switch (value) {
+    case "1h": return "清理 1 小时前 (保留近 1 小时)";
+    case "6h": return "清理 6 小时前 (保留近 6 小时)";
+    case "12h": return "清理 12 小时前 (保留近 12 小时)";
+    case "1d": return "清理 1 天前 / 24h (保留近 24 小时)";
+    case "3d": return "清理 3 天前 (保留近 3 天)";
+    case "7": return "清理 7 天前 (保留近 1 周)";
+    case "15": return "清理 15 天前 (保留近半月)";
+    case "30": return `清理 30 天前 (保留近 1 个月${category === "metrics" || category === "apilogs" ? " · 推荐" : ""})`;
+    case "60": return "清理 60 天前 (保留近 2 个月)";
+    case "90": return `清理 90 天前 (保留近 1 季度${category === "audit" ? " · 推荐" : ""})`;
+    case "180": return "清理 180 天前 (保留近半年)";
+    case "365": return "清理 365 天前 (保留近 1 年 · 等保)";
+    case "730": return "清理 730 天前 (保留近 2 年)";
+    case "resolved_only": return "仅清理已解决告警 (推荐)";
+    case "completed_all": return "清空已完成任务 (推荐)";
+    case "only_revoked_tokens": return "仅清理失效Token与旧会话 (推荐)";
+    case "all": return "⚠️ 清空全部历史记录";
+    default: return `清理 ${value} 天前数据`;
+  }
+}
+
+/** 美化的高性能分组 Tab 式弹层选择与自定义时段控制器 */
+function CleanupTimeSelector({ category, value, onChange }: CleanupTimeSelectorProps) {
+  const [isOpen, setIsOpen] = useState(false);
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  // Tab: "short" | "standard" | "long" | "custom" | "all"
+  const [activeTab, setActiveTab] = useState<"short" | "standard" | "long" | "custom" | "all">(() => {
+    if (value.startsWith("custom_")) return "custom";
+    if (["1h", "6h", "12h", "1d", "3d"].includes(value)) return "short";
+    if (["180", "365", "730"].includes(value)) return "long";
+    if (value === "all") return "all";
+    return "standard";
+  });
+
+  const [customNum, setCustomNum] = useState(() => {
+    if (value.startsWith("custom_")) return value.split("_")[1] || "14";
+    return "14";
+  });
+  const [customUnit, setCustomUnit] = useState<"h" | "d" | "m">(() => {
+    if (value.startsWith("custom_")) return (value.split("_")[2] as "h" | "d" | "m") || "d";
+    return "d";
+  });
+
+  // 点击外部自动收起弹层
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (containerRef.current && !containerRef.current.contains(e.target as Node)) {
+        setIsOpen(false);
+      }
+    };
+    if (isOpen) {
+      document.addEventListener("mousedown", handleClickOutside);
+    }
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, [isOpen]);
+
+  const selectOption = (val: string) => {
+    onChange(val);
+    setIsOpen(false);
+  };
+
+  const applyCustom = (num: string, unit: "h" | "d" | "m") => {
+    const clean = num.replace(/[^\d]/g, "") || "1";
+    onChange(`custom_${clean}_${unit}`);
+    setIsOpen(false);
+  };
+
+  const currentLabel = getCleanupDisplayLabel(value, category);
+  const isCustom = value.startsWith("custom_");
+
+  return (
+    <div ref={containerRef} className="relative flex-1 min-w-0">
+      {/* 触发按钮 (Trigger Button) */}
+      <button
+        type="button"
+        onClick={() => setIsOpen(!isOpen)}
+        className={`h-8.5 w-full rounded-xl border transition-all px-3 flex items-center justify-between text-xs font-mono text-left cursor-pointer shadow-2xs ${
+          isOpen
+            ? "border-primary bg-background ring-2 ring-primary/20 text-foreground"
+            : "border-border/80 bg-background/90 hover:border-primary/40 hover:bg-background text-foreground"
+        }`}
+      >
+        <div className="flex items-center gap-1.5 min-w-0 pr-1">
+          {isCustom ? (
+            <Sparkles className="size-3 text-primary shrink-0" />
+          ) : ["1h", "6h", "12h", "1d", "3d"].includes(value) ? (
+            <Zap className="size-3 text-amber-500 shrink-0" />
+          ) : value === "all" ? (
+            <AlertTriangle className="size-3 text-rose-500 shrink-0" />
+          ) : (
+            <Clock className="size-3 text-sky-500 shrink-0" />
+          )}
+          <span className="truncate text-xs font-medium" title={currentLabel}>
+            {currentLabel}
+          </span>
+        </div>
+        <ChevronDown
+          className={`size-3.5 text-muted-foreground shrink-0 transition-transform duration-200 ${
+            isOpen ? "rotate-180 text-primary" : ""
+          }`}
+        />
+      </button>
+
+      {/* 浮动选项弹层 (Floating Tabbed Popover Picker) */}
+      {isOpen && (
+        <div className="absolute left-0 bottom-full mb-2 w-[330px] sm:w-[360px] z-50 rounded-2xl border border-border/80 bg-card/95 backdrop-blur-md shadow-2xl p-2.5 space-y-2.5 animate-in fade-in zoom-in-95 duration-150">
+          {/* 顶栏分类 Tab 切换器 */}
+          <div className="grid grid-cols-5 gap-1 p-1 rounded-xl bg-muted/60 text-[11px] font-mono font-medium">
+            <button
+              type="button"
+              onClick={() => setActiveTab("short")}
+              className={`py-1 rounded-lg transition-all text-center cursor-pointer flex items-center justify-center gap-0.5 ${
+                activeTab === "short"
+                  ? "bg-background text-amber-500 font-bold shadow-xs border border-border/40"
+                  : "text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              <Zap className="size-2.5" /> 短期
+            </button>
+            <button
+              type="button"
+              onClick={() => setActiveTab("standard")}
+              className={`py-1 rounded-lg transition-all text-center cursor-pointer flex items-center justify-center gap-0.5 ${
+                activeTab === "standard"
+                  ? "bg-background text-sky-500 font-bold shadow-xs border border-border/40"
+                  : "text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              <Clock className="size-2.5" /> 常规
+            </button>
+            <button
+              type="button"
+              onClick={() => setActiveTab("long")}
+              className={`py-1 rounded-lg transition-all text-center cursor-pointer flex items-center justify-center gap-0.5 ${
+                activeTab === "long"
+                  ? "bg-background text-indigo-500 font-bold shadow-xs border border-border/40"
+                  : "text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              <Calendar className="size-2.5" /> 长期
+            </button>
+            <button
+              type="button"
+              onClick={() => setActiveTab("custom")}
+              className={`py-1 rounded-lg transition-all text-center cursor-pointer flex items-center justify-center gap-0.5 ${
+                activeTab === "custom"
+                  ? "bg-background text-primary font-bold shadow-xs border border-border/40"
+                  : "text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              <Sparkles className="size-2.5" /> 自定义
+            </button>
+            <button
+              type="button"
+              onClick={() => setActiveTab("all")}
+              className={`py-1 rounded-lg transition-all text-center cursor-pointer flex items-center justify-center gap-0.5 ${
+                activeTab === "all"
+                  ? "bg-background text-rose-500 font-bold shadow-xs border border-border/40"
+                  : "text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              <Trash2 className="size-2.5" /> 全量
+            </button>
+          </div>
+
+          {/* 分类内容区 (Tab Content) */}
+          <div className="min-h-[115px] flex flex-col justify-center">
+            {/* 1. 短期 Tab */}
+            {activeTab === "short" && (
+              <div className="space-y-1.5">
+                <div className="text-[10px] text-muted-foreground px-1 font-mono">⚡ 适合突发产生的大量瞬时日志与打点时序：</div>
+                <div className="grid grid-cols-2 gap-1.5">
+                  {[
+                    { id: "1h", label: "1 小时前", desc: "保留近 1 小时" },
+                    { id: "6h", label: "6 小时前", desc: "保留近 6 小时" },
+                    { id: "12h", label: "12 小时前", desc: "保留近 12 小时" },
+                    { id: "1d", label: "1 天前 / 24h", desc: "保留近 24 小时" },
+                    { id: "3d", label: "3 天前", desc: "保留近 3 天数据" }
+                  ].map((item) => (
+                    <button
+                      key={item.id}
+                      type="button"
+                      onClick={() => selectOption(item.id)}
+                      className={`p-1.5 rounded-xl text-left border transition-all cursor-pointer flex items-center justify-between group ${
+                        value === item.id
+                          ? "border-amber-500/50 bg-amber-500/10 text-amber-600 dark:text-amber-400 font-semibold"
+                          : "border-border/60 hover:border-amber-500/30 hover:bg-muted/50 text-foreground"
+                      }`}
+                    >
+                      <div>
+                        <div className="text-xs font-mono font-medium">{item.label}</div>
+                        <div className="text-[9px] text-muted-foreground">{item.desc}</div>
+                      </div>
+                      {value === item.id && <Check className="size-3 text-amber-500" />}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* 2. 常规 Tab */}
+            {activeTab === "standard" && (
+              <div className="space-y-1.5">
+                {category === "alerts" && (
+                  <button
+                    type="button"
+                    onClick={() => selectOption("resolved_only")}
+                    className={`w-full p-2 rounded-xl text-left border transition-all cursor-pointer flex items-center justify-between group ${
+                      value === "resolved_only"
+                        ? "border-primary/50 bg-primary/10 text-primary font-semibold"
+                        : "border-border/60 hover:border-primary/30 hover:bg-muted/50 text-foreground"
+                    }`}
+                  >
+                    <div>
+                      <div className="text-xs font-bold text-primary flex items-center gap-1">
+                        <CheckCircle2 className="size-3 text-primary" /> 仅清理已解决告警 (推荐)
+                      </div>
+                      <div className="text-[9px] text-muted-foreground">消除所有已解决流水，持续保留当前触发中的未决告警</div>
+                    </div>
+                    {value === "resolved_only" && <Check className="size-3 text-primary" />}
+                  </button>
+                )}
+
+                {category === "tasks" && (
+                  <button
+                    type="button"
+                    onClick={() => selectOption("completed_all")}
+                    className={`w-full p-2 rounded-xl text-left border transition-all cursor-pointer flex items-center justify-between group ${
+                      value === "completed_all"
+                        ? "border-primary/50 bg-primary/10 text-primary font-semibold"
+                        : "border-border/60 hover:border-primary/30 hover:bg-muted/50 text-foreground"
+                    }`}
+                  >
+                    <div>
+                      <div className="text-xs font-bold text-primary flex items-center gap-1">
+                        <CheckCircle2 className="size-3 text-primary" /> 清空已完成任务 (推荐)
+                      </div>
+                      <div className="text-[9px] text-muted-foreground">清理已成功结束的历史任务日志，保留运行中或异常失败任务</div>
+                    </div>
+                    {value === "completed_all" && <Check className="size-3 text-primary" />}
+                  </button>
+                )}
+
+                {category === "apilogs" && (
+                  <button
+                    type="button"
+                    onClick={() => selectOption("only_revoked_tokens")}
+                    className={`w-full p-2 rounded-xl text-left border transition-all cursor-pointer flex items-center justify-between group ${
+                      value === "only_revoked_tokens"
+                        ? "border-violet-500/50 bg-violet-500/10 text-violet-600 dark:text-violet-400 font-semibold"
+                        : "border-border/60 hover:border-violet-500/30 hover:bg-muted/50 text-foreground"
+                    }`}
+                  >
+                    <div>
+                      <div className="text-xs font-bold text-violet-600 dark:text-violet-400 flex items-center gap-1">
+                        <CheckCircle2 className="size-3 text-violet-500" /> 仅清理失效Token与旧会话 (推荐)
+                      </div>
+                      <div className="text-[9px] text-muted-foreground">保留活跃令牌的近期调用，仅清理已注销/过期Token流水与离线会话</div>
+                    </div>
+                    {value === "only_revoked_tokens" && <Check className="size-3 text-violet-500" />}
+                  </button>
+                )}
+
+                <div className="grid grid-cols-2 gap-1.5">
+                  {[
+                    { id: "7", label: "7 天前", desc: "保留最近 1 周" },
+                    { id: "15", label: "15 天前", desc: "保留最近半个月" },
+                    { id: "30", label: "30 天前 (推荐)", desc: "保留最近 1 个月" },
+                    { id: "60", label: "60 天前", desc: "保留最近 2 个月" },
+                    { id: "90", label: "90 天前 (1季度)", desc: "保留最近 1 季度" }
+                  ].map((item) => (
+                    <button
+                      key={item.id}
+                      type="button"
+                      onClick={() => selectOption(item.id)}
+                      className={`p-1.5 rounded-xl text-left border transition-all cursor-pointer flex items-center justify-between group ${
+                        value === item.id
+                          ? "border-sky-500/50 bg-sky-500/10 text-sky-600 dark:text-sky-400 font-semibold"
+                          : "border-border/60 hover:border-sky-500/30 hover:bg-muted/50 text-foreground"
+                      }`}
+                    >
+                      <div>
+                        <div className="text-xs font-mono font-medium">{item.label}</div>
+                        <div className="text-[9px] text-muted-foreground">{item.desc}</div>
+                      </div>
+                      {value === item.id && <Check className="size-3 text-sky-500" />}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* 3. 长期 Tab */}
+            {activeTab === "long" && (
+              <div className="space-y-1.5">
+                <div className="text-[10px] text-muted-foreground px-1 font-mono">🏛️ 长期存档与超期合规审计日志清理：</div>
+                <div className="grid grid-cols-1 gap-1.5">
+                  {[
+                    { id: "180", label: "180 天前 (半年)", desc: "清理半年以上老旧数据，保留近 6 个月历史" },
+                    { id: "365", label: "365 天前 (1 年 · 等保合规推荐)", desc: "满足网络安全等保 2.0 对日志保留 6 个月~1 年的合规要求" },
+                    { id: "730", label: "730 天前 (2 年)", desc: "仅清理 2 年以上已归档的陈旧深冷历史流水" }
+                  ].map((item) => (
+                    <button
+                      key={item.id}
+                      type="button"
+                      onClick={() => selectOption(item.id)}
+                      className={`p-2 rounded-xl text-left border transition-all cursor-pointer flex items-center justify-between group ${
+                        value === item.id
+                          ? "border-indigo-500/50 bg-indigo-500/10 text-indigo-600 dark:text-indigo-400 font-semibold"
+                          : "border-border/60 hover:border-indigo-500/30 hover:bg-muted/50 text-foreground"
+                      }`}
+                    >
+                      <div>
+                        <div className="text-xs font-mono font-medium">{item.label}</div>
+                        <div className="text-[9px] text-muted-foreground">{item.desc}</div>
+                      </div>
+                      {value === item.id && <Check className="size-3.5 text-indigo-500" />}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* 4. 自定义 Tab */}
+            {activeTab === "custom" && (
+              <div className="space-y-2 p-1">
+                <div className="flex items-center gap-1.5">
+                  <div className="relative flex items-center flex-1 min-w-0">
+                    <span className="absolute left-2.5 text-[10px] font-medium text-muted-foreground font-mono">清理</span>
+                    <input
+                      type="number"
+                      min="1"
+                      max="9999"
+                      value={customNum}
+                      onChange={(e) => setCustomNum(e.target.value.replace(/[^\d]/g, ""))}
+                      placeholder="数值"
+                      className="h-8 w-full pl-10 pr-2 py-1 text-xs font-mono font-semibold rounded-xl border border-primary/50 bg-background text-foreground shadow-2xs focus:outline-none focus:ring-2 focus:ring-primary/20"
+                    />
+                  </div>
+
+                  <select
+                    value={customUnit}
+                    onChange={(e) => setCustomUnit(e.target.value as "h" | "d" | "m")}
+                    className="h-8 px-2 rounded-xl border border-border/80 bg-background text-xs font-mono font-medium text-foreground cursor-pointer focus:outline-none focus:ring-2 focus:ring-primary/20 shadow-2xs"
+                  >
+                    <option value="h">小时前</option>
+                    <option value="d">天前</option>
+                    <option value="m">个月前</option>
+                  </select>
+
+                  <Button
+                    size="sm"
+                    onClick={() => applyCustom(customNum, customUnit)}
+                    className="h-8 text-xs font-semibold shrink-0 cursor-pointer shadow-xs"
+                  >
+                    应用
+                  </Button>
+                </div>
+
+                {/* 快捷微标签 */}
+                <div className="flex items-center gap-1 flex-wrap text-[9px] font-mono text-muted-foreground pt-0.5">
+                  <span className="text-[9px] text-muted-foreground/70">快速填入:</span>
+                  {[
+                    { num: "6", unit: "h" as const, label: "6小时" },
+                    { num: "12", unit: "h" as const, label: "12小时" },
+                    { num: "3", unit: "d" as const, label: "3天" },
+                    { num: "14", unit: "d" as const, label: "14天" },
+                    { num: "45", unit: "d" as const, label: "45天" },
+                    { num: "180", unit: "d" as const, label: "180天" }
+                  ].map((chip) => (
+                    <button
+                      key={chip.label}
+                      type="button"
+                      onClick={() => {
+                        setCustomNum(chip.num);
+                        setCustomUnit(chip.unit);
+                        applyCustom(chip.num, chip.unit);
+                      }}
+                      className="px-1.5 py-0.5 rounded-md bg-muted hover:bg-primary/15 hover:text-primary border border-border/50 transition-colors cursor-pointer"
+                    >
+                      {chip.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {/* 5. 全量清理 Tab */}
+            {activeTab === "all" && (
+              <div className="p-2 space-y-1.5 rounded-xl bg-rose-500/10 border border-rose-500/20 text-center">
+                <div className="text-xs font-bold text-rose-500 flex items-center justify-center gap-1">
+                  <AlertTriangle className="size-3.5 text-rose-500" /> 高危操作：清空全部历史数据
+                </div>
+                <p className="text-[9px] text-muted-foreground">
+                  将不保留任何历史条目，仅保留基础配置与空库结构。此操作无法撤销。
+                </p>
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => selectOption("all")}
+                  className="w-full h-7.5 text-xs font-bold text-rose-500 border-rose-500/40 hover:bg-rose-500 hover:text-white cursor-pointer"
+                >
+                  <Trash2 className="size-3 mr-1" /> 确认选择清空全部
+                </Button>
+              </div>
+            )}
+          </div>
+
+          {/* 底部信息条 */}
+          <div className="pt-1.5 border-t border-border/40 flex items-center justify-between text-[10px] text-muted-foreground font-mono">
+            <span className="truncate">当前选择: <strong className="text-foreground">{currentLabel}</strong></span>
+            <button
+              type="button"
+              onClick={() => setIsOpen(false)}
+              className="text-muted-foreground hover:text-foreground text-[10px] cursor-pointer"
+            >
+              关闭
+            </button>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
 
 export function DataBackupTab() {
   // API Query Hooks (彻底脱离写死，统一走标准 RESTful 接口)
@@ -97,6 +549,49 @@ export function DataBackupTab() {
   const cleanDataMutation = useCleanData();
   const testRemoteMutation = useTestRemoteStorage();
 
+  // 系统全局存储与留存配置 (Settings API)
+  const { data: settingsData, isLoading: isSettingsLoading } = useSettings();
+  const saveSettingsMutation = useSaveSettings();
+  const [retentionForm, setRetentionForm] = useState<Record<string, string>>({});
+
+  useEffect(() => {
+    if (settingsData?.settings) {
+      const map: Record<string, string> = {};
+      settingsData.settings.forEach((s) => {
+        map[s.key] = s.value;
+      });
+      setRetentionForm(map);
+    }
+  }, [settingsData]);
+
+  const handleRetentionChange = (key: string, val: string) => {
+    setRetentionForm((prev) => ({ ...prev, [key]: val }));
+  };
+
+  const handleSaveRetentionSettings = async () => {
+    try {
+      const updates = Object.entries(retentionForm).map(([key, value]) => ({
+        key,
+        value
+      }));
+      await saveSettingsMutation.mutateAsync(updates);
+      toast.success("已成功保存数据保存时长与存储治理策略！");
+    } catch (err: any) {
+      toast.error(err.message || "保存留存策略失败");
+    }
+  };
+
+  const handleResetRetentionSettings = () => {
+    if (settingsData?.settings) {
+      const map: Record<string, string> = {};
+      settingsData.settings.forEach((s) => {
+        map[s.key] = s.value;
+      });
+      setRetentionForm(map);
+      toast.info("已重置为当前服务端保存的留存策略");
+    }
+  };
+
   // 左侧选中的任务过滤 ("manual" | plan.id)
   const [selectedTaskFilter, setSelectedTaskFilter] = useState<string>("plan_daily_main");
 
@@ -114,7 +609,16 @@ export function DataBackupTab() {
   const [planWeeklyDays, setPlanWeeklyDays] = useState<string[]>(["0"]); // 支持周几多选，默认周日
   const [planCronExpr, setPlanCronExpr] = useState("0 3 * * *");
   const [planRetentionCount, setPlanRetentionCount] = useState<string>("14");
-  const [planScope, setPlanScope] = useState<"all" | "configs_only">("all");
+  const [planScope, setPlanScope] = useState<"all" | "core_only" | "core_and_audit" | "custom">("all");
+  const [planCustomModules, setPlanCustomModules] = useState<string[]>([
+    "core",
+    "metrics",
+    "audit",
+    "alerts",
+    "tasks",
+    "apilogs",
+    "themes"
+  ]);
   const [planEncrypt, setPlanEncrypt] = useState(true);
   const [planRemoteType, setPlanRemoteType] = useState<"s3" | "webdav">("s3");
 
@@ -155,7 +659,16 @@ export function DataBackupTab() {
 
   // 手动创建备份弹窗
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
-  const [backupScope, setBackupScope] = useState<"all" | "configs_only">("all");
+  const [backupScope, setBackupScope] = useState<"all" | "core_only" | "core_and_audit" | "custom">("all");
+  const [backupCustomModules, setBackupCustomModules] = useState<string[]>([
+    "core",
+    "metrics",
+    "audit",
+    "alerts",
+    "tasks",
+    "apilogs",
+    "themes"
+  ]);
   const [encryptBackup, setEncryptBackup] = useState(true);
   const [backupPassword, setBackupPassword] = useState("");
   const [backupNotes, setBackupNotes] = useState("");
@@ -172,10 +685,11 @@ export function DataBackupTab() {
   const [pruneBackupRule, setPruneBackupRule] = useState<"older_7d" | "older_30d" | "only_scheduled" | "all">("older_30d");
 
   // 手动数据清理状态
-  const [cleaningMetricDays, setCleaningMetricDays] = useState<"7" | "30" | "90" | "all">("30");
-  const [cleaningAuditDays, setCleaningAuditDays] = useState<"15" | "30" | "90">("30");
-  const [cleaningAlertRule, setCleaningAlertRule] = useState<"resolved_only" | "older_30d">("resolved_only");
-  const [cleaningTaskRule, setCleaningTaskRule] = useState<"older_30d" | "completed_all">("older_30d");
+  const [cleaningMetricDays, setCleaningMetricDays] = useState<string>("30");
+  const [cleaningAuditDays, setCleaningAuditDays] = useState<string>("90");
+  const [cleaningAlertRule, setCleaningAlertRule] = useState<string>("resolved_only");
+  const [cleaningTaskRule, setCleaningTaskRule] = useState<string>("30");
+  const [cleaningApiLogsRule, setCleaningApiLogsRule] = useState<string>("30");
 
   const [activeCleaningKey, setActiveCleaningKey] = useState<string | null>(null);
 
@@ -203,6 +717,7 @@ export function DataBackupTab() {
     setPlanCronExpr("0 3 * * *");
     setPlanRetentionCount("14");
     setPlanScope("all");
+    setPlanCustomModules(["core", "metrics", "audit", "alerts", "tasks", "apilogs", "themes"]);
     setPlanEncrypt(true);
     setPlanRemoteType("s3");
     setS3Endpoint("");
@@ -238,7 +753,14 @@ export function DataBackupTab() {
     }
 
     setPlanRetentionCount(String(plan.retentionCount));
-    setPlanScope(plan.scope);
+    setPlanScope(
+      plan.scope === "configs_only"
+        ? "core_only"
+        : (plan.scope as any) || "all"
+    );
+    setPlanCustomModules(
+      plan.customModules || ["core", "metrics", "audit", "alerts", "tasks", "apilogs", "themes"]
+    );
     setPlanEncrypt(plan.encrypt);
 
     if (plan.remoteConfig) {
@@ -360,6 +882,7 @@ export function DataBackupTab() {
       enableRemote: isRemote,
       remoteConfig: remoteConfigObj,
       scope: planScope,
+      customModules: planScope === "custom" ? planCustomModules : undefined,
       encrypt: planEncrypt
     };
 
@@ -414,6 +937,7 @@ export function DataBackupTab() {
     try {
       const created = await createBackupMutation.mutateAsync({
         scope: backupScope,
+        customModules: backupScope === "custom" ? backupCustomModules : undefined,
         encrypt: encryptBackup,
         notes: backupNotes.trim() || "管理员手动快照"
       });
@@ -459,12 +983,22 @@ export function DataBackupTab() {
   };
 
   // 4. 手动清理系统各类业务数据
-  const handleManualDataCleanup = async (type: "metrics" | "audit" | "alerts" | "tasks") => {
+  const handleManualDataCleanup = async (type: "metrics" | "audit" | "alerts" | "tasks" | "apilogs") => {
     setActiveCleaningKey(type);
     try {
+      const rule =
+        type === "metrics"
+          ? cleaningMetricDays
+          : type === "audit"
+          ? cleaningAuditDays
+          : type === "alerts"
+          ? cleaningAlertRule
+          : type === "tasks"
+          ? cleaningTaskRule
+          : cleaningApiLogsRule;
       const res = await cleanDataMutation.mutateAsync({
         type,
-        rule: type === "metrics" ? cleaningMetricDays : type === "audit" ? String(cleaningAuditDays) : undefined
+        rule
       });
       setActiveCleaningKey(null);
       toast.success(`清理完成！已释放约 ${res.freedMb.toFixed(1)} MB 磁盘空间。`);
@@ -513,258 +1047,695 @@ export function DataBackupTab() {
     }
   };
 
-  const totalBackupBytes = backups.reduce((acc, cur) => acc + cur.sizeBytes, 0);
-  const totalOccupiedMb = storageStats.dbSizeMb + storageStats.metricsSizeMb + storageStats.themesSizeMb + storageStats.auditSizeMb + totalBackupBytes / (1024 * 1024);
+  const totalOccupiedMb =
+    storageStats.dbSizeMb +
+    storageStats.metricsSizeMb +
+    storageStats.themesSizeMb +
+    storageStats.auditSizeMb +
+    storageStats.alertsSizeMb +
+    storageStats.tasksSizeMb +
+    (storageStats.apiLogsSizeMb || 0);
+
+  const maxQuotaGb = parseFloat(retentionForm["storage.maxDbSizeGb"] || "20") || 20;
+  const maxQuotaMb = maxQuotaGb * 1024;
 
   return (
     <div className="space-y-6">
-      {/* 1. 核心操作快捷入口 (备份 / 恢复 / 清理备份 / 手动数据清理) */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-        {/* 操作 1: 创建备份 */}
-        <button
-          type="button"
-          onClick={() => setCreateDialogOpen(true)}
-          className="flex flex-col items-center justify-center gap-2 p-4 rounded-xl border border-border/80 bg-card hover:border-primary hover:bg-primary/5 transition-all group cursor-pointer shadow-xs"
-        >
-          <div className="size-10 rounded-xl bg-primary/10 text-primary flex items-center justify-center group-hover:scale-110 transition-transform">
-            <Database className="size-5" />
-          </div>
-          <div className="text-center">
-            <div className="font-bold text-xs text-foreground group-hover:text-primary transition-colors">
-              创建备份
-            </div>
-            <div className="text-[10px] text-muted-foreground mt-0.5">即时全量/配置快照</div>
-          </div>
-        </button>
-
-        {/* 操作 2: 恢复数据 */}
-        <button
-          type="button"
-          onClick={() => {
-            if (backups.length > 0) {
-              setSelectedBackupForRestore(backups[0]);
-              setRestoreDialogOpen(true);
-            } else {
-              restoreFileRef.current?.click();
-            }
-          }}
-          className="flex flex-col items-center justify-center gap-2 p-4 rounded-xl border border-border/80 bg-card hover:border-amber-500 hover:bg-amber-500/5 transition-all group cursor-pointer shadow-xs"
-        >
-          <div className="size-10 rounded-xl bg-amber-500/10 text-amber-500 flex items-center justify-center group-hover:scale-110 transition-transform">
-            <RotateCcw className="size-5" />
-          </div>
-          <div className="text-center">
-            <div className="font-bold text-xs text-foreground group-hover:text-amber-500 transition-colors">
-              数据恢复
-            </div>
-            <div className="text-[10px] text-muted-foreground mt-0.5">从快照或本地包还原</div>
-          </div>
-        </button>
-
-        {/* 操作 3: 清理备份 */}
-        <button
-          type="button"
-          onClick={() => setPruneBackupDialogOpen(true)}
-          className="flex flex-col items-center justify-center gap-2 p-4 rounded-xl border border-border/80 bg-card hover:border-rose-500 hover:bg-rose-500/5 transition-all group cursor-pointer shadow-xs"
-        >
-          <div className="size-10 rounded-xl bg-rose-500/10 text-rose-500 flex items-center justify-center group-hover:scale-110 transition-transform">
-            <Trash2 className="size-5" />
-          </div>
-          <div className="text-center">
-            <div className="font-bold text-xs text-foreground group-hover:text-rose-500 transition-colors">
-              清理备份
-            </div>
-            <div className="text-[10px] text-muted-foreground mt-0.5">批量清理过期快照</div>
-          </div>
-        </button>
-
-        {/* 操作 4: 手动清理数据 */}
-        <button
-          type="button"
-          onClick={() => {
-            const el = document.getElementById("manual-data-cleanup-section");
-            el?.scrollIntoView({ behavior: "smooth" });
-          }}
-          className="flex flex-col items-center justify-center gap-2 p-4 rounded-xl border border-border/80 bg-card hover:border-sky-500 hover:bg-sky-500/5 transition-all group cursor-pointer shadow-xs"
-        >
-          <div className="size-10 rounded-xl bg-sky-500/10 text-sky-500 flex items-center justify-center group-hover:scale-110 transition-transform">
-            <Eraser className="size-5" />
-          </div>
-          <div className="text-center">
-            <div className="font-bold text-xs text-foreground group-hover:text-sky-500 transition-colors">
-              手动清理数据
-            </div>
-            <div className="text-[10px] text-muted-foreground mt-0.5">时序/日志/存储优化</div>
-          </div>
-        </button>
-      </div>
-
-      {/* 2. 存储容量监控与数据分布大盘 (Unified Storage & Quota Telemetry) */}
+      {/* 1. 存储空间水位与数据分布 (Apple/Stripe Minimalist Storage Capsule) */}
       <Card className="overflow-hidden border-border/80 shadow-xs">
-        <CardHeader className="py-3.5 bg-muted/20 border-b border-border/60">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2">
-            <div className="flex items-center gap-2">
-              <HardDrive className="size-4 text-primary" />
-              <div>
-                <CardTitle className="text-sm font-bold text-foreground">
-                  系统存储空间水位与数据分布 (Storage & Quota Telemetry)
-                </CardTitle>
-                <CardDescription className="text-[11px]">
-                  全局磁盘配额已分配 5.0 GB · 当前总占用 {totalOccupiedMb.toFixed(1)} MB (3.8%)
-                </CardDescription>
-              </div>
+        <CardContent className="p-4 sm:p-5 space-y-3">
+          {/* 上半部：两端数据指标与状态 (Header Readout) */}
+          <div className="flex flex-col sm:flex-row sm:items-baseline justify-between gap-2">
+            <div className="flex items-baseline gap-2.5">
+              <span className="text-xs font-semibold text-foreground flex items-center gap-1.5">
+                <HardDrive className="size-3.5 text-primary" />
+                存储空间水位
+              </span>
+              <span className="text-xl sm:text-2xl font-bold font-mono text-foreground tracking-tight">
+                {totalOccupiedMb.toFixed(1)} <span className="text-xs font-normal text-muted-foreground">MB</span>
+              </span>
+              <span className="text-xs font-mono text-muted-foreground">
+                / {maxQuotaGb.toFixed(1)} GB 配额
+              </span>
             </div>
 
-            <div className="flex items-center gap-2">
-              <Badge variant="success" dot className="font-mono text-[10px]">
-                存储空间极充裕 (Healthy)
-              </Badge>
-              <Badge variant="neutral" className="font-mono text-[10px]">
-                主库运行正常
-              </Badge>
+            <div className="flex items-center gap-2 self-start sm:self-auto font-mono text-xs">
+              <span className="text-muted-foreground">
+                已使用 <strong className="text-foreground font-semibold">{((totalOccupiedMb / maxQuotaMb) * 100).toFixed(2)}%</strong>
+              </span>
+              <span className="text-border">·</span>
+              <span className="text-emerald-600 dark:text-emerald-400 font-semibold">
+                剩余 {Math.max(0, maxQuotaGb - totalOccupiedMb / 1024).toFixed(2)} GB
+              </span>
+            </div>
+          </div>
+
+          {/* 胶囊多色分段进度条 (Ultra-smooth Segmented Capsule Bar) */}
+          <div className="h-3 w-full rounded-full bg-muted/60 overflow-hidden flex shadow-inner border border-border/50">
+            {/* 1. 探针时序监控 */}
+            <div
+              style={{ width: `${Math.max(1.5, (storageStats.metricsSizeMb / totalOccupiedMb) * 100)}%` }}
+              className="h-full bg-sky-500 hover:brightness-110 transition-all cursor-help"
+              title={`探针时序与监控指标: ${storageStats.metricsSizeMb.toFixed(1)} MB (${((storageStats.metricsSizeMb / totalOccupiedMb) * 100).toFixed(1)}%)`}
+            />
+            {/* 2. 系统主数据库 */}
+            <div
+              style={{ width: `${Math.max(1.5, (storageStats.dbSizeMb / totalOccupiedMb) * 100)}%` }}
+              className="h-full bg-primary hover:brightness-110 transition-all cursor-help"
+              title={`系统核心数据库: ${storageStats.dbSizeMb.toFixed(1)} MB (${((storageStats.dbSizeMb / totalOccupiedMb) * 100).toFixed(1)}%)`}
+            />
+            {/* 3. 操作与安全审计 */}
+            <div
+              style={{ width: `${Math.max(1.5, (storageStats.auditSizeMb / totalOccupiedMb) * 100)}%` }}
+              className="h-full bg-amber-500 hover:brightness-110 transition-all cursor-help"
+              title={`操作与安全审计: ${storageStats.auditSizeMb.toFixed(1)} MB (${((storageStats.auditSizeMb / totalOccupiedMb) * 100).toFixed(1)}%)`}
+            />
+            {/* 4. 任务执行与脚本日志 */}
+            <div
+              style={{ width: `${Math.max(1.5, (storageStats.tasksSizeMb / totalOccupiedMb) * 100)}%` }}
+              className="h-full bg-emerald-500 hover:brightness-110 transition-all cursor-help"
+              title={`任务执行与脚本日志: ${storageStats.tasksSizeMb.toFixed(1)} MB (${((storageStats.tasksSizeMb / totalOccupiedMb) * 100).toFixed(1)}%)`}
+            />
+            {/* 5. 告警事件与通知流水 */}
+            <div
+              style={{ width: `${Math.max(1.5, (storageStats.alertsSizeMb / totalOccupiedMb) * 100)}%` }}
+              className="h-full bg-rose-500 hover:brightness-110 transition-all cursor-help"
+              title={`告警事件与通知流水: ${storageStats.alertsSizeMb.toFixed(1)} MB (${((storageStats.alertsSizeMb / totalOccupiedMb) * 100).toFixed(1)}%)`}
+            />
+            {/* 6. API 访问与鉴权流水 */}
+            <div
+              style={{ width: `${Math.max(1.5, ((storageStats.apiLogsSizeMb || 0) / totalOccupiedMb) * 100)}%` }}
+              className="h-full bg-violet-500 hover:brightness-110 transition-all cursor-help"
+              title={`API 访问与鉴权流水: ${(storageStats.apiLogsSizeMb || 0).toFixed(1)} MB (${(((storageStats.apiLogsSizeMb || 0) / totalOccupiedMb) * 100).toFixed(1)}%)`}
+            />
+            {/* 7. 主页展示页模板包 */}
+            <div
+              style={{ width: `${Math.max(1, (storageStats.themesSizeMb / totalOccupiedMb) * 100)}%` }}
+              className="h-full bg-indigo-500 hover:brightness-110 transition-all cursor-help"
+              title={`展示大盘模板包: ${storageStats.themesSizeMb.toFixed(1)} MB (${((storageStats.themesSizeMb / totalOccupiedMb) * 100).toFixed(1)}%)`}
+            />
+          </div>
+
+          {/* 下半部：极简图例 (Minimalist Legend Row) */}
+          <div className="flex items-center gap-x-4 gap-y-1.5 flex-wrap text-[11px] text-muted-foreground font-mono pt-0.5">
+            <span className="flex items-center gap-1.5">
+              <span className="size-2 rounded-full bg-sky-500" />
+              <span>探针时序 <strong>{storageStats.metricsSizeMb.toFixed(1)} MB</strong></span>
+            </span>
+            <span className="flex items-center gap-1.5">
+              <span className="size-2 rounded-full bg-primary" />
+              <span>系统主库 <strong>{storageStats.dbSizeMb.toFixed(1)} MB</strong></span>
+            </span>
+            <span className="flex items-center gap-1.5">
+              <span className="size-2 rounded-full bg-amber-500" />
+              <span>安全审计 <strong>{storageStats.auditSizeMb.toFixed(1)} MB</strong></span>
+            </span>
+            <span className="flex items-center gap-1.5">
+              <span className="size-2 rounded-full bg-emerald-500" />
+              <span>任务日志 <strong>{storageStats.tasksSizeMb.toFixed(1)} MB</strong></span>
+            </span>
+            <span className="flex items-center gap-1.5">
+              <span className="size-2 rounded-full bg-rose-500" />
+              <span>告警记录 <strong>{storageStats.alertsSizeMb.toFixed(1)} MB</strong></span>
+            </span>
+            <span className="flex items-center gap-1.5">
+              <span className="size-2 rounded-full bg-violet-500" />
+              <span>API 访问 <strong>{(storageStats.apiLogsSizeMb || 0).toFixed(1)} MB</strong></span>
+            </span>
+            <span className="flex items-center gap-1.5">
+              <span className="size-2 rounded-full bg-indigo-500" />
+              <span>大盘模板 <strong>{storageStats.themesSizeMb.toFixed(1)} MB</strong></span>
+            </span>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* 2. 数据生命周期与自动留存治理策略 (Data Lifecycle & Retention Governance) */}
+      <Card id="retention-policy-section">
+        <CardHeader className="py-4">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div>
+              <CardTitle className="text-base flex items-center gap-2">
+                <Activity className="size-4 text-sky-500" />
+                单项指标与业务数据保存时长 (Data Retention & Lifecycle Policies)
+              </CardTitle>
+              <CardDescription>
+                按时序指标与业务数据类型独立设定保留天数，超期切片由后台引擎自动按 FIFO 滚动回收
+              </CardDescription>
+            </div>
+
+            <div className="flex items-center gap-2 self-start sm:self-auto">
+              <Button
+                size="sm"
+                variant="outline"
+                onClick={handleResetRetentionSettings}
+                disabled={isSettingsLoading || saveSettingsMutation.isPending}
+                className="h-8 text-xs cursor-pointer gap-1.5"
+              >
+                <RotateCcw className="size-3.5" /> 重置
+              </Button>
+              <Button
+                size="sm"
+                onClick={handleSaveRetentionSettings}
+                disabled={isSettingsLoading || saveSettingsMutation.isPending}
+                className="h-8 px-4 text-xs cursor-pointer font-semibold gap-1.5 shadow-xs"
+              >
+                {saveSettingsMutation.isPending ? (
+                  <RefreshCw className="size-3.5 animate-spin" />
+                ) : (
+                  <Save className="size-3.5" />
+                )}
+                保存留存策略
+              </Button>
             </div>
           </div>
         </CardHeader>
-        <CardContent className="p-4 space-y-4 text-xs">
-          {/* 多色彩复合占用比例条 (Stacked Storage Distribution Bar) */}
-          <div className="space-y-2">
-            <div className="flex items-center justify-between text-[11px]">
-              <span className="font-semibold text-foreground">业务数据容量构成分布</span>
-              <span className="text-muted-foreground font-mono">
-                总计: {totalOccupiedMb.toFixed(1)} MB
-              </span>
+        <CardContent className="space-y-5 text-xs">
+          {/* A. 上半部：全局数据库存储容量上限 与 离线废弃节点清理 */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 p-4 rounded-xl border border-border/80 bg-muted/10">
+            {/* 全局数据库配额上限 */}
+            <div className="space-y-1.5">
+              <label className="h-5 font-semibold text-foreground flex items-center justify-between">
+                <span className="flex items-center gap-1.5">
+                  <Gauge className="size-3.5 text-primary" />
+                  全局数据库存储容量上限 (Global Storage Quota)
+                </span>
+                <span className="text-[10px] text-muted-foreground font-mono">推荐: 10 ~ 100 GB</span>
+              </label>
+              <div className="relative">
+                <input
+                  type="number"
+                  min={2}
+                  max={500}
+                  value={retentionForm["storage.maxDbSizeGb"] || "20"}
+                  onChange={(e) => handleRetentionChange("storage.maxDbSizeGb", e.target.value)}
+                  className="w-full h-10 rounded-xl border border-border/80 bg-background px-3.5 pr-10 text-xs font-mono outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 text-foreground transition-all shadow-2xs"
+                />
+                <span className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground text-[11px] font-mono pointer-events-none font-bold">
+                  GB
+                </span>
+              </div>
+              <p className="text-[10px] text-muted-foreground">当实际存储达到此水位时触发后台自动回收机制，按各单项保留周期淘汰超期切片</p>
             </div>
 
-            {/* 复合彩色进度条 */}
-            <div className="h-3 w-full rounded-full bg-muted/50 overflow-hidden flex shadow-inner border border-border/40">
-              {/* 1. 探针时序监控 */}
-              <div
-                style={{ width: "59%" }}
-                className="h-full bg-sky-500 hover:brightness-110 transition-all cursor-help"
-                title={`探针时序与监控指标: ${storageStats.metricsSizeMb.toFixed(1)} MB (59.7%)`}
-              />
-              {/* 2. 系统主数据库 */}
-              <div
-                style={{ width: "20%" }}
-                className="h-full bg-primary hover:brightness-110 transition-all cursor-help"
-                title={`系统核心数据库: ${storageStats.dbSizeMb.toFixed(1)} MB (20.3%)`}
-              />
-              {/* 3. 操作与安全审计 */}
-              <div
-                style={{ width: "10%" }}
-                className="h-full bg-amber-500 hover:brightness-110 transition-all cursor-help"
-                title={`操作与安全审计: ${storageStats.auditSizeMb.toFixed(1)} MB (9.6%)`}
-              />
-              {/* 4. 快照备份归档 */}
-              <div
-                style={{ width: "8%" }}
-                className="h-full bg-emerald-500 hover:brightness-110 transition-all cursor-help"
-                title={`快照备份归档: ${formatSize(totalBackupBytes)} (7.7%)`}
-              />
-              {/* 5. 主页展示页模板与包 */}
-              <div
-                style={{ width: "3%" }}
-                className="h-full bg-indigo-500 hover:brightness-110 transition-all cursor-help"
-                title={`展示大盘模板包: ${storageStats.themesSizeMb.toFixed(1)} MB (2.7%)`}
-              />
-            </div>
-
-            {/* 图例标签栏 */}
-            <div className="flex items-center gap-4 flex-wrap text-[10px] text-muted-foreground pt-0.5 font-mono">
-              <span className="flex items-center gap-1.5">
-                <span className="size-2 rounded-full bg-sky-500" />
-                <span>探针时序 <strong>{storageStats.metricsSizeMb.toFixed(1)} MB</strong></span>
-              </span>
-              <span className="flex items-center gap-1.5">
-                <span className="size-2 rounded-full bg-primary" />
-                <span>系统主库 <strong>{storageStats.dbSizeMb.toFixed(1)} MB</strong></span>
-              </span>
-              <span className="flex items-center gap-1.5">
-                <span className="size-2 rounded-full bg-indigo-500" />
-                <span>展示页模板 <strong>{storageStats.themesSizeMb.toFixed(1)} MB</strong></span>
-              </span>
-              <span className="flex items-center gap-1.5">
-                <span className="size-2 rounded-full bg-amber-500" />
-                <span>安全与审计 <strong>{storageStats.auditSizeMb.toFixed(1)} MB</strong></span>
-              </span>
-              <span className="flex items-center gap-1.5">
-                <span className="size-2 rounded-full bg-emerald-500" />
-                <span>备份快照 <strong>{formatSize(totalBackupBytes)}</strong></span>
-              </span>
+            {/* 长期离线废弃节点自动注销 */}
+            <div className="space-y-1.5">
+              <label className="h-5 font-semibold text-foreground flex items-center justify-between">
+                <span className="flex items-center gap-1.5">
+                  <Radio className="size-3.5 text-amber-500" />
+                  废弃离线节点自动清理周期
+                </span>
+                <span className="text-[10px] text-muted-foreground font-mono">0 为不自动清理</span>
+              </label>
+              <div className="relative">
+                <input
+                  type="number"
+                  min={0}
+                  max={180}
+                  value={retentionForm["storage.inactiveNodePruneDays"] || "30"}
+                  onChange={(e) => handleRetentionChange("storage.inactiveNodePruneDays", e.target.value)}
+                  className="w-full h-10 rounded-xl border border-border/80 bg-background px-3.5 pr-10 text-xs font-mono outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 text-foreground transition-all shadow-2xs"
+                />
+                <span className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground text-[11px] font-mono pointer-events-none">
+                  天
+                </span>
+              </div>
+              <p className="text-[10px] text-muted-foreground">已销毁/长期连续未收到探针心跳的服务器自动从资产大盘与时序拓扑中注销</p>
             </div>
           </div>
 
-          {/* 四项精细化存储指标微卡片 (对称 4 列布局) */}
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 pt-2 border-t border-border/40">
-            {/* 卡片 1: 系统核心数据库 */}
-            <div className="p-3 rounded-xl border border-border/80 bg-muted/10 space-y-1 hover:border-primary/40 transition-colors">
-              <div className="flex items-center justify-between text-muted-foreground text-[11px]">
-                <span className="flex items-center gap-1.5 font-medium">
-                  <Database className="size-3.5 text-primary" />
-                  系统主数据库
-                </span>
-                <span className="text-[9px] font-mono bg-primary/10 text-primary px-1.5 py-0.5 rounded">
-                  Primary DB
-                </span>
-              </div>
-              <div className="text-lg font-bold font-mono text-foreground pt-1">
-                {storageStats.dbSizeMb.toFixed(1)} <span className="text-xs font-normal text-muted-foreground">MB</span>
-              </div>
+          {/* B. 下半部：10 项细分指标与业务数据保存时长矩阵 */}
+          <div className="space-y-2.5">
+            <div className="text-[11px] font-semibold text-muted-foreground flex items-center gap-1.5">
+              <Activity className="size-3 text-sky-500" />
+              <span>细分指标与业务流水自动保留周期 (保留天数设置)</span>
             </div>
 
-            {/* 卡片 2: 探针时序监控数据 */}
-            <div className="p-3 rounded-xl border border-border/80 bg-muted/10 space-y-1 hover:border-sky-500/40 transition-colors">
-              <div className="flex items-center justify-between text-muted-foreground text-[11px]">
-                <span className="flex items-center gap-1.5 font-medium">
-                  <Activity className="size-3.5 text-sky-500" />
-                  探针时序监控库
-                </span>
-                <span className="text-[9px] font-mono bg-sky-500/10 text-sky-500 px-1.5 py-0.5 rounded">
-                  Timeseries
-                </span>
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3">
+              {/* 1. CPU 负载 */}
+              <div className="p-3 rounded-xl border border-border/70 bg-background space-y-1.5 shadow-2xs">
+                <label className="h-4 font-semibold text-foreground flex items-center justify-between">
+                  <span className="flex items-center gap-1 text-foreground truncate text-xs">
+                    <Cpu className="size-3 text-sky-400 shrink-0" />
+                    CPU 负载
+                  </span>
+                  <span className="text-[10px] text-muted-foreground font-mono shrink-0">15~60天</span>
+                </label>
+                <div className="relative">
+                  <input
+                    type="number"
+                    min={1}
+                    max={365}
+                    value={retentionForm["storage.cpuRetentionDays"] || "30"}
+                    onChange={(e) => handleRetentionChange("storage.cpuRetentionDays", e.target.value)}
+                    className="w-full h-8.5 rounded-lg border border-border/80 bg-muted/20 px-2.5 pr-8 text-xs font-mono outline-none focus:border-primary focus:ring-1 focus:ring-primary/30 text-foreground transition-all"
+                  />
+                  <span className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground text-[10px] font-mono pointer-events-none">天</span>
+                </div>
+                <p className="text-[10px] text-muted-foreground truncate">使用率与 Load 负载</p>
               </div>
-              <div className="text-lg font-bold font-mono text-foreground pt-1">
-                {storageStats.metricsSizeMb.toFixed(1)} <span className="text-xs font-normal text-muted-foreground">MB</span>
-              </div>
-            </div>
 
-            {/* 卡片 3: 主页展示页模板与上传包 */}
-            <div className="p-3 rounded-xl border border-border/80 bg-muted/10 space-y-1 hover:border-indigo-500/40 transition-colors">
-              <div className="flex items-center justify-between text-muted-foreground text-[11px]">
-                <span className="flex items-center gap-1.5 font-medium">
-                  <Layers className="size-3.5 text-indigo-500" />
-                  展示大盘模板包
-                </span>
-                <span className="text-[9px] font-mono bg-indigo-500/10 text-indigo-500 px-1.5 py-0.5 rounded">
-                  Themes
-                </span>
+              {/* 2. 内存占用 */}
+              <div className="p-3 rounded-xl border border-border/70 bg-background space-y-1.5 shadow-2xs">
+                <label className="h-4 font-semibold text-foreground flex items-center justify-between">
+                  <span className="flex items-center gap-1 text-foreground truncate text-xs">
+                    <Layers className="size-3 text-emerald-400 shrink-0" />
+                    内存占用
+                  </span>
+                  <span className="text-[10px] text-muted-foreground font-mono shrink-0">15~60天</span>
+                </label>
+                <div className="relative">
+                  <input
+                    type="number"
+                    min={1}
+                    max={365}
+                    value={retentionForm["storage.memoryRetentionDays"] || "30"}
+                    onChange={(e) => handleRetentionChange("storage.memoryRetentionDays", e.target.value)}
+                    className="w-full h-8.5 rounded-lg border border-border/80 bg-muted/20 px-2.5 pr-8 text-xs font-mono outline-none focus:border-primary focus:ring-1 focus:ring-primary/30 text-foreground transition-all"
+                  />
+                  <span className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground text-[10px] font-mono pointer-events-none">天</span>
+                </div>
+                <p className="text-[10px] text-muted-foreground truncate">物理内存与 Swap 历史</p>
               </div>
-              <div className="text-lg font-bold font-mono text-foreground pt-1">
-                {storageStats.themesSizeMb.toFixed(1)} <span className="text-xs font-normal text-muted-foreground">MB</span>
-              </div>
-            </div>
 
-            {/* 卡片 4: 备份快照占用 */}
-            <div className="p-3 rounded-xl border border-border/80 bg-muted/10 space-y-1 hover:border-emerald-500/40 transition-colors">
-              <div className="flex items-center justify-between text-muted-foreground text-[11px]">
-                <span className="flex items-center gap-1.5 font-medium">
-                  <FileArchive className="size-3.5 text-emerald-500" />
-                  快照归档总计
-                </span>
-                <span className="text-[9px] font-mono bg-emerald-500/10 text-emerald-500 px-1.5 py-0.5 rounded">
-                  {backups.length} 份
-                </span>
+              {/* 3. 磁盘 I/O */}
+              <div className="p-3 rounded-xl border border-border/70 bg-background space-y-1.5 shadow-2xs">
+                <label className="h-4 font-semibold text-foreground flex items-center justify-between">
+                  <span className="flex items-center gap-1 text-foreground truncate text-xs">
+                    <HardDrive className="size-3 text-amber-400 shrink-0" />
+                    磁盘 I/O
+                  </span>
+                  <span className="text-[10px] text-muted-foreground font-mono shrink-0">15~60天</span>
+                </label>
+                <div className="relative">
+                  <input
+                    type="number"
+                    min={1}
+                    max={365}
+                    value={retentionForm["storage.diskRetentionDays"] || "30"}
+                    onChange={(e) => handleRetentionChange("storage.diskRetentionDays", e.target.value)}
+                    className="w-full h-8.5 rounded-lg border border-border/80 bg-muted/20 px-2.5 pr-8 text-xs font-mono outline-none focus:border-primary focus:ring-1 focus:ring-primary/30 text-foreground transition-all"
+                  />
+                  <span className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground text-[10px] font-mono pointer-events-none">天</span>
+                </div>
+                <p className="text-[10px] text-muted-foreground truncate">分区用量与读写吞吐</p>
               </div>
-              <div className="text-lg font-bold font-mono text-foreground pt-1">
-                {formatSize(totalBackupBytes)}
+
+              {/* 4. 网络带宽 */}
+              <div className="p-3 rounded-xl border border-border/70 bg-background space-y-1.5 shadow-2xs">
+                <label className="h-4 font-semibold text-foreground flex items-center justify-between">
+                  <span className="flex items-center gap-1 text-foreground truncate text-xs">
+                    <Network className="size-3 text-indigo-400 shrink-0" />
+                    网络带宽
+                  </span>
+                  <span className="text-[10px] text-muted-foreground font-mono shrink-0">15~60天</span>
+                </label>
+                <div className="relative">
+                  <input
+                    type="number"
+                    min={1}
+                    max={365}
+                    value={retentionForm["storage.networkRetentionDays"] || "30"}
+                    onChange={(e) => handleRetentionChange("storage.networkRetentionDays", e.target.value)}
+                    className="w-full h-8.5 rounded-lg border border-border/80 bg-muted/20 px-2.5 pr-8 text-xs font-mono outline-none focus:border-primary focus:ring-1 focus:ring-primary/30 text-foreground transition-all"
+                  />
+                  <span className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground text-[10px] font-mono pointer-events-none">天</span>
+                </div>
+                <p className="text-[10px] text-muted-foreground truncate">网卡进出流量与实时速率</p>
+              </div>
+
+              {/* 5. Ping 延时 */}
+              <div className="p-3 rounded-xl border border-border/70 bg-background space-y-1.5 shadow-2xs">
+                <label className="h-4 font-semibold text-foreground flex items-center justify-between">
+                  <span className="flex items-center gap-1 text-foreground truncate text-xs">
+                    <Activity className="size-3 text-rose-400 shrink-0" />
+                    网络延时
+                  </span>
+                  <span className="text-[10px] text-muted-foreground font-mono shrink-0">15~60天</span>
+                </label>
+                <div className="relative">
+                  <input
+                    type="number"
+                    min={1}
+                    max={365}
+                    value={retentionForm["storage.pingRetentionDays"] || "30"}
+                    onChange={(e) => handleRetentionChange("storage.pingRetentionDays", e.target.value)}
+                    className="w-full h-8.5 rounded-lg border border-border/80 bg-muted/20 px-2.5 pr-8 text-xs font-mono outline-none focus:border-primary focus:ring-1 focus:ring-primary/30 text-foreground transition-all"
+                  />
+                  <span className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground text-[10px] font-mono pointer-events-none">天</span>
+                </div>
+                <p className="text-[10px] text-muted-foreground truncate">ICMP/TCP 延时与丢包历史</p>
+              </div>
+
+              {/* 6. 进程快照 */}
+              <div className="p-3 rounded-xl border border-border/70 bg-background space-y-1.5 shadow-2xs">
+                <label className="h-4 font-semibold text-foreground flex items-center justify-between">
+                  <span className="flex items-center gap-1 text-foreground truncate text-xs">
+                    <Terminal className="size-3 text-purple-400 shrink-0" />
+                    进程快照
+                  </span>
+                  <span className="text-[10px] text-muted-foreground font-mono shrink-0">3~30天</span>
+                </label>
+                <div className="relative">
+                  <input
+                    type="number"
+                    min={1}
+                    max={90}
+                    value={retentionForm["storage.processRetentionDays"] || "7"}
+                    onChange={(e) => handleRetentionChange("storage.processRetentionDays", e.target.value)}
+                    className="w-full h-8.5 rounded-lg border border-border/80 bg-muted/20 px-2.5 pr-8 text-xs font-mono outline-none focus:border-primary focus:ring-1 focus:ring-primary/30 text-foreground transition-all"
+                  />
+                  <span className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground text-[10px] font-mono pointer-events-none">天</span>
+                </div>
+                <p className="text-[10px] text-muted-foreground truncate">Top 进程资源占用快照</p>
+              </div>
+
+              {/* 7. 任务执行与脚本日志 */}
+              <div className="p-3 rounded-xl border border-border/70 bg-background space-y-1.5 shadow-2xs">
+                <label className="h-4 font-semibold text-foreground flex items-center justify-between">
+                  <span className="flex items-center gap-1 text-foreground truncate text-xs">
+                    <ScrollText className="size-3 text-emerald-400 shrink-0" />
+                    任务执行日志
+                  </span>
+                  <span className="text-[10px] text-muted-foreground font-mono shrink-0">15~90天</span>
+                </label>
+                <div className="relative">
+                  <input
+                    type="number"
+                    min={3}
+                    max={180}
+                    value={retentionForm["storage.taskRetentionDays"] || "30"}
+                    onChange={(e) => handleRetentionChange("storage.taskRetentionDays", e.target.value)}
+                    className="w-full h-8.5 rounded-lg border border-border/80 bg-muted/20 px-2.5 pr-8 text-xs font-mono outline-none focus:border-primary focus:ring-1 focus:ring-primary/30 text-foreground transition-all"
+                  />
+                  <span className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground text-[10px] font-mono pointer-events-none">天</span>
+                </div>
+                <p className="text-[10px] text-muted-foreground truncate">定时任务与批量执行流</p>
+              </div>
+
+              {/* 8. 告警事件 */}
+              <div className="p-3 rounded-xl border border-border/70 bg-background space-y-1.5 shadow-2xs">
+                <label className="h-4 font-semibold text-foreground flex items-center justify-between">
+                  <span className="flex items-center gap-1 text-foreground truncate text-xs">
+                    <Bell className="size-3 text-amber-400 shrink-0" />
+                    告警事件记录
+                  </span>
+                  <span className="text-[10px] text-muted-foreground font-mono shrink-0">15~90天</span>
+                </label>
+                <div className="relative">
+                  <input
+                    type="number"
+                    min={3}
+                    max={180}
+                    value={retentionForm["storage.alertRetentionDays"] || "30"}
+                    onChange={(e) => handleRetentionChange("storage.alertRetentionDays", e.target.value)}
+                    className="w-full h-8.5 rounded-lg border border-border/80 bg-muted/20 px-2.5 pr-8 text-xs font-mono outline-none focus:border-primary focus:ring-1 focus:ring-primary/30 text-foreground transition-all"
+                  />
+                  <span className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground text-[10px] font-mono pointer-events-none">天</span>
+                </div>
+                <p className="text-[10px] text-muted-foreground truncate">规则触发与通知历史</p>
+              </div>
+
+              {/* 9. API 访问与登录鉴权流水 */}
+              <div className="p-3 rounded-xl border border-border/70 bg-background space-y-1.5 shadow-2xs">
+                <label className="h-4 font-semibold text-foreground flex items-center justify-between">
+                  <span className="flex items-center gap-1 text-foreground truncate text-xs">
+                    <KeyRound className="size-3 text-violet-400 shrink-0" />
+                    API 访问流水
+                  </span>
+                  <span className="text-[10px] text-muted-foreground font-mono shrink-0">15~90天</span>
+                </label>
+                <div className="relative">
+                  <input
+                    type="number"
+                    min={3}
+                    max={180}
+                    value={retentionForm["storage.apiLogRetentionDays"] || "30"}
+                    onChange={(e) => handleRetentionChange("storage.apiLogRetentionDays", e.target.value)}
+                    className="w-full h-8.5 rounded-lg border border-border/80 bg-muted/20 px-2.5 pr-8 text-xs font-mono outline-none focus:border-primary focus:ring-1 focus:ring-primary/30 text-foreground transition-all"
+                  />
+                  <span className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground text-[10px] font-mono pointer-events-none">天</span>
+                </div>
+                <p className="text-[10px] text-muted-foreground truncate">Token 请求与会话流水</p>
+              </div>
+
+              {/* 10. 审计日志 */}
+              <div className="p-3 rounded-xl border border-border/70 bg-background space-y-1.5 shadow-2xs">
+                <label className="h-4 font-semibold text-foreground flex items-center justify-between">
+                  <span className="flex items-center gap-1 text-foreground truncate text-xs">
+                    <FileCode className="size-3 text-sky-400 shrink-0" />
+                    安全操作审计
+                  </span>
+                  <span className="text-[10px] text-muted-foreground font-mono shrink-0">30~180天</span>
+                </label>
+                <div className="relative">
+                  <input
+                    type="number"
+                    min={7}
+                    max={365}
+                    value={retentionForm["storage.auditRetentionDays"] || "90"}
+                    onChange={(e) => handleRetentionChange("storage.auditRetentionDays", e.target.value)}
+                    className="w-full h-8.5 rounded-lg border border-border/80 bg-muted/20 px-2.5 pr-8 text-xs font-mono outline-none focus:border-primary focus:ring-1 focus:ring-primary/30 text-foreground transition-all"
+                  />
+                  <span className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground text-[10px] font-mono pointer-events-none">天</span>
+                </div>
+                <p className="text-[10px] text-muted-foreground truncate">管理操作与登录记录</p>
               </div>
             </div>
           </div>
         </CardContent>
       </Card>
 
-      {/* 3. 自动备份计划与多端异地容灾 (Multi-Plan Schedule & Remote Mirror) */}
-      <Card>
+      {/* 4. 手动清理系统数据与磁盘空间维护专区 (Manual Data Cleanup) */}
+      <Card id="manual-data-cleanup-section">
+        <CardHeader className="py-4">
+          <div>
+            <CardTitle className="text-base flex items-center gap-2">
+              <Eraser className="size-4 text-sky-500" />
+              手动数据清理 (Manual Data Cleanup)
+            </CardTitle>
+            <CardDescription>
+              支持按需手动清理时序监控、操作审计、告警历史与任务日志，按需释放存储空间
+            </CardDescription>
+          </div>
+        </CardHeader>
+        <CardContent className="space-y-4 text-xs">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            {/* 清理项 1: 探针时序与监控指标 */}
+            <div className="p-4 rounded-xl border border-border/80 bg-muted/10 space-y-3 flex flex-col justify-between">
+              <div className="space-y-1.5">
+                <div className="flex items-center justify-between">
+                  <span className="font-bold text-xs text-foreground flex items-center gap-1.5">
+                    <Activity className="size-4 text-sky-500" />
+                    探针时序监控数据
+                  </span>
+                  <Badge variant="neutral" className="font-mono text-[10px]">
+                    约 {storageStats.metricsSizeMb.toFixed(1)} MB
+                  </Badge>
+                </div>
+                <p className="text-[11px] text-muted-foreground">
+                  包含全网探针节点的 Ping 延迟、丢包率与网络拓扑历史打点时序数据。
+                </p>
+              </div>
+
+              <div className="pt-2 flex items-center justify-between gap-2 border-t border-border/40">
+                <CleanupTimeSelector
+                  category="metrics"
+                  value={cleaningMetricDays}
+                  onChange={setCleaningMetricDays}
+                />
+
+                <Button
+                  size="sm"
+                  variant="outline"
+                  disabled={activeCleaningKey === "metrics"}
+                  onClick={() => handleManualDataCleanup("metrics")}
+                  className="h-8.5 text-xs cursor-pointer text-muted-foreground hover:text-rose-500 hover:border-rose-500/30 hover:bg-rose-500/5 font-semibold shrink-0 shadow-2xs"
+                >
+                  {activeCleaningKey === "metrics" ? (
+                    <RefreshCw className="size-3.5 animate-spin" />
+                  ) : (
+                    <>
+                      <Trash2 className="size-3.5 mr-1 text-rose-500/80" /> 执行清理
+                    </>
+                  )}
+                </Button>
+              </div>
+            </div>
+
+            {/* 清理项 2: 操作审计日志 */}
+            <div className="p-4 rounded-xl border border-border/80 bg-muted/10 space-y-3 flex flex-col justify-between">
+              <div className="space-y-1.5">
+                <div className="flex items-center justify-between">
+                  <span className="font-bold text-xs text-foreground flex items-center gap-1.5">
+                    <ScrollText className="size-4 text-amber-500" />
+                    操作与安全审计日志
+                  </span>
+                  <Badge variant="neutral" className="font-mono text-[10px]">
+                    约 {storageStats.auditSizeMb.toFixed(1)} MB
+                  </Badge>
+                </div>
+                <p className="text-[11px] text-muted-foreground">
+                  包含管理员登录历史、安全提权校验记录、主机修改与系统参数变动审计。
+                </p>
+              </div>
+
+              <div className="pt-2 flex items-center justify-between gap-2 border-t border-border/40">
+                <CleanupTimeSelector
+                  category="audit"
+                  value={cleaningAuditDays}
+                  onChange={setCleaningAuditDays}
+                />
+
+                <Button
+                  size="sm"
+                  variant="outline"
+                  disabled={activeCleaningKey === "audit"}
+                  onClick={() => handleManualDataCleanup("audit")}
+                  className="h-8.5 text-xs cursor-pointer text-muted-foreground hover:text-rose-500 hover:border-rose-500/30 hover:bg-rose-500/5 font-semibold shrink-0 shadow-2xs"
+                >
+                  {activeCleaningKey === "audit" ? (
+                    <RefreshCw className="size-3.5 animate-spin" />
+                  ) : (
+                    <>
+                      <Trash2 className="size-3.5 mr-1 text-rose-500/80" /> 执行清理
+                    </>
+                  )}
+                </Button>
+              </div>
+            </div>
+
+            {/* 清理项 3: 告警历史与推送记录 */}
+            <div className="p-4 rounded-xl border border-border/80 bg-muted/10 space-y-3 flex flex-col justify-between">
+              <div className="space-y-1.5">
+                <div className="flex items-center justify-between">
+                  <span className="font-bold text-xs text-foreground flex items-center gap-1.5">
+                    <Bell className="size-4 text-rose-500" />
+                    告警事件与通知记录
+                  </span>
+                  <Badge variant="neutral" className="font-mono text-[10px]">
+                    约 {storageStats.alertsSizeMb.toFixed(1)} MB
+                  </Badge>
+                </div>
+                <p className="text-[11px] text-muted-foreground">
+                  包含已触发并恢复的告警事件流水、Webhook/Telegram/邮件推送投递历史。
+                </p>
+              </div>
+
+              <div className="pt-2 flex items-center justify-between gap-2 border-t border-border/40">
+                <CleanupTimeSelector
+                  category="alerts"
+                  value={cleaningAlertRule}
+                  onChange={setCleaningAlertRule}
+                />
+
+                <Button
+                  size="sm"
+                  variant="outline"
+                  disabled={activeCleaningKey === "alerts"}
+                  onClick={() => handleManualDataCleanup("alerts")}
+                  className="h-8.5 text-xs cursor-pointer text-muted-foreground hover:text-rose-500 hover:border-rose-500/30 hover:bg-rose-500/5 font-semibold shrink-0 shadow-2xs"
+                >
+                  {activeCleaningKey === "alerts" ? (
+                    <RefreshCw className="size-3.5 animate-spin" />
+                  ) : (
+                    <>
+                      <Trash2 className="size-3.5 mr-1 text-rose-500/80" /> 执行清理
+                    </>
+                  )}
+                </Button>
+              </div>
+            </div>
+
+            {/* 清理项 4: 任务执行与脚本日志 */}
+            <div className="p-4 rounded-xl border border-border/80 bg-muted/10 space-y-3 flex flex-col justify-between">
+              <div className="space-y-1.5">
+                <div className="flex items-center justify-between">
+                  <span className="font-bold text-xs text-foreground flex items-center gap-1.5">
+                    <Terminal className="size-4 text-emerald-500" />
+                    任务执行与脚本日志
+                  </span>
+                  <Badge variant="neutral" className="font-mono text-[10px]">
+                    约 {storageStats.tasksSizeMb.toFixed(1)} MB
+                  </Badge>
+                </div>
+                <p className="text-[11px] text-muted-foreground">
+                  包含定时任务触发历史、自动化批量脚本执行终端输出流与完成状态记录。
+                </p>
+              </div>
+
+              <div className="pt-2 flex items-center justify-between gap-2 border-t border-border/40">
+                <CleanupTimeSelector
+                  category="tasks"
+                  value={cleaningTaskRule}
+                  onChange={setCleaningTaskRule}
+                />
+
+                <Button
+                  size="sm"
+                  variant="outline"
+                  disabled={activeCleaningKey === "tasks"}
+                  onClick={() => handleManualDataCleanup("tasks")}
+                  className="h-8.5 text-xs cursor-pointer text-muted-foreground hover:text-rose-500 hover:border-rose-500/30 hover:bg-rose-500/5 font-semibold shrink-0 shadow-2xs"
+                >
+                  {activeCleaningKey === "tasks" ? (
+                    <RefreshCw className="size-3.5 animate-spin" />
+                  ) : (
+                    <>
+                      <Trash2 className="size-3.5 mr-1 text-rose-500/80" /> 执行清理
+                    </>
+                  )}
+                </Button>
+              </div>
+            </div>
+
+            {/* 清理项 5: API 访问与登录鉴权流水 */}
+            <div className="p-4 rounded-xl border border-border/80 bg-muted/10 space-y-3 flex flex-col justify-between hover:border-violet-500/30 transition-colors">
+              <div className="space-y-1.5">
+                <div className="flex items-center justify-between">
+                  <span className="font-bold text-xs text-foreground flex items-center gap-1.5">
+                    <KeyRound className="size-4 text-violet-500" />
+                    API 访问与登录鉴权流水
+                  </span>
+                  <Badge variant="neutral" className="font-mono text-[10px]">
+                    约 {(storageStats.apiLogsSizeMb || 0).toFixed(1)} MB
+                  </Badge>
+                </div>
+                <p className="text-[11px] text-muted-foreground">
+                  包含外部自动化 Token 接口请求/响应、鉴权日志、登录历史与已离线终端会话记录。
+                </p>
+              </div>
+
+              <div className="pt-2 flex items-center justify-between gap-2 border-t border-border/40">
+                <CleanupTimeSelector
+                  category="apilogs"
+                  value={cleaningApiLogsRule}
+                  onChange={setCleaningApiLogsRule}
+                />
+
+                <Button
+                  size="sm"
+                  variant="outline"
+                  disabled={activeCleaningKey === "apilogs"}
+                  onClick={() => handleManualDataCleanup("apilogs")}
+                  className="h-8.5 text-xs cursor-pointer text-muted-foreground hover:text-rose-500 hover:border-rose-500/30 hover:bg-rose-500/5 font-semibold shrink-0 shadow-2xs"
+                >
+                  {activeCleaningKey === "apilogs" ? (
+                    <RefreshCw className="size-3.5 animate-spin" />
+                  ) : (
+                    <>
+                      <Trash2 className="size-3.5 mr-1 text-rose-500/80" /> 执行清理
+                    </>
+                  )}
+                </Button>
+              </div>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* 5. 自动备份计划与多端异地容灾 (Multi-Plan Schedule & Remote Mirror) */}
+      <Card id="backup-plans-section">
         <CardHeader className="py-4">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
             <div>
@@ -846,7 +1817,13 @@ export function DataBackupTab() {
                       </span>
 
                       <span className="px-1.5 py-0.5 rounded bg-muted/40 border border-border/40 text-muted-foreground">
-                        {plan.scope === "all" ? "全量" : "核心配置"}
+                        {plan.scope === "all"
+                          ? "全量数据"
+                          : plan.scope === "core_only" || (plan.scope as string) === "configs_only"
+                          ? "核心配置"
+                          : plan.scope === "core_and_audit"
+                          ? "配置+审计"
+                          : `自定义 (${plan.customModules?.length || 0}项)`}
                       </span>
 
                       {plan.encrypt && (
@@ -904,8 +1881,8 @@ export function DataBackupTab() {
         </CardContent>
       </Card>
 
-      {/* 4. 备份列表 (左边 任务名称 ➔ 右边 该任务的备份快照列表) */}
-      <Card>
+      {/* 6. 备份列表 (左边 任务名称 ➔ 右边 该任务的备份快照列表) */}
+      <Card id="backup-list-section">
         <CardHeader className="py-4 border-b border-border/60">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
             <div>
@@ -1178,207 +2155,6 @@ export function DataBackupTab() {
                     </table>
                   );
                 })()}
-              </div>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* 5. 手动清理系统数据与磁盘空间维护专区 (Manual Data Cleanup) */}
-      <Card id="manual-data-cleanup-section">
-        <CardHeader className="py-4">
-          <div>
-            <CardTitle className="text-base flex items-center gap-2">
-              <Eraser className="size-4 text-sky-500" />
-              手动数据清理 (Manual Data Cleanup)
-            </CardTitle>
-            <CardDescription>
-              支持按需手动清理时序监控、操作审计、告警历史与任务日志，按需释放存储空间
-            </CardDescription>
-          </div>
-        </CardHeader>
-        <CardContent className="space-y-4 text-xs">
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {/* 清理项 1: 探针时序与监控指标 */}
-            <div className="p-4 rounded-xl border border-border/80 bg-muted/10 space-y-3 flex flex-col justify-between">
-              <div className="space-y-1.5">
-                <div className="flex items-center justify-between">
-                  <span className="font-bold text-xs text-foreground flex items-center gap-1.5">
-                    <Activity className="size-4 text-sky-500" />
-                    探针时序监控数据
-                  </span>
-                  <Badge variant="neutral" className="font-mono text-[10px]">
-                    约 {storageStats.metricsSizeMb.toFixed(1)} MB
-                  </Badge>
-                </div>
-                <p className="text-[11px] text-muted-foreground">
-                  包含全网探针节点的 Ping 延迟、丢包率与网络拓扑历史打点时序数据。
-                </p>
-              </div>
-
-              <div className="pt-2 flex items-center justify-between gap-2 border-t border-border/40">
-                <select
-                  value={cleaningMetricDays}
-                  onChange={(e) => setCleaningMetricDays(e.target.value as any)}
-                  className="h-8 rounded-lg border border-border/80 bg-background px-2.5 text-xs font-mono outline-none text-foreground cursor-pointer"
-                >
-                  <option value="7">清理 7 天前数据</option>
-                  <option value="30">清理 30 天前数据 (推荐)</option>
-                  <option value="90">清理 90 天前数据</option>
-                  <option value="all">清空全部时序数据</option>
-                </select>
-
-                <Button
-                  size="sm"
-                  variant="outline"
-                  disabled={activeCleaningKey === "metrics"}
-                  onClick={() => handleManualDataCleanup("metrics")}
-                  className="h-8 text-xs cursor-pointer text-muted-foreground hover:text-rose-500 font-semibold"
-                >
-                  {activeCleaningKey === "metrics" ? (
-                    <RefreshCw className="size-3.5 animate-spin" />
-                  ) : (
-                    <>
-                      <Trash2 className="size-3.5 mr-1" /> 执行清理
-                    </>
-                  )}
-                </Button>
-              </div>
-            </div>
-
-            {/* 清理项 2: 操作审计日志 */}
-            <div className="p-4 rounded-xl border border-border/80 bg-muted/10 space-y-3 flex flex-col justify-between">
-              <div className="space-y-1.5">
-                <div className="flex items-center justify-between">
-                  <span className="font-bold text-xs text-foreground flex items-center gap-1.5">
-                    <ScrollText className="size-4 text-amber-500" />
-                    操作与安全审计日志
-                  </span>
-                  <Badge variant="neutral" className="font-mono text-[10px]">
-                    约 {storageStats.auditSizeMb.toFixed(1)} MB
-                  </Badge>
-                </div>
-                <p className="text-[11px] text-muted-foreground">
-                  包含管理员登录历史、安全提权校验记录、主机修改与系统参数变动审计。
-                </p>
-              </div>
-
-              <div className="pt-2 flex items-center justify-between gap-2 border-t border-border/40">
-                <select
-                  value={cleaningAuditDays}
-                  onChange={(e) => setCleaningAuditDays(e.target.value as any)}
-                  className="h-8 rounded-lg border border-border/80 bg-background px-2.5 text-xs font-mono outline-none text-foreground cursor-pointer"
-                >
-                  <option value="15">清理 15 天前日志</option>
-                  <option value="30">清理 30 天前日志 (推荐)</option>
-                  <option value="90">清理 90 天前日志</option>
-                </select>
-
-                <Button
-                  size="sm"
-                  variant="outline"
-                  disabled={activeCleaningKey === "audit"}
-                  onClick={() => handleManualDataCleanup("audit")}
-                  className="h-8 text-xs cursor-pointer text-muted-foreground hover:text-rose-500 font-semibold"
-                >
-                  {activeCleaningKey === "audit" ? (
-                    <RefreshCw className="size-3.5 animate-spin" />
-                  ) : (
-                    <>
-                      <Trash2 className="size-3.5 mr-1" /> 执行清理
-                    </>
-                  )}
-                </Button>
-              </div>
-            </div>
-
-            {/* 清理项 3: 告警历史与推送记录 */}
-            <div className="p-4 rounded-xl border border-border/80 bg-muted/10 space-y-3 flex flex-col justify-between">
-              <div className="space-y-1.5">
-                <div className="flex items-center justify-between">
-                  <span className="font-bold text-xs text-foreground flex items-center gap-1.5">
-                    <Bell className="size-4 text-rose-500" />
-                    告警事件与通知记录
-                  </span>
-                  <Badge variant="neutral" className="font-mono text-[10px]">
-                    约 {storageStats.alertsSizeMb.toFixed(1)} MB
-                  </Badge>
-                </div>
-                <p className="text-[11px] text-muted-foreground">
-                  包含已触发并恢复的告警事件流水、Webhook/Telegram/邮件推送投递历史。
-                </p>
-              </div>
-
-              <div className="pt-2 flex items-center justify-between gap-2 border-t border-border/40">
-                <select
-                  value={cleaningAlertRule}
-                  onChange={(e) => setCleaningAlertRule(e.target.value as any)}
-                  className="h-8 rounded-lg border border-border/80 bg-background px-2.5 text-xs font-mono outline-none text-foreground cursor-pointer"
-                >
-                  <option value="resolved_only">仅清理已解决告警</option>
-                  <option value="older_30d">清理 30 天前告警记录</option>
-                </select>
-
-                <Button
-                  size="sm"
-                  variant="outline"
-                  disabled={activeCleaningKey === "alerts"}
-                  onClick={() => handleManualDataCleanup("alerts")}
-                  className="h-8 text-xs cursor-pointer text-muted-foreground hover:text-rose-500 font-semibold"
-                >
-                  {activeCleaningKey === "alerts" ? (
-                    <RefreshCw className="size-3.5 animate-spin" />
-                  ) : (
-                    <>
-                      <Trash2 className="size-3.5 mr-1" /> 执行清理
-                    </>
-                  )}
-                </Button>
-              </div>
-            </div>
-
-            {/* 清理项 4: 任务执行与脚本日志 */}
-            <div className="p-4 rounded-xl border border-border/80 bg-muted/10 space-y-3 flex flex-col justify-between">
-              <div className="space-y-1.5">
-                <div className="flex items-center justify-between">
-                  <span className="font-bold text-xs text-foreground flex items-center gap-1.5">
-                    <Terminal className="size-4 text-emerald-500" />
-                    任务执行与脚本日志
-                  </span>
-                  <Badge variant="neutral" className="font-mono text-[10px]">
-                    约 {storageStats.tasksSizeMb.toFixed(1)} MB
-                  </Badge>
-                </div>
-                <p className="text-[11px] text-muted-foreground">
-                  包含定时任务触发历史、自动化批量脚本执行终端输出流与完成状态记录。
-                </p>
-              </div>
-
-              <div className="pt-2 flex items-center justify-between gap-2 border-t border-border/40">
-                <select
-                  value={cleaningTaskRule}
-                  onChange={(e) => setCleaningTaskRule(e.target.value as any)}
-                  className="h-8 rounded-lg border border-border/80 bg-background px-2.5 text-xs font-mono outline-none text-foreground cursor-pointer"
-                >
-                  <option value="older_30d">清理 30 天前任务日志</option>
-                  <option value="completed_all">清空已完成任务历史</option>
-                </select>
-
-                <Button
-                  size="sm"
-                  variant="outline"
-                  disabled={activeCleaningKey === "tasks"}
-                  onClick={() => handleManualDataCleanup("tasks")}
-                  className="h-8 text-xs cursor-pointer text-muted-foreground hover:text-rose-500 font-semibold"
-                >
-                  {activeCleaningKey === "tasks" ? (
-                    <RefreshCw className="size-3.5 animate-spin" />
-                  ) : (
-                    <>
-                      <Trash2 className="size-3.5 mr-1" /> 执行清理
-                    </>
-                  )}
-                </Button>
               </div>
             </div>
           </div>
@@ -1863,6 +2639,233 @@ export function DataBackupTab() {
                 </div>
               )}
             </div>
+
+            {/* 4. 备份数据范围与模块组合 (Where to Backup) */}
+            <div className="space-y-3 p-3.5 rounded-xl border border-border/60 bg-muted/15">
+              <div className="flex items-center justify-between">
+                <label className="font-semibold text-foreground text-xs flex items-center gap-1.5">
+                  <Database className="size-3.5 text-primary" />
+                  备份数据范围 (Where to Backup)
+                </label>
+                <Badge variant="neutral" className="text-[10px] font-mono">
+                  {planScope === "all"
+                    ? "全量归档 (7 项)"
+                    : planScope === "core_only"
+                    ? "核心配置 (1 项)"
+                    : planScope === "core_and_audit"
+                    ? "配置 + 审计 (2 项)"
+                    : `自定义组合 (${planCustomModules.length} 项)`}
+                </Badge>
+              </div>
+
+              {/* 4 种预设模式卡片 */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                {/* 选项 A: 全量业务数据 */}
+                <button
+                  type="button"
+                  onClick={() => {
+                    setPlanScope("all");
+                    setPlanCustomModules(["core", "metrics", "audit", "alerts", "tasks", "apilogs", "themes"]);
+                  }}
+                  className={`p-2.5 rounded-xl border text-left transition-all cursor-pointer flex flex-col justify-between ${
+                    planScope === "all"
+                      ? "border-primary bg-primary/10 text-primary font-bold shadow-2xs"
+                      : "border-border/80 bg-background text-muted-foreground hover:text-foreground hover:border-border"
+                  }`}
+                >
+                  <div className="flex items-center justify-between">
+                    <span className="font-bold text-xs text-foreground flex items-center gap-1">
+                      <Sparkles className="size-3 text-primary" /> 全量业务数据
+                    </span>
+                    <span className="text-[9px] px-1 py-0.2 rounded bg-primary/20 text-primary font-mono font-medium">推荐 · 完整还原</span>
+                  </div>
+                  <p className="text-[10px] text-muted-foreground font-normal mt-1 leading-relaxed">
+                    系统核心配置、探针时序监控、安全审计、告警历史、任务脚本日志与 API 访问流水全量归档。
+                  </p>
+                </button>
+
+                {/* 选项 B: 仅系统核心配置 */}
+                <button
+                  type="button"
+                  onClick={() => {
+                    setPlanScope("core_only");
+                    setPlanCustomModules(["core"]);
+                  }}
+                  className={`p-2.5 rounded-xl border text-left transition-all cursor-pointer flex flex-col justify-between ${
+                    planScope === "core_only"
+                      ? "border-primary bg-primary/10 text-primary font-bold shadow-2xs"
+                      : "border-border/80 bg-background text-muted-foreground hover:text-foreground hover:border-border"
+                  }`}
+                >
+                  <div className="flex items-center justify-between">
+                    <span className="font-bold text-xs text-foreground flex items-center gap-1">
+                      <Zap className="size-3 text-amber-500" /> 仅核心配置与资产
+                    </span>
+                    <span className="text-[9px] px-1 py-0.2 rounded bg-amber-500/20 text-amber-600 dark:text-amber-400 font-mono font-medium">极速 · 体积最小</span>
+                  </div>
+                  <p className="text-[10px] text-muted-foreground font-normal mt-1 leading-relaxed">
+                    仅备份主机节点列表、探针定义、全局配置字典、API 令牌、管理员账号权限与告警规则字典。
+                  </p>
+                </button>
+
+                {/* 选项 C: 核心配置 + 安全审计 */}
+                <button
+                  type="button"
+                  onClick={() => {
+                    setPlanScope("core_and_audit");
+                    setPlanCustomModules(["core", "audit", "apilogs"]);
+                  }}
+                  className={`p-2.5 rounded-xl border text-left transition-all cursor-pointer flex flex-col justify-between ${
+                    planScope === "core_and_audit"
+                      ? "border-primary bg-primary/10 text-primary font-bold shadow-2xs"
+                      : "border-border/80 bg-background text-muted-foreground hover:text-foreground hover:border-border"
+                  }`}
+                >
+                  <div className="flex items-center justify-between">
+                    <span className="font-bold text-xs text-foreground flex items-center gap-1">
+                      <ShieldCheck className="size-3 text-emerald-500" /> 配置 + 安全审计
+                    </span>
+                    <span className="text-[9px] px-1 py-0.2 rounded bg-emerald-500/20 text-emerald-600 dark:text-emerald-400 font-mono font-medium">等保合规归档</span>
+                  </div>
+                  <p className="text-[10px] text-muted-foreground font-normal mt-1 leading-relaxed">
+                    包含核心资产配置及管理员登录、提权操作、配置变更与 API 鉴权审计日志流水。
+                  </p>
+                </button>
+
+                {/* 选项 D: 自定义模块组合 */}
+                <button
+                  type="button"
+                  onClick={() => setPlanScope("custom")}
+                  className={`p-2.5 rounded-xl border text-left transition-all cursor-pointer flex flex-col justify-between ${
+                    planScope === "custom"
+                      ? "border-primary bg-primary/10 text-primary font-bold shadow-2xs"
+                      : "border-border/80 bg-background text-muted-foreground hover:text-foreground hover:border-border"
+                  }`}
+                >
+                  <div className="flex items-center justify-between">
+                    <span className="font-bold text-xs text-foreground flex items-center gap-1">
+                      <Layers className="size-3 text-indigo-500" /> 自定义模块组合
+                    </span>
+                    <span className="text-[9px] px-1 py-0.2 rounded bg-indigo-500/20 text-indigo-600 dark:text-indigo-400 font-mono font-medium">自由定制</span>
+                  </div>
+                  <p className="text-[10px] text-muted-foreground font-normal mt-1 leading-relaxed">
+                    自由按需勾选需要打包的子模块（支持剔除高占用时序以缩减备份体积）。
+                  </p>
+                </button>
+              </div>
+
+              {/* 自定义模块展开列表 (当选择 custom 时展示) */}
+              {planScope === "custom" && (
+                <div className="p-3 rounded-xl border border-indigo-500/30 bg-indigo-500/5 space-y-2 animate-in fade-in duration-200">
+                  <div className="text-[10px] text-muted-foreground font-medium pb-1 border-b border-indigo-500/20 flex items-center justify-between">
+                    <span>勾选需要纳入备份归档包的业务数据：</span>
+                    <span className="font-mono text-primary font-semibold">已选 {planCustomModules.length} 个模块</span>
+                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-1.5">
+                    {[
+                      { id: "core", label: "核心配置与主机资产", desc: "主机/探针/账号/规则/令牌", size: "3.2 MB", required: true, icon: Database },
+                      { id: "metrics", label: "探针时序监控数据", desc: "延迟/丢包/硬件历史采样", size: "112.6 MB", required: false, icon: Activity },
+                      { id: "audit", label: "操作与安全审计日志", desc: "管理员登录/变更记录", size: "18.2 MB", required: false, icon: ScrollText },
+                      { id: "alerts", label: "告警事件与推送记录", desc: "告警触发/通知推送流水", size: "8.4 MB", required: false, icon: Bell },
+                      { id: "tasks", label: "任务执行与脚本日志", desc: "批量脚本终端输出流", size: "14.6 MB", required: false, icon: Terminal },
+                      { id: "apilogs", label: "API 访问与鉴权流水", desc: "自动化 Token 调用记录", size: "24.6 MB", required: false, icon: KeyRound },
+                      { id: "themes", label: "大盘主题与展示模板", desc: "公开状态页前端配置", size: "4.8 MB", required: false, icon: Layers }
+                    ].map((m) => {
+                      const isChecked = m.required || planCustomModules.includes(m.id);
+                      const IconComp = m.icon;
+                      return (
+                        <button
+                          key={m.id}
+                          type="button"
+                          disabled={m.required}
+                          onClick={() => {
+                            if (m.required) return;
+                            setPlanCustomModules((prev) =>
+                              prev.includes(m.id) ? prev.filter((x) => x !== m.id) : [...prev, m.id]
+                            );
+                          }}
+                          className={`p-2 rounded-lg border text-left transition-all flex items-center justify-between ${
+                            m.required
+                              ? "border-border/40 bg-muted/40 text-foreground cursor-not-allowed opacity-90"
+                              : isChecked
+                              ? "border-primary bg-background text-foreground shadow-2xs cursor-pointer"
+                              : "border-border/60 bg-background/50 text-muted-foreground hover:text-foreground cursor-pointer"
+                          }`}
+                        >
+                          <div className="flex items-center gap-2 min-w-0">
+                            <div className={`size-6 rounded-md flex items-center justify-center shrink-0 ${isChecked ? "bg-primary/15 text-primary" : "bg-muted text-muted-foreground"}`}>
+                              <IconComp className="size-3" />
+                            </div>
+                            <div className="min-w-0">
+                              <div className="text-xs font-semibold truncate flex items-center gap-1">
+                                <span>{m.label}</span>
+                                {m.required && <span className="text-[9px] text-muted-foreground font-mono">(基础必选)</span>}
+                              </div>
+                              <div className="text-[10px] text-muted-foreground truncate">{m.desc}</div>
+                            </div>
+                          </div>
+                          <div className="flex items-center gap-1.5 shrink-0 pl-1">
+                            <span className="text-[10px] font-mono text-muted-foreground">{m.size}</span>
+                            <div className={`size-4 rounded flex items-center justify-center text-[10px] font-bold ${isChecked ? "bg-primary text-primary-foreground" : "border border-border/80"}`}>
+                              {isChecked && <Check className="size-2.5" />}
+                            </div>
+                          </div>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* 5. 本地保留份数与 AES-256 加密安全设置 */}
+            <div className="space-y-3 p-3.5 rounded-xl border border-border/60 bg-muted/15">
+              <label className="font-semibold text-foreground text-xs flex items-center gap-1.5">
+                <Lock className="size-3.5 text-primary" />
+                保留周期与安全加密
+              </label>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                {/* 滚动保留份数 */}
+                <div className="p-3 rounded-xl border border-border/80 bg-background space-y-2">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-semibold text-foreground">滚动保留份数</span>
+                    <span className="text-xs font-mono font-bold text-primary">
+                      {planRetentionCount} 份
+                    </span>
+                  </div>
+                  <div className="flex items-center gap-1.5">
+                    {["7", "14", "30", "60"].map((cnt) => (
+                      <button
+                        key={cnt}
+                        type="button"
+                        onClick={() => setPlanRetentionCount(cnt)}
+                        className={`flex-1 py-1 rounded-md border text-[10px] font-mono transition-all cursor-pointer text-center ${
+                          planRetentionCount === cnt
+                            ? "border-primary bg-primary/10 text-primary font-bold shadow-2xs"
+                            : "border-border/60 bg-muted/20 text-muted-foreground hover:text-foreground"
+                        }`}
+                      >
+                        {cnt} 份
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                {/* AES 加密开关 */}
+                <div className="p-3 rounded-xl border border-border/80 bg-background flex flex-col justify-between space-y-1.5">
+                  <div className="flex items-center justify-between">
+                    <span className="text-xs font-semibold text-foreground">AES-256 数据加密</span>
+                    <Switch checked={planEncrypt} onCheckedChange={setPlanEncrypt} className="scale-90" />
+                  </div>
+                  <p className="text-[10px] text-muted-foreground">
+                    {planEncrypt
+                      ? "🔒 自动使用实例安全密钥对快照归档包进行端到端加密保护"
+                      : "⚠️ 明文归档包，还原时无需解密密钥"}
+                  </p>
+                </div>
+              </div>
+            </div>
           </div>
 
           {/* 底部保存操作 Footer */}
@@ -1904,35 +2907,137 @@ export function DataBackupTab() {
           </div>
 
           <div className="p-6 space-y-4 text-xs">
-            <div className="space-y-1.5">
-              <label className="font-semibold text-foreground">备份快照范围</label>
+            <div className="space-y-2">
+              <div className="flex items-center justify-between">
+                <label className="font-semibold text-foreground">备份快照范围 (Scope)</label>
+                <span className="text-[10px] text-muted-foreground font-mono">
+                  {backupScope === "all"
+                    ? "全量完整 (7 项)"
+                    : backupScope === "core_only"
+                    ? "核心配置 (1 项)"
+                    : backupScope === "core_and_audit"
+                    ? "配置 + 审计 (2 项)"
+                    : `自定义 (${backupCustomModules.length} 项)`}
+                </span>
+              </div>
               <div className="grid grid-cols-2 gap-2">
                 <button
                   type="button"
-                  onClick={() => setBackupScope("all")}
+                  onClick={() => {
+                    setBackupScope("all");
+                    setBackupCustomModules(["core", "metrics", "audit", "alerts", "tasks", "apilogs", "themes"]);
+                  }}
                   className={`p-2.5 rounded-xl border text-left transition-all cursor-pointer ${
                     backupScope === "all"
                       ? "border-primary bg-primary/10 text-primary font-bold shadow-2xs"
                       : "border-border/80 bg-muted/20 text-muted-foreground hover:text-foreground"
                   }`}
                 >
-                  <div className="font-semibold text-xs text-foreground">全量完整备份</div>
-                  <div className="text-[10px] text-muted-foreground mt-0.5">主机/探针/告警/审计/配置</div>
+                  <div className="font-semibold text-xs text-foreground flex items-center gap-1">
+                    <Sparkles className="size-3 text-primary" /> 全量业务数据
+                  </div>
+                  <div className="text-[10px] text-muted-foreground mt-0.5">全站配置/时序/审计/告警/任务</div>
                 </button>
 
                 <button
                   type="button"
-                  onClick={() => setBackupScope("configs_only")}
+                  onClick={() => {
+                    setBackupScope("core_only");
+                    setBackupCustomModules(["core"]);
+                  }}
                   className={`p-2.5 rounded-xl border text-left transition-all cursor-pointer ${
-                    backupScope === "configs_only"
+                    backupScope === "core_only"
                       ? "border-primary bg-primary/10 text-primary font-bold shadow-2xs"
                       : "border-border/80 bg-muted/20 text-muted-foreground hover:text-foreground"
                   }`}
                 >
-                  <div className="font-semibold text-xs text-foreground">仅核心配置</div>
-                  <div className="text-[10px] text-muted-foreground mt-0.5">仅系统设置与主机拓扑</div>
+                  <div className="font-semibold text-xs text-foreground flex items-center gap-1">
+                    <Zap className="size-3 text-amber-500" /> 仅系统核心配置
+                  </div>
+                  <div className="text-[10px] text-muted-foreground mt-0.5">主机资产/探针/账号/规则/令牌</div>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    setBackupScope("core_and_audit");
+                    setBackupCustomModules(["core", "audit", "apilogs"]);
+                  }}
+                  className={`p-2.5 rounded-xl border text-left transition-all cursor-pointer ${
+                    backupScope === "core_and_audit"
+                      ? "border-primary bg-primary/10 text-primary font-bold shadow-2xs"
+                      : "border-border/80 bg-muted/20 text-muted-foreground hover:text-foreground"
+                  }`}
+                >
+                  <div className="font-semibold text-xs text-foreground flex items-center gap-1">
+                    <ShieldCheck className="size-3 text-emerald-500" /> 配置 + 安全审计
+                  </div>
+                  <div className="text-[10px] text-muted-foreground mt-0.5">主机配置与全部操作/登录审计</div>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => setBackupScope("custom")}
+                  className={`p-2.5 rounded-xl border text-left transition-all cursor-pointer ${
+                    backupScope === "custom"
+                      ? "border-primary bg-primary/10 text-primary font-bold shadow-2xs"
+                      : "border-border/80 bg-muted/20 text-muted-foreground hover:text-foreground"
+                  }`}
+                >
+                  <div className="font-semibold text-xs text-foreground flex items-center gap-1">
+                    <Layers className="size-3 text-indigo-500" /> 自定义模块组合
+                  </div>
+                  <div className="text-[10px] text-muted-foreground mt-0.5">自由按需勾选归档子模块</div>
                 </button>
               </div>
+
+              {/* 自定义模块组合勾选 */}
+              {backupScope === "custom" && (
+                <div className="p-2.5 rounded-xl border border-indigo-500/30 bg-indigo-500/5 space-y-1.5 mt-2 animate-in fade-in duration-200">
+                  <div className="text-[10px] text-muted-foreground font-medium pb-1 border-b border-indigo-500/20 flex items-center justify-between">
+                    <span>勾选本次快照包含的子模块：</span>
+                    <span className="font-mono text-primary font-semibold">已选 {backupCustomModules.length} 个</span>
+                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-1">
+                    {[
+                      { id: "core", label: "核心配置与主机资产", required: true },
+                      { id: "metrics", label: "探针时序监控数据", required: false },
+                      { id: "audit", label: "操作与安全审计日志", required: false },
+                      { id: "alerts", label: "告警事件与推送记录", required: false },
+                      { id: "tasks", label: "任务执行与脚本日志", required: false },
+                      { id: "apilogs", label: "API 访问与鉴权流水", required: false },
+                      { id: "themes", label: "大盘主题与展示模板", required: false }
+                    ].map((m) => {
+                      const isChecked = m.required || backupCustomModules.includes(m.id);
+                      return (
+                        <button
+                          key={m.id}
+                          type="button"
+                          disabled={m.required}
+                          onClick={() => {
+                            if (m.required) return;
+                            setBackupCustomModules((prev) =>
+                              prev.includes(m.id) ? prev.filter((x) => x !== m.id) : [...prev, m.id]
+                            );
+                          }}
+                          className={`p-1.5 rounded-lg border text-left text-xs transition-all flex items-center justify-between ${
+                            m.required
+                              ? "border-border/40 bg-muted/40 text-foreground cursor-not-allowed opacity-90"
+                              : isChecked
+                              ? "border-primary bg-background text-foreground shadow-2xs cursor-pointer"
+                              : "border-border/60 bg-background/50 text-muted-foreground hover:text-foreground cursor-pointer"
+                          }`}
+                        >
+                          <span className="truncate text-[11px]">{m.label}</span>
+                          <div className={`size-3.5 rounded flex items-center justify-center text-[9px] font-bold ${isChecked ? "bg-primary text-primary-foreground" : "border border-border/80"}`}>
+                            {isChecked && <Check className="size-2.5" />}
+                          </div>
+                        </button>
+                      );
+                    })}
+                  </div>
+                </div>
+              )}
             </div>
 
             <div className="space-y-1.5">
@@ -2012,35 +3117,55 @@ export function DataBackupTab() {
           </div>
 
           <div className="p-6 space-y-4 text-xs">
-            <div className="p-3.5 rounded-xl border border-rose-500/30 bg-rose-500/5 text-rose-600 dark:text-rose-400 space-y-1">
+            <div className="p-3.5 rounded-xl border border-rose-500/30 bg-rose-500/5 text-rose-600 dark:text-rose-400 space-y-1.5">
               <div className="font-bold flex items-center gap-1.5">
                 <ShieldAlert className="size-4 shrink-0" />
-                即将覆盖当前全部主机与配置数据
+                即将覆盖当前全部主机与系统配置数据
               </div>
-              <p className="text-[11px] leading-relaxed">
-                还原目标：<strong>{selectedBackupForRestore?.filename}</strong>
-                <br />
-                系统在还原前将自动为你生成一份安全回滚点，但仍建议在业务低峰期操作。
+              <div className="text-[11px] leading-relaxed space-y-0.5 pt-0.5 text-foreground/90">
+                <div>还原目标：<strong className="font-mono">{selectedBackupForRestore?.filename}</strong></div>
+                <div>数据范围：<span className="text-muted-foreground">{selectedBackupForRestore?.scope || "全量数据"}</span></div>
+              </div>
+              <p className="text-[10px] text-muted-foreground pt-1 border-t border-rose-500/20">
+                系统在执行还原前将自动为你生成一份当前状态的安全回滚点，建议在业务低峰期操作。
               </p>
             </div>
 
-            <div className="space-y-1.5">
-              <label className="font-semibold text-foreground">解密密钥</label>
-              <input
-                type="password"
-                value={restoreVerifyPassword}
-                onChange={(e) => setRestoreVerifyPassword(e.target.value)}
-                placeholder="请输入归档解密密钥"
-                className="w-full h-9 rounded-lg border border-border/80 bg-muted/40 px-3 text-xs font-mono outline-none focus:border-primary text-foreground"
-              />
-            </div>
+            {selectedBackupForRestore?.isEncrypted ? (
+              <div className="space-y-1.5">
+                <div className="flex items-center justify-between">
+                  <label className="font-semibold text-foreground flex items-center gap-1">
+                    <Lock className="size-3 text-emerald-500" /> 解密密钥 / 保护密码
+                  </label>
+                  <span className="text-[10px] text-muted-foreground font-normal">（如未设密码可直接留空）</span>
+                </div>
+                <input
+                  type="password"
+                  value={restoreVerifyPassword}
+                  onChange={(e) => setRestoreVerifyPassword(e.target.value)}
+                  placeholder="如备份未设置密码请直接留空"
+                  className="w-full h-9 rounded-lg border border-border/80 bg-muted/40 px-3 text-xs font-mono outline-none focus:border-primary text-foreground"
+                />
+                <p className="text-[10px] text-muted-foreground">
+                  提示：如果创建此备份时密码为空，无需输入任何密码，直接点击下方「确认覆盖并还原」即可。
+                </p>
+              </div>
+            ) : (
+              <div className="p-3 rounded-xl border border-border/60 bg-muted/20 flex items-center gap-2 text-muted-foreground text-xs">
+                <CheckCircle2 className="size-4 text-emerald-500 shrink-0" />
+                <span>该快照为明文归档包，无需输入密码，可直接确认还原。</span>
+              </div>
+            )}
           </div>
 
           <div className="flex justify-end gap-2 px-6 py-3.5 border-t border-border/60 bg-muted/10">
             <Button
               variant="outline"
               size="sm"
-              onClick={() => setRestoreDialogOpen(false)}
+              onClick={() => {
+                setRestoreDialogOpen(false);
+                setRestoreVerifyPassword("");
+              }}
               disabled={isRestoring}
               className="h-8.5 text-xs cursor-pointer"
             >

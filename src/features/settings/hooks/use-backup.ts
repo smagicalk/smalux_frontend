@@ -152,8 +152,12 @@ export function useBackups() {
 export function useCreateBackup() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (params: { scope: "all" | "configs_only"; encrypt: boolean; notes?: string }) =>
-      httpClient.post<BackupArchive>("/api/v1/system/backups", params),
+    mutationFn: (params: {
+      scope: "all" | "core_only" | "core_and_audit" | "custom" | "configs_only";
+      encrypt: boolean;
+      notes?: string;
+      customModules?: string[];
+    }) => httpClient.post<BackupArchive>("/api/v1/system/backups", params),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: queryKeys.backups });
       qc.invalidateQueries({ queryKey: queryKeys.storageStats });
@@ -167,11 +171,17 @@ export function useCreateBackup() {
  * 对应后端接口：`POST /api/v1/system/backups/:id/restore`
  * @param params.id 目标快照 ID
  * @param params.verifyKey 解密密钥或管理员确认密码
+ * 成功后自动刷新快照列表与存储容量大盘（还原后磁盘占用变化）
  */
 export function useRestoreBackup() {
+  const qc = useQueryClient();
   return useMutation({
     mutationFn: ({ id, verifyKey }: { id: string; verifyKey?: string }) =>
-      httpClient.post<{ ok: boolean }>(`/api/v1/system/backups/${id}/restore`, { verifyKey })
+      httpClient.post<{ ok: boolean }>(`/api/v1/system/backups/${id}/restore`, { verifyKey }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: queryKeys.backups });
+      qc.invalidateQueries({ queryKey: queryKeys.storageStats });
+    }
   });
 }
 
@@ -213,13 +223,13 @@ export function usePruneBackups() {
  * 按范围安全清理各类历史业务数据以释放磁盘
  * 
  * 对应后端接口：`POST /api/v1/system/data-cleanup`
- * @param params.type 数据类型（"metrics" 时序指标 / "audit" 审计日志 / "alerts" 告警历史 / "tasks" 任务日志）
+ * @param params.type 数据类型（"metrics" 时序指标 / "audit" 审计日志 / "alerts" 告警历史 / "tasks" 任务日志 / "apilogs" API访问流水）
  * @param params.rule 清理天数范围（例如 "7", "30", "90", "all"）
  */
 export function useCleanData() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: ({ type, rule }: { type: "metrics" | "audit" | "alerts" | "tasks"; rule?: string }) =>
+    mutationFn: ({ type, rule }: { type: "metrics" | "audit" | "alerts" | "tasks" | "apilogs"; rule?: string }) =>
       httpClient.post<{ ok: boolean; freedMb: number }>("/api/v1/system/data-cleanup", { type, rule }),
     onSuccess: () => {
       qc.invalidateQueries({ queryKey: queryKeys.storageStats });

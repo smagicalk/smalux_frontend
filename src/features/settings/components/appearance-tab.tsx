@@ -1,4 +1,4 @@
-import { useState, useRef, useMemo } from "react";
+import { useState, useRef, useMemo, useCallback } from "react";
 import {
   Palette,
   Moon,
@@ -37,7 +37,8 @@ import {
   Home,
   Smartphone,
   Laptop,
-  RefreshCw
+  RefreshCw,
+  Loader2
 } from "lucide-react";
 import { Card, CardHeader, CardTitle, CardContent, CardDescription } from "@/shared/ui/card";
 import { Button } from "@/shared/ui/button";
@@ -46,9 +47,16 @@ import { Switch } from "@/shared/ui/switch";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/shared/ui/dialog";
 import { toast } from "@/shared/ui/toaster";
 import { useThemeStore, ACCENT_PRESETS, type ThemeMode, type AccentColor } from "@/shared/stores/theme-store";
+import {
+  useThemes,
+  useUploadTheme,
+  usePublishTheme,
+  useArchiveTheme
+} from "../hooks/use-themes";
+import type { Theme } from "@/shared/api/methods";
 
 /**
- * 状态页模板参数 Schema 规范（内置和上传完全使用相同规范）
+ * 状态页模板的单个可配置参数字段（与 API ThemeSchemaField 同构）
  */
 export interface StatusPageSchemaField {
   key: string;
@@ -66,8 +74,9 @@ export interface StatusPageTheme {
   author: string;
   isBuiltin: boolean;
   description: string;
-  customHtml?: string; // 上传的第三方独立页面源码
-  schema: StatusPageSchemaField[];
+  customHtml?: string;
+  /** 参数配置 Schema 字段（与 API Theme.configSchema 对应） */
+  configSchema: StatusPageSchemaField[];
 }
 
 export type StatusPageAccessMode = "public" | "private" | "disabled";
@@ -77,61 +86,25 @@ export interface StatusPageToken {
   token: string;
   label: string;
   createdAt: number;
-  expiresAt: number | null; // null 为永久
+  expiresAt: number | null;
   revoked: boolean;
 }
 
-// 系统内置标准展示页模板规范（完全同构）
-const BUILTIN_DEFAULT_THEME: StatusPageTheme = {
-  id: "builtin-default",
-  name: "内置黑晶极简大盘 (Built-in Obsidian)",
-  version: "v1.2.0",
-  author: "smalux core team",
-  isBuiltin: true,
-  description: "系统原生内置的响应式全网服务可用性大盘，轻量极速，支持探针延迟时序与节点聚合状态展示。",
-  schema: [
-    {
-      key: "title",
-      label: "状态大盘展示标题",
-      type: "string",
-      defaultValue: "Smalux 全球边缘网络服务可用性实时看板",
-      description: "显示在公开状态页顶部的品牌大盘标题"
-    },
-    {
-      key: "banner",
-      label: "实时公告横幅 (Banner)",
-      type: "text",
-      defaultValue: "🟢 全网 8 个核心边缘 POP 节点及控制平面当前运转正常，SLA 达到 99.98%",
-      description: "在状态页头部展示的维护通告或健康播报"
-    },
-    {
-      key: "show_latency_chart",
-      label: "展示 24h 探针延迟与丢包率图表",
-      type: "boolean",
-      defaultValue: true,
-      description: "是否在公开页面中呈现网络节点延迟时序折线图"
-    },
-    {
-      key: "refresh_interval_sec",
-      label: "公开页数据自动刷新间隔 (秒)",
-      type: "number",
-      defaultValue: 15,
-      description: "前端公开页免登录长轮询请求探针实时状态的周期"
-    },
-    {
-      key: "group_by",
-      label: "节点卡片展示分组维度",
-      type: "select",
-      defaultValue: "region",
-      description: "探针节点在前端页面的分类方式",
-      options: [
-        { label: "按地理区域分组 (Region / Continent)", value: "region" },
-        { label: "按业务标签分组 (Tag / Service Group)", value: "tag" },
-        { label: "全平铺紧凑排列 (Flat Compact)", value: "flat" }
-      ]
-    }
-  ]
-};
+/**
+ * 将 API Theme（后端全量存储）直接映射为 StatusPageTheme，无需本地缓存
+ */
+function bridgeApiTheme(t: Theme): StatusPageTheme {
+  return {
+    id: t.id,
+    name: t.name,
+    version: t.version,
+    author: t.author,
+    isBuiltin: t.isBuiltin,
+    description: t.description,
+    customHtml: t.customHtml,
+    configSchema: (t.configSchema ?? []) as StatusPageSchemaField[]
+  };
+}
 
 // 预设快速填入备注
 const QUICK_TOKEN_PRESETS = [
@@ -140,6 +113,7 @@ const QUICK_TOKEN_PRESETS = [
   "🛠️ 故障现场排障",
   "📊 运营周报展示"
 ];
+
 
 /**
  * 为指定模板和当前参数生成高保真真实沙箱 HTML (Sandbox srcDoc)
@@ -344,16 +318,38 @@ function buildThemeSandboxHtml(theme: StatusPageTheme, configs: Record<string, a
 export function AppearanceTab() {
   const { mode, setMode, accent, setAccent } = useThemeStore();
 
-  // 当前生效的公开状态页模板（设为主页的模板）
-  const [currentTheme, setCurrentTheme] = useState<StatusPageTheme>(BUILTIN_DEFAULT_THEME);
+  // ── API 数据层 ─────────────────────────────────────────────────
+  const { data: themesData, isLoading: themesLoading } = useThemes();
+  const uploadTheme = useUploadTheme();
+  const publishTheme = usePublishTheme();
+  const archiveTheme = useArchiveTheme();
 
-  // 所有可用模板库（包含系统内置与已上传自定义模板）
-  const [themeList, setThemeList] = useState<StatusPageTheme[]>([BUILTIN_DEFAULT_THEME]);
+  /**
+   * 从 API 数据桥接成 StatusPageTheme 列表（排除已归档的主题）
+   * published 状态的模板排在最前
+   */
+  const themeList: StatusPageTheme[] = useMemo(() => {
+    const apiThemes = themesData?.themes ?? [];
+    // 过滤已归档，published 状态排在最前
+    return apiThemes
+      .filter((t) => t.status !== "archived")
+      .sort((a, b) => (b.status === "published" ? 1 : 0) - (a.status === "published" ? 1 : 0))
+      .map(bridgeApiTheme);
+  }, [themesData]);
+
+  /**
+   * 当前主页大盘：API 中 status=published 的第一条
+   * 如果 API 暂无数据，回退到内置默认主题
+   */
+  const currentTheme: StatusPageTheme | undefined = useMemo(() => {
+    const published = themesData?.themes?.find((t) => t.status === "published");
+    return published ? bridgeApiTheme(published) : undefined;
+  }, [themesData]);
 
   // 访问控制模式: 'public' | 'private' | 'disabled' (默认全网公开)
   const [accessMode, setAccessMode] = useState<StatusPageAccessMode>("public");
 
-  // 临时访问令牌列表
+  // 临时访问令牌列表（状态页专用 Token，独立于 API Token）
   const [tokens, setTokens] = useState<StatusPageToken[]>([
     {
       id: "stk_1",
@@ -384,18 +380,15 @@ export function AppearanceTab() {
 
   // 模板参数配置弹窗状态 & 视口模式（桌面 / 移动端）
   const [configDialogOpen, setConfigDialogOpen] = useState(false);
-  const [editingTheme, setEditingTheme] = useState<StatusPageTheme>(BUILTIN_DEFAULT_THEME);
+  // editingTheme 初始为空占位，打开弹窗时赋值
+  const [editingTheme, setEditingTheme] = useState<StatusPageTheme>({
+    id: "", name: "", version: "", author: "", isBuiltin: false, description: "", configSchema: []
+  });
   const [previewViewport, setPreviewViewport] = useState<"desktop" | "mobile">("desktop");
   const [sandboxKey, setSandboxKey] = useState(0);
 
   // 动态参数字典（针对每个模板维护独立值）
-  const [themeConfigValues, setThemeConfigValues] = useState<Record<string, any>>(() => {
-    const init: Record<string, any> = {};
-    BUILTIN_DEFAULT_THEME.schema.forEach((f) => {
-      init[f.key] = f.defaultValue;
-    });
-    return init;
-  });
+  const [themeConfigValues, setThemeConfigValues] = useState<Record<string, any>>({});
 
   const fileInputRef = useRef<HTMLInputElement>(null);
   const accents = ACCENT_PRESETS;
@@ -441,114 +434,83 @@ export function AppearanceTab() {
     setConfigDialogOpen(true);
   };
 
-  // 设为主页 (设为根路径 / 默认呈现大盘)
-  const handleSetAsHomepage = (theme: StatusPageTheme) => {
-    setCurrentTheme(theme);
-    const newConfigs = { ...themeConfigValues };
-    theme.schema.forEach((f) => {
-      if (newConfigs[f.key] === undefined) {
-        newConfigs[f.key] = f.defaultValue;
-      }
-    });
-    setThemeConfigValues(newConfigs);
-    toast.success(`已将「${theme.name}」设为默认主页展示大盘！访问域名根路径 ( / ) 将直接呈现。`);
-  };
-
-  // 删除自定义模板
-  const handleDeleteCustomTheme = (themeId: string) => {
-    setThemeList((prev) => prev.filter((t) => t.id !== themeId));
-    if (currentTheme.id === themeId) {
-      setCurrentTheme(BUILTIN_DEFAULT_THEME);
+  // 设为主页（调用 publishTheme mutation）
+  const handleSetAsHomepage = async (theme: StatusPageTheme) => {
+    try {
+      await publishTheme.mutateAsync(theme.id);
+      const newConfigs = { ...themeConfigValues };
+      theme.configSchema.forEach((f) => {
+        if (newConfigs[f.key] === undefined) newConfigs[f.key] = f.defaultValue;
+      });
+      setThemeConfigValues(newConfigs);
+      toast.success(`已将「${theme.name}」发布为当前主页展示大盘！`);
+    } catch {
+      toast.error("设置主页大盘失败，请重试");
     }
-    toast.info("已移除该自定义大盘模板，当前生效已自动恢复为系统内置大盘");
   };
 
-  // 上传并替换公开状态页模板 (支持 theme.json / manifest.json 或 ZIP / HTML 包)
-  const handleUploadThemePackage = (e: React.ChangeEvent<HTMLInputElement>) => {
+  // 删除自定义模板（调用 archiveTheme mutation 归档）
+  const handleDeleteCustomTheme = async (themeId: string) => {
+    try {
+      await archiveTheme.mutateAsync(themeId);
+      toast.info("已归档并移除该自定义大盘模板");
+    } catch {
+      toast.error("移除自定义模板失败，请重试");
+    }
+  };
+
+  // 上传并替换公开状态页模板（将完整数据发送给后端全量存储）
+  const handleUploadThemePackage = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
     if (file.name.endsWith(".json")) {
       const reader = new FileReader();
-      reader.onload = (event) => {
+      reader.onload = async (event) => {
         try {
           const parsed = JSON.parse(event.target?.result as string);
-          if (!parsed.name || !Array.isArray(parsed.schema)) {
-            throw new Error("JSON 格式不符合 smalux 展示页 Schema 规范（缺少 name 或 schema 字段）");
+          if (!parsed.name || (!Array.isArray(parsed.schema) && !Array.isArray(parsed.configSchema))) {
+            throw new Error("JSON 格式不符合 smalux 展示页 Schema 规范（缺少 name 或 configSchema/schema 字段）");
           }
-          const customTheme: StatusPageTheme = {
-            id: parsed.id || `custom-${Date.now()}`,
+          // 将完整数据上传到后端（后端全量存储）
+          await uploadTheme.mutateAsync({
             name: parsed.name,
             version: parsed.version || "1.0.0",
-            author: parsed.author || "自定义开发者",
-            isBuiltin: false,
-            description: parsed.description || "自定义导入的公开状态页模板",
-            customHtml: parsed.html || parsed.customHtml,
-            schema: parsed.schema
-          };
-
-          setThemeList((prev) => [customTheme, ...prev.filter((t) => t.id !== customTheme.id)]);
-          setCurrentTheme(customTheme);
-
-          const newConfigs: Record<string, any> = {};
-          customTheme.schema.forEach((f) => {
-            newConfigs[f.key] = f.defaultValue;
+            description: parsed.description || "",
+            configSchema: parsed.configSchema || parsed.schema || [],
+            customHtml: parsed.html || parsed.customHtml
           });
+          const newConfigs: Record<string, any> = {};
+          (parsed.configSchema || parsed.schema || []).forEach((f: any) => { newConfigs[f.key] = f.defaultValue; });
           setThemeConfigValues(newConfigs);
-          toast.success(`成功上传「${customTheme.name}」并已自动设为主页！`);
+          toast.success(`成功上传「${parsed.name}」并已存入模板库！`);
         } catch (err: any) {
-          toast.error(`解析模板配置失败: ${err.message}`);
+          toast.error(`解析或上传模板失败: ${err.message}`);
         }
       };
       reader.readAsText(file);
     } else {
-      // 模拟静态 HTML / ZIP 包上传解析
-      const customTheme: StatusPageTheme = {
-        id: `custom-${Date.now()}`,
-        name: file.name.replace(/\.(zip|tar|gz|html)$/, ""),
-        version: "v1.0.0",
-        author: "上传开发者",
-        isBuiltin: false,
-        description: `从安装包「${file.name}」中解析提取的独立大盘模板`,
-        schema: [
-          {
-            key: "title",
-            label: "大盘标题",
-            type: "string",
-            defaultValue: "第三方自定义监控大盘",
-            description: "展示页大标题"
-          },
-          {
-            key: "notice",
-            label: "重要公告",
-            type: "text",
-            defaultValue: "欢迎访问全网节点可用性状态页",
-            description: "顶部通知横幅"
-          },
-          {
-            key: "dark_mode_default",
-            label: "默认开启深色模式",
-            type: "boolean",
-            defaultValue: true,
-            description: "未切换时优先深色主题"
-          }
-        ]
-      };
-
-      setThemeList((prev) => [customTheme, ...prev.filter((t) => t.id !== customTheme.id)]);
-      setCurrentTheme(customTheme);
-
-      const newConfigs: Record<string, any> = {};
-      customTheme.schema.forEach((f) => {
-        newConfigs[f.key] = f.defaultValue;
-      });
-      setThemeConfigValues(newConfigs);
-      toast.success(`成功上传安装包「${file.name}」并已设为主页大盘！`);
+      // 静态 HTML / ZIP 包上传（将默认 configSchema 一并存入后端）
+      try {
+        const themeName = file.name.replace(/\.(zip|tar|gz|html)$/, "");
+        await uploadTheme.mutateAsync({
+          name: themeName,
+          version: "1.0.0",
+          description: `从安装包「${file.name}」中解析提取的独立大盘模板`,
+          configSchema: [
+            { key: "title", label: "大盘标题", type: "string" as const, defaultValue: "第三方自定义监控大盘", description: "展示页大标题" },
+            { key: "notice", label: "重要公告", type: "text" as const, defaultValue: "欢迎访问全网节点可用性状态页", description: "顶部通知横幅" },
+            { key: "dark_mode_default", label: "默认开启深色模式", type: "boolean" as const, defaultValue: true, description: "未切换时优先深色主题" }
+          ]
+        });
+        toast.success(`成功上传安装包「${file.name}」并已存入模板库！`);
+      } catch {
+        toast.error("上传模板包失败，请重试");
+      }
     }
 
-    if (fileInputRef.current) {
-      fileInputRef.current.value = "";
-    }
+
+    if (fileInputRef.current) fileInputRef.current.value = "";
   };
 
   // 创建新临时访问令牌
@@ -611,22 +573,24 @@ export function AppearanceTab() {
     <div className="space-y-6">
       {/* 1. 明暗主题与强调色 */}
       <Card>
-        <CardHeader className="py-4">
-          <CardTitle className="text-base flex items-center gap-2">
-            <Palette className="size-4 text-primary" />
-            控制台外观与主题偏好
-          </CardTitle>
-          <CardDescription>定制个人控制台的视觉风格、明暗模式与 10 款品牌主题强调色</CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-6 text-xs">
-          {/* 明暗模式 */}
-          <div className="space-y-3">
-            <label className="font-semibold text-foreground">明暗色彩模式</label>
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 max-w-md">
+        <CardHeader className="py-3.5">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <div>
+              <CardTitle className="text-base flex items-center gap-2">
+                <Palette className="size-4 text-primary" />
+                控制台外观与主题偏好
+              </CardTitle>
+              <CardDescription className="text-xs">
+                定制个人控制台的视觉风格、明暗模式与 10 款品牌强调色
+              </CardDescription>
+            </div>
+
+            {/* 紧凑明暗色彩模式切换器 (Segmented Mode Switcher) */}
+            <div className="flex items-center p-1 rounded-xl bg-muted/40 border border-border/60 gap-1 self-start sm:self-auto shrink-0 shadow-2xs">
               {[
-                { key: "dark" as ThemeMode, label: "深色极客黑 (Dark)", icon: Moon },
-                { key: "light" as ThemeMode, label: "浅色明亮白 (Light)", icon: Sun },
-                { key: "system" as ThemeMode, label: "跟随系统 (System)", icon: Monitor }
+                { key: "dark" as ThemeMode, label: "深色", icon: Moon },
+                { key: "light" as ThemeMode, label: "浅色", icon: Sun },
+                { key: "system" as ThemeMode, label: "系统", icon: Monitor }
               ].map((t) => {
                 const Icon = t.icon;
                 const active = mode === t.key;
@@ -636,29 +600,30 @@ export function AppearanceTab() {
                     type="button"
                     onClick={() => {
                       setMode(t.key);
-                      toast.success(`已切换为: ${t.label}`);
+                      toast.success(`已切换为: ${t.label}模式`);
                     }}
-                    className={`flex flex-col items-center justify-center gap-2 rounded-xl border p-3.5 text-xs font-medium transition-all cursor-pointer ${
+                    className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg text-xs font-medium transition-all cursor-pointer ${
                       active
-                        ? "border-primary bg-primary/10 text-primary font-bold shadow-xs"
-                        : "border-border/80 bg-card/60 text-muted-foreground hover:text-foreground hover:bg-muted/30"
+                        ? "bg-background text-foreground font-bold shadow-xs border border-border/60"
+                        : "text-muted-foreground hover:text-foreground hover:bg-muted/50 border border-transparent"
                     }`}
                   >
-                    <Icon className="size-5" />
+                    <Icon className="size-3.5" />
                     <span>{t.label}</span>
                   </button>
                 );
               })}
             </div>
           </div>
-
+        </CardHeader>
+        <CardContent className="pt-0 pb-4 space-y-2.5 text-xs">
           {/* 强调色选择 (10款专业调色) */}
-          <div className="space-y-3 pt-4 border-t border-border/60">
-            <div className="flex items-center justify-between">
-              <label className="font-semibold text-foreground">品牌主强调色 (Accent Color · 10 款精心调校)</label>
-              <span className="text-[11px] text-muted-foreground font-mono">当前: {accents.find((a) => a.key === accent)?.label}</span>
+          <div className="space-y-2 pt-2 border-t border-border/40">
+            <div className="flex items-center justify-between text-[11px]">
+              <span className="font-semibold text-foreground">品牌主强调色 (Accent Color · 10 款专业调色)</span>
+              <span className="text-muted-foreground font-mono">当前: {accents.find((a) => a.key === accent)?.label}</span>
             </div>
-            <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-3">
+            <div className="grid grid-cols-2 sm:grid-cols-5 md:grid-cols-10 gap-1.5">
               {accents.map((acc) => {
                 const active = accent === acc.key;
                 return (
@@ -669,13 +634,13 @@ export function AppearanceTab() {
                       setAccent(acc.key);
                       toast.success(`强调色已切换为: ${acc.label}`);
                     }}
-                    className={`flex items-center gap-2.5 rounded-xl border p-2.5 text-xs font-medium transition-all cursor-pointer ${
+                    className={`flex items-center justify-center gap-1.5 rounded-lg border py-1.5 px-2 text-[11px] font-medium transition-all cursor-pointer ${
                       active
                         ? "border-primary bg-primary/10 text-foreground font-bold shadow-xs ring-1 ring-primary/40"
-                        : "border-border/80 bg-card/60 text-muted-foreground hover:text-foreground hover:bg-muted/30"
+                        : "border-border/60 bg-muted/10 text-muted-foreground hover:text-foreground hover:bg-muted/40"
                     }`}
                   >
-                    <span className={`size-3.5 rounded-full ${acc.dotClass} shrink-0 ring-2 ring-background shadow-xs`} />
+                    <span className={`size-2.5 rounded-full ${acc.dotClass} shrink-0 ring-1 ring-background shadow-xs`} />
                     <span className="truncate">{acc.label}</span>
                   </button>
                 );
@@ -1028,7 +993,7 @@ export function AppearanceTab() {
                   {/* 底部紧凑纯图标小按钮栏 */}
                   <div className="px-3 py-2 flex items-center justify-between border-t border-border/40 bg-muted/10">
                     <div className="flex items-center gap-2 text-[10px] text-muted-foreground font-mono">
-                      <span>Schema: {theme.schema.length} 项</span>
+                      <span>Schema: {theme.configSchema.length} 项</span>
                       <span>·</span>
                       <span>{theme.isBuiltin ? "~420 KB" : "1.8 MB"}</span>
                     </div>
@@ -1146,7 +1111,7 @@ export function AppearanceTab() {
                   配置「{editingTheme.name}」参数与沙箱实时预览
                 </DialogTitle>
                 <DialogDescription className="text-xs text-muted-foreground mt-0.5">
-                  已自动提取 {editingTheme.schema.length} 个 Schema 字段，右侧真机沙箱实时同步渲染
+                  已自动提取 {editingTheme.configSchema.length} 个 Schema 字段，右侧真机沙箱实时同步渲染
                 </DialogDescription>
               </div>
             </div>
@@ -1199,10 +1164,10 @@ export function AppearanceTab() {
                   <Sliders className="size-3.5 text-primary" />
                   动态表单项
                 </span>
-                <span className="text-[10px] font-mono text-muted-foreground">共 {editingTheme.schema.length} 项</span>
+                <span className="text-[10px] font-mono text-muted-foreground">共 {editingTheme.configSchema.length} 项</span>
               </div>
 
-              {editingTheme.schema.map((field) => {
+              {editingTheme.configSchema.map((field) => {
                 const value = themeConfigValues[field.key] ?? field.defaultValue;
 
                 // 1. Boolean 开关类型

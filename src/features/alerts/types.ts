@@ -15,6 +15,8 @@ export interface AlertRuleItem {
   severity: AlertSeverity;
   enabled: boolean;
   silenced: boolean;
+  repeatIntervalSec?: number;
+  channelIds?: string[];
   channels: string[];
 }
 

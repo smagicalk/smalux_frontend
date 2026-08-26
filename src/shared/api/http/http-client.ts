@@ -188,9 +188,6 @@ class HttpClient {
         const id = path.split("/")[4];
         return settingsMockEngine.lockAccount(id, (payload as any)?.locked ?? true) as unknown as T;
       }
-      if (path.includes("/terminate_others")) {
-        return settingsMockEngine.logoutOtherSessions() as unknown as T;
-      }
       if (method === "PUT") {
         const id = path.split("/")[4];
         return settingsMockEngine.updateAccount(id, payload as any) as unknown as T;
@@ -252,6 +249,16 @@ class HttpClient {
     }
 
     // 4. Security & Authentication Center
+    if (path.startsWith("/api/v1/tokens")) {
+      if (method === "GET") return settingsMockEngine.getTokens() as unknown as T;
+      if (method === "POST") return settingsMockEngine.createToken(payload as any) as unknown as T;
+      if (method === "DELETE") {
+        const id = path.split("/")[4];
+        return settingsMockEngine.revokeToken(id) as unknown as T;
+      }
+      return { ok: true } as unknown as T;
+    }
+
     if (path.startsWith("/api/v1/security/overview")) {
       return settingsMockEngine.getSecurityOverview() as unknown as T;
     }
@@ -312,6 +319,17 @@ class HttpClient {
     // 6. Themes
     if (path.startsWith("/api/v1/themes")) {
       if (method === "GET") return settingsMockEngine.getThemes() as unknown as T;
+      if (path.includes("/publish")) {
+        const id = path.split("/")[4];
+        return settingsMockEngine.publishTheme(id) as unknown as T;
+      }
+      if (path.includes("/archive")) {
+        const id = path.split("/")[4];
+        return settingsMockEngine.archiveTheme(id) as unknown as T;
+      }
+      if (method === "POST") {
+        return settingsMockEngine.uploadTheme(payload as any) as unknown as T;
+      }
       return { ok: true } as unknown as T;
     }
 
@@ -368,12 +386,48 @@ class HttpClient {
       return { ok: true } as unknown as T;
     }
 
-    // 8. Cron Jobs & Cron Logs
+    // 8. Cron Jobs & Cron Logs（状态持久化：CRUD 全部走 Mock Engine 状态）
     if (path.includes("/api/v1/crons/logs")) {
       return { logs: mockCronLogs || [] } as unknown as T;
     }
     if (path.includes("/api/v1/crons")) {
       if (method === "GET") return { crons: mockCrons } as unknown as T;
+      if (path.includes("/toggle")) {
+        // POST /api/v1/crons/:id/toggle
+        const id = path.split("/")[4];
+        const idx = (mockCrons as any[]).findIndex((c: any) => c.id === id);
+        if (idx !== -1) (mockCrons as any[])[idx].enabled = (payload as any)?.enabled ?? !(mockCrons as any[])[idx].enabled;
+        return { ok: true } as unknown as T;
+      }
+      if (method === "DELETE") {
+        const id = path.split("/")[4];
+        const arr = mockCrons as any[];
+        const i = arr.findIndex((c) => c.id === id);
+        if (i !== -1) arr.splice(i, 1);
+        return { ok: true } as unknown as T;
+      }
+      if (method === "PUT") {
+        const id = path.split("/")[4];
+        const arr = mockCrons as any[];
+        const idx = arr.findIndex((c) => c.id === id);
+        if (idx !== -1) arr[idx] = { ...arr[idx], ...(payload as any) };
+        return { ok: true } as unknown as T;
+      }
+      if (method === "POST") {
+        const p = payload as any;
+        const newCron = {
+          id: `cron-${Date.now()}`,
+          name: p.name,
+          serverId: p.serverId,
+          expression: p.expression,
+          command: p.command,
+          enabled: true,
+          lastRunAt: undefined,
+          nextRunAt: Date.now() + 60_000
+        };
+        (mockCrons as any[]).unshift(newCron);
+        return { ok: true } as unknown as T;
+      }
       return { ok: true } as unknown as T;
     }
 

@@ -31,6 +31,23 @@ export const cronSchema = z.object({
 export type Cron = z.infer<typeof cronSchema>;
 
 /**
+ * 定时任务列表查询入参契约
+ */
+export const cronListParamsSchema = z.object({
+  /** 搜索关键词（匹配任务名、表达式、指令、主机等） */
+  search: z.string().optional(),
+  /** 启用状态筛选 */
+  enabled: z.boolean().optional(),
+  /** 目标执行主机 ID 筛选 */
+  serverId: z.string().optional(),
+  /** 当前页码 */
+  page: z.number().optional(),
+  /** 每页条数 */
+  pageSize: z.number().optional()
+}).optional();
+export type CronListParams = z.infer<typeof cronListParamsSchema>;
+
+/**
  * 定时任务列表查询响应契约
  */
 export const cronListResultSchema = z.object({
@@ -78,6 +95,29 @@ export const cronLogSchema = z.object({
   output: z.string().optional()
 });
 export type CronLog = z.infer<typeof cronLogSchema>;
+
+/**
+ * 定时任务执行流水日志查询入参契约
+ */
+export const cronLogListParamsSchema = z.object({
+  /** 归属的 Cron 任务 ID */
+  cronId: z.string().optional(),
+  /** 目标执行主机 ID */
+  serverId: z.string().optional(),
+  /** 调度批次 ID */
+  batchId: z.string().optional(),
+  /** 触发类型筛选 */
+  triggerType: z.enum(["all", "cron", "manual"]).optional(),
+  /** 执行状态筛选 */
+  status: z.string().optional(),
+  /** 搜索关键词（任务名、命令、主机等） */
+  search: z.string().optional(),
+  /** 当前页码 */
+  page: z.number().optional(),
+  /** 每页条数 */
+  pageSize: z.number().optional()
+}).optional();
+export type CronLogListParams = z.infer<typeof cronLogListParamsSchema>;
 
 /**
  * 定时任务执行流水日志列表响应契约

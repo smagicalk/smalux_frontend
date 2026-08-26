@@ -3,19 +3,19 @@ import { methods } from "@/shared/api/methods";
 import { queryKeys } from "@/shared/api/query-keys";
 import { useRpc } from "@/app/providers/rpc-context";
 import { httpClient } from "@/shared/api/http/http-client";
-import type { TaskVariable } from "@/shared/api/methods";
+import type { TaskVariable, TaskListParams } from "@/shared/api/methods";
 
 /**
  * 获取集群批量命令执行与分发任务列表 Hook
  * 
  * 对应 `task.list` JSON-RPC 方法。
  * 
- * @param filters 任务状态与关键词过滤
+ * @param filters 任务状态与关键词过滤、分页参数
  */
-export function useTasks(filters: { status?: string; search?: string } = {}) {
+export function useTasks(filters?: TaskListParams) {
   const { client } = useRpc();
   return useQuery({
-    queryKey: queryKeys.taskList(filters),
+    queryKey: queryKeys.taskList(filters as Record<string, unknown>),
     queryFn: () => client.call("task.list", filters, methods["task.list"].result)
   });
 }

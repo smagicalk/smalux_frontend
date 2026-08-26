@@ -1,15 +1,15 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { queryKeys } from "@/shared/api/query-keys";
 import { httpClient } from "@/shared/api/http/http-client";
-import type { AlertSeverity, AlertListResult } from "@/shared/api/methods";
+import type { AlertSeverity, AlertListResult, AlertListParams } from "@/shared/api/methods";
 
 /**
  * 获取集群告警规则与历史触发事件列表 Hook（HTTP GET /api/v1/alerts）
  */
-export function useAlerts() {
+export function useAlerts(params?: AlertListParams) {
   return useQuery({
-    queryKey: queryKeys.alerts,
-    queryFn: () => httpClient.get<AlertListResult>("/api/v1/alerts")
+    queryKey: queryKeys.alerts(params as Record<string, unknown>),
+    queryFn: () => httpClient.get<AlertListResult>("/api/v1/alerts", params)
   });
 }
 
@@ -28,6 +28,11 @@ export function useCreateAlertRule() {
       severity: AlertSeverity;
       serverIds?: string[];
       serverId?: string;
+      repeatIntervalSec?: number;
+      channelIds?: string[];
+      fromServerDetail?: boolean;
+      source?: string;
+      [key: string]: unknown;
     }) => httpClient.post("/api/v1/alerts", params),
     onSuccess: () => qc.invalidateQueries({ queryKey: queryKeys.alerts })
   });
@@ -49,6 +54,11 @@ export function useUpdateAlertRule() {
       severity: AlertSeverity;
       serverIds?: string[];
       serverId?: string;
+      repeatIntervalSec?: number;
+      channelIds?: string[];
+      fromServerDetail?: boolean;
+      source?: string;
+      [key: string]: unknown;
     }) => httpClient.put(`/api/v1/alerts/${params.id}`, params),
     onSuccess: () => qc.invalidateQueries({ queryKey: queryKeys.alerts })
   });
@@ -60,8 +70,14 @@ export function useUpdateAlertRule() {
 export function useToggleAlertRule() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (params: { id: string; enabled: boolean }) =>
-      httpClient.post(`/api/v1/alerts/${params.id}/toggle`, { enabled: params.enabled }),
+    mutationFn: (params: {
+      id: string;
+      enabled: boolean;
+      fromServerDetail?: boolean;
+      source?: string;
+      targetServerId?: string;
+      [key: string]: unknown;
+    }) => httpClient.post(`/api/v1/alerts/${params.id}/toggle`, params),
     onSuccess: () => qc.invalidateQueries({ queryKey: queryKeys.alerts })
   });
 }
@@ -72,8 +88,14 @@ export function useToggleAlertRule() {
 export function useSilenceAlert() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (params: { id: string; silenced: boolean }) =>
-      httpClient.post(`/api/v1/alerts/${params.id}/silence`, { silenced: params.silenced }),
+    mutationFn: (params: {
+      id: string;
+      silenced: boolean;
+      fromServerDetail?: boolean;
+      source?: string;
+      targetServerId?: string;
+      [key: string]: unknown;
+    }) => httpClient.post(`/api/v1/alerts/${params.id}/silence`, params),
     onSuccess: () => qc.invalidateQueries({ queryKey: queryKeys.alerts })
   });
 }

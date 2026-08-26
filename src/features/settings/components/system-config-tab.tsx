@@ -29,7 +29,9 @@ import {
   Network,
   Bell,
   Gauge,
-  AlertTriangle
+  AlertTriangle,
+  KeyRound,
+  ScrollText
 } from "lucide-react";
 import { Card, CardHeader, CardTitle, CardContent, CardDescription } from "@/shared/ui/card";
 import { Button } from "@/shared/ui/button";
@@ -479,267 +481,16 @@ export function SystemConfigTab() {
               </select>
               <p className="text-[11px] text-muted-foreground">用于精准解析并记录管理员登录终端、审计日志及 Web SSH 会话公网 IP</p>
             </div>
-          </div>
-        </CardContent>
-      </Card>
 
-      {/* 3. 时序数据存储、留存周期与执行保护 (Storage & Lifecycle) */}
-      <Card>
-        <CardHeader className="py-4">
-          <CardTitle className="text-base flex items-center gap-2">
-            <Database className="size-4 text-emerald-500" />
-            存储配额、单项指标留存与执行保护 (Storage & Retention)
-          </CardTitle>
-          <CardDescription>
-            设定全局数据库使用上限、按 CPU/内存/磁盘/网络单项细化留存时长、管理探针生命周期与执行保护
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-6 text-xs w-full">
-          {/* 第一组：💾 全局数据库磁盘容量上限 */}
-          <div className="space-y-3">
-            <div className="flex items-center gap-2 pb-1 border-b border-border/60">
-              <HardDrive className="size-3.5 text-emerald-400" />
-              <span className="font-bold text-foreground">全局数据库存储容量上限</span>
-              <span className="text-[11px] text-muted-foreground font-mono">（通用数据库配额保护，超限自动按 FIFO 淘汰最老切片）</span>
-            </div>
-
-            <div className="grid grid-cols-1 gap-4">
-              <div className="space-y-1.5">
-                <label className="h-5 font-semibold text-foreground flex items-center justify-between">
-                  <span className="flex items-center gap-1.5">
-                    <Gauge className="size-3.5 text-primary" />
-                    全局数据库磁盘使用配额上限 (Global Storage Quota)
-                  </span>
-                  <span className="text-[10px] text-muted-foreground font-mono">推荐: 10 ~ 100 GB</span>
-                </label>
-                <div className="relative">
-                  <input
-                    type="number"
-                    min={2}
-                    max={500}
-                    value={formValues["storage.maxDbSizeGb"] || "20"}
-                    onChange={(e) => handleChange("storage.maxDbSizeGb", e.target.value)}
-                    className="w-full h-11 rounded-xl border border-border/80 bg-muted/40 px-3.5 pr-10 text-xs font-mono outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 text-foreground transition-all"
-                  />
-                  <span className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground text-[11px] font-mono pointer-events-none font-bold">
-                    GB
-                  </span>
-                </div>
-                <p className="text-[11px] text-muted-foreground">
-                  当数据库存储体积达到此水位时，后端引擎将自动触发清理机制，优先回收已超出单项保留周期的历史切片
-                </p>
-              </div>
-            </div>
-          </div>
-
-          {/* 第二组：📊 单项监控指标与日志保存时长 (8项细分矩阵) */}
-          <div className="space-y-3 pt-1">
-            <div className="flex items-center gap-2 pb-1 border-b border-border/60">
-              <Activity className="size-3.5 text-sky-400" />
-              <span className="font-bold text-foreground">单项指标与业务数据保存时长</span>
-              <span className="text-[11px] text-muted-foreground font-mono">（按数据类型独立设置保留天数）</span>
-            </div>
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-              {/* 1. CPU 负载 */}
-              <div className="space-y-1.5">
-                <label className="h-5 font-semibold text-foreground flex items-center justify-between">
-                  <span className="flex items-center gap-1 text-foreground truncate">
-                    <Cpu className="size-3 text-sky-400 shrink-0" />
-                    CPU 负载与利用率
-                  </span>
-                  <span className="text-[10px] text-muted-foreground font-mono shrink-0">15~60天</span>
-                </label>
-                <div className="relative">
-                  <input
-                    type="number"
-                    min={1}
-                    max={365}
-                    value={formValues["storage.cpuRetentionDays"] || "30"}
-                    onChange={(e) => handleChange("storage.cpuRetentionDays", e.target.value)}
-                    className="w-full h-11 rounded-xl border border-border/80 bg-muted/40 px-3.5 pr-10 text-xs font-mono outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 text-foreground transition-all"
-                  />
-                  <span className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground text-[11px] font-mono pointer-events-none">天</span>
-                </div>
-                <p className="text-[10px] text-muted-foreground truncate">CPU 使用率与 Load 负载</p>
-              </div>
-
-              {/* 2. 内存占用 */}
-              <div className="space-y-1.5">
-                <label className="h-5 font-semibold text-foreground flex items-center justify-between">
-                  <span className="flex items-center gap-1 text-foreground truncate">
-                    <Layers className="size-3 text-emerald-400 shrink-0" />
-                    内存与 Swap 占用
-                  </span>
-                  <span className="text-[10px] text-muted-foreground font-mono shrink-0">15~60天</span>
-                </label>
-                <div className="relative">
-                  <input
-                    type="number"
-                    min={1}
-                    max={365}
-                    value={formValues["storage.memoryRetentionDays"] || "30"}
-                    onChange={(e) => handleChange("storage.memoryRetentionDays", e.target.value)}
-                    className="w-full h-11 rounded-xl border border-border/80 bg-muted/40 px-3.5 pr-10 text-xs font-mono outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 text-foreground transition-all"
-                  />
-                  <span className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground text-[11px] font-mono pointer-events-none">天</span>
-                </div>
-                <p className="text-[10px] text-muted-foreground truncate">物理内存与虚拟 Swap 历史</p>
-              </div>
-
-              {/* 3. 磁盘 I/O */}
-              <div className="space-y-1.5">
-                <label className="h-5 font-semibold text-foreground flex items-center justify-between">
-                  <span className="flex items-center gap-1 text-foreground truncate">
-                    <HardDrive className="size-3 text-amber-400 shrink-0" />
-                    磁盘 I/O 与容量
-                  </span>
-                  <span className="text-[10px] text-muted-foreground font-mono shrink-0">15~60天</span>
-                </label>
-                <div className="relative">
-                  <input
-                    type="number"
-                    min={1}
-                    max={365}
-                    value={formValues["storage.diskRetentionDays"] || "30"}
-                    onChange={(e) => handleChange("storage.diskRetentionDays", e.target.value)}
-                    className="w-full h-11 rounded-xl border border-border/80 bg-muted/40 px-3.5 pr-10 text-xs font-mono outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 text-foreground transition-all"
-                  />
-                  <span className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground text-[11px] font-mono pointer-events-none">天</span>
-                </div>
-                <p className="text-[10px] text-muted-foreground truncate">分区用量与磁盘读写吞吐</p>
-              </div>
-
-              {/* 4. 网络带宽 */}
-              <div className="space-y-1.5">
-                <label className="h-5 font-semibold text-foreground flex items-center justify-between">
-                  <span className="flex items-center gap-1 text-foreground truncate">
-                    <Network className="size-3 text-indigo-400 shrink-0" />
-                    网络带宽与流量
-                  </span>
-                  <span className="text-[10px] text-muted-foreground font-mono shrink-0">15~60天</span>
-                </label>
-                <div className="relative">
-                  <input
-                    type="number"
-                    min={1}
-                    max={365}
-                    value={formValues["storage.networkRetentionDays"] || "30"}
-                    onChange={(e) => handleChange("storage.networkRetentionDays", e.target.value)}
-                    className="w-full h-11 rounded-xl border border-border/80 bg-muted/40 px-3.5 pr-10 text-xs font-mono outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 text-foreground transition-all"
-                  />
-                  <span className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground text-[11px] font-mono pointer-events-none">天</span>
-                </div>
-                <p className="text-[10px] text-muted-foreground truncate">网卡进出流量与实时速率</p>
-              </div>
-
-              {/* 5. Ping 延时 */}
-              <div className="space-y-1.5">
-                <label className="h-5 font-semibold text-foreground flex items-center justify-between">
-                  <span className="flex items-center gap-1 text-foreground truncate">
-                    <Activity className="size-3 text-rose-400 shrink-0" />
-                    网络拨测与延时
-                  </span>
-                  <span className="text-[10px] text-muted-foreground font-mono shrink-0">15~60天</span>
-                </label>
-                <div className="relative">
-                  <input
-                    type="number"
-                    min={1}
-                    max={365}
-                    value={formValues["storage.pingRetentionDays"] || "30"}
-                    onChange={(e) => handleChange("storage.pingRetentionDays", e.target.value)}
-                    className="w-full h-11 rounded-xl border border-border/80 bg-muted/40 px-3.5 pr-10 text-xs font-mono outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 text-foreground transition-all"
-                  />
-                  <span className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground text-[11px] font-mono pointer-events-none">天</span>
-                </div>
-                <p className="text-[10px] text-muted-foreground truncate">ICMP/TCP 延时与丢包历史</p>
-              </div>
-
-              {/* 6. 进程快照 */}
-              <div className="space-y-1.5">
-                <label className="h-5 font-semibold text-foreground flex items-center justify-between">
-                  <span className="flex items-center gap-1 text-foreground truncate">
-                    <Terminal className="size-3 text-purple-400 shrink-0" />
-                    进程状态快照
-                  </span>
-                  <span className="text-[10px] text-muted-foreground font-mono shrink-0">3~30天</span>
-                </label>
-                <div className="relative">
-                  <input
-                    type="number"
-                    min={1}
-                    max={90}
-                    value={formValues["storage.processRetentionDays"] || "7"}
-                    onChange={(e) => handleChange("storage.processRetentionDays", e.target.value)}
-                    className="w-full h-11 rounded-xl border border-border/80 bg-muted/40 px-3.5 pr-10 text-xs font-mono outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 text-foreground transition-all"
-                  />
-                  <span className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground text-[11px] font-mono pointer-events-none">天</span>
-                </div>
-                <p className="text-[10px] text-muted-foreground truncate">Top 进程资源占用快照</p>
-              </div>
-
-              {/* 7. 审计日志 */}
-              <div className="space-y-1.5">
-                <label className="h-5 font-semibold text-foreground flex items-center justify-between">
-                  <span className="flex items-center gap-1 text-foreground truncate">
-                    <FileCode className="size-3 text-emerald-400 shrink-0" />
-                    系统操作审计日志
-                  </span>
-                  <span className="text-[10px] text-muted-foreground font-mono shrink-0">30~180天</span>
-                </label>
-                <div className="relative">
-                  <input
-                    type="number"
-                    min={7}
-                    max={365}
-                    value={formValues["storage.auditRetentionDays"] || "90"}
-                    onChange={(e) => handleChange("storage.auditRetentionDays", e.target.value)}
-                    className="w-full h-11 rounded-xl border border-border/80 bg-muted/40 px-3.5 pr-10 text-xs font-mono outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 text-foreground transition-all"
-                  />
-                  <span className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground text-[11px] font-mono pointer-events-none">天</span>
-                </div>
-                <p className="text-[10px] text-muted-foreground truncate">管理操作与登录鉴权记录</p>
-              </div>
-
-              {/* 8. 告警事件 */}
-              <div className="space-y-1.5">
-                <label className="h-5 font-semibold text-foreground flex items-center justify-between">
-                  <span className="flex items-center gap-1 text-foreground truncate">
-                    <Bell className="size-3 text-amber-400 shrink-0" />
-                    历史告警事件记录
-                  </span>
-                  <span className="text-[10px] text-muted-foreground font-mono shrink-0">15~90天</span>
-                </label>
-                <div className="relative">
-                  <input
-                    type="number"
-                    min={3}
-                    max={180}
-                    value={formValues["storage.alertRetentionDays"] || "30"}
-                    onChange={(e) => handleChange("storage.alertRetentionDays", e.target.value)}
-                    className="w-full h-11 rounded-xl border border-border/80 bg-muted/40 px-3.5 pr-10 text-xs font-mono outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 text-foreground transition-all"
-                  />
-                  <span className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground text-[11px] font-mono pointer-events-none">天</span>
-                </div>
-                <p className="text-[10px] text-muted-foreground truncate">规则触发与恢复通知历史</p>
-              </div>
-            </div>
-          </div>
-
-          {/* 第三组：📡 探针生命周期与入网鉴权时效 */}
-          <div className="space-y-3 pt-1">
-            <div className="flex items-center gap-2 pb-1 border-b border-border/60">
-              <Radio className="size-3.5 text-indigo-400" />
-              <span className="font-bold text-foreground">探针入网鉴权与节点失联管理</span>
-              <span className="text-[11px] text-muted-foreground font-mono">（探针安全认证与废弃实例自动维护）</span>
-            </div>
-
-            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            {/* 探针入网鉴权与心跳时效 */}
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-1 border-t border-border/40">
               {/* Agent 注册 Token 有效期 */}
               <div className="space-y-1.5">
                 <label className="h-5 font-semibold text-foreground flex items-center justify-between">
-                  <span>探针注册 Token 有效期</span>
+                  <span className="flex items-center gap-1.5">
+                    <Radio className="size-3.5 text-primary" />
+                    探针注册 Token 有效期
+                  </span>
                   <span className="text-[10px] text-muted-foreground font-mono">推荐: 180 ~ 600</span>
                 </label>
                 <div className="relative">
@@ -755,13 +506,16 @@ export function SystemConfigTab() {
                     秒
                   </span>
                 </div>
-                <p className="text-[11px] text-muted-foreground">一键安装脚本中携带的入网临时鉴权密钥时效</p>
+                <p className="text-[11px] text-muted-foreground">一键安装脚本中携带的入网临时鉴权密钥有效时长</p>
               </div>
 
               {/* 探针失联离线超时判定 */}
               <div className="space-y-1.5">
                 <label className="h-5 font-semibold text-foreground flex items-center justify-between">
-                  <span>探针心跳失联超时</span>
+                  <span className="flex items-center gap-1.5">
+                    <Clock className="size-3.5 text-amber-400" />
+                    探针失联离线判定超时
+                  </span>
                   <span className="text-[10px] text-muted-foreground font-mono">推荐: 30 ~ 120</span>
                 </label>
                 <div className="relative">
@@ -777,85 +531,90 @@ export function SystemConfigTab() {
                     秒
                   </span>
                 </div>
-                <p className="text-[11px] text-muted-foreground">连续未收到探针心跳上报判定节点处于离线状态</p>
-              </div>
-
-              {/* 长期离线废弃节点自动清理 */}
-              <div className="space-y-1.5">
-                <label className="h-5 font-semibold text-foreground flex items-center justify-between">
-                  <span>废弃离线节点自动清理</span>
-                  <span className="text-[10px] text-muted-foreground font-mono">0 为不清理</span>
-                </label>
-                <div className="relative">
-                  <input
-                    type="number"
-                    min={0}
-                    max={180}
-                    value={formValues["storage.inactiveNodePruneDays"] || "30"}
-                    onChange={(e) => handleChange("storage.inactiveNodePruneDays", e.target.value)}
-                    className="w-full h-11 rounded-xl border border-border/80 bg-muted/40 px-3.5 pr-10 text-xs font-mono outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 text-foreground transition-all"
-                  />
-                  <span className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground text-[11px] font-mono pointer-events-none">
-                    天
-                  </span>
-                </div>
-                <p className="text-[11px] text-muted-foreground">已销毁/长期失联机器自动从实例列表注销</p>
+                <p className="text-[11px] text-muted-foreground">连续未收到探针心跳上报判定节点处于离线异常状态</p>
               </div>
             </div>
           </div>
+        </CardContent>
+      </Card>
 
-          {/* 第四组：🤖 自动化任务执行保护 */}
-          <div className="space-y-3 pt-1">
-            <div className="flex items-center gap-2 pb-1 border-b border-border/60">
-              <Cpu className="size-3.5 text-primary" />
-              <span className="font-bold text-foreground">自动化任务执行与输出保护</span>
-              <span className="text-[11px] text-muted-foreground font-mono">（保障主控调度引擎吞吐与前端内存平稳）</span>
+      {/* 3. 自动化任务执行保护与上传限制 (Runtime & Limits) */}
+      <Card>
+        <CardHeader className="py-4">
+          <CardTitle className="text-base flex items-center gap-2">
+            <Cpu className="size-4 text-primary" />
+            自动化任务执行保护与上传限制 (Runtime & Execution Limits)
+          </CardTitle>
+          <CardDescription>
+            配置自动化批量运维脚本的执行超时保护、终端输出流行数上限与自定义大盘模板上传限制
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4 text-xs w-full">
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+            {/* 单任务最长超时时间 */}
+            <div className="space-y-1.5">
+              <label className="h-5 font-semibold text-foreground flex items-center justify-between">
+                <span>单个任务执行超时</span>
+                <span className="text-[10px] text-muted-foreground font-mono">推荐: 60 ~ 600</span>
+              </label>
+              <div className="relative">
+                <input
+                  type="number"
+                  min={10}
+                  max={3600}
+                  value={formValues["limits.taskTimeoutSec"] || "300"}
+                  onChange={(e) => handleChange("limits.taskTimeoutSec", e.target.value)}
+                  className="w-full h-11 rounded-xl border border-border/80 bg-muted/40 px-3.5 pr-10 text-xs font-mono outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 text-foreground transition-all"
+                />
+                <span className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground text-[11px] font-mono pointer-events-none">
+                  秒
+                </span>
+              </div>
+              <p className="text-[11px] text-muted-foreground">防止异常脚本死循环，超时自动向进程发送 SIGKILL 终止</p>
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              {/* 单任务最长超时时间 */}
-              <div className="space-y-1.5">
-                <label className="h-5 font-semibold text-foreground flex items-center justify-between">
-                  <span>单个任务执行超时</span>
-                  <span className="text-[10px] text-muted-foreground font-mono">推荐: 60 ~ 600</span>
-                </label>
-                <div className="relative">
-                  <input
-                    type="number"
-                    min={10}
-                    max={3600}
-                    value={formValues["limits.taskTimeoutSec"] || "300"}
-                    onChange={(e) => handleChange("limits.taskTimeoutSec", e.target.value)}
-                    className="w-full h-11 rounded-xl border border-border/80 bg-muted/40 px-3.5 pr-10 text-xs font-mono outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 text-foreground transition-all"
-                  />
-                  <span className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground text-[11px] font-mono pointer-events-none">
-                    秒
-                  </span>
-                </div>
-                <p className="text-[11px] text-muted-foreground">防止异常脚本死循环，超时自动向进程发送 SIGKILL 终止</p>
+            {/* 单任务输出日志行数上限 */}
+            <div className="space-y-1.5">
+              <label className="h-5 font-semibold text-foreground flex items-center justify-between">
+                <span>单任务输出日志上限</span>
+                <span className="text-[10px] text-muted-foreground font-mono">推荐: 1000 ~ 5000</span>
+              </label>
+              <div className="relative">
+                <input
+                  type="number"
+                  min={200}
+                  max={20000}
+                  value={formValues["limits.taskLogMaxLines"] || "2000"}
+                  onChange={(e) => handleChange("limits.taskLogMaxLines", e.target.value)}
+                  className="w-full h-11 rounded-xl border border-border/80 bg-muted/40 px-3.5 pr-10 text-xs font-mono outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 text-foreground transition-all"
+                />
+                <span className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground text-[11px] font-mono pointer-events-none">
+                  行
+                </span>
               </div>
+              <p className="text-[11px] text-muted-foreground">捕获的 stdout/stderr 输出最大保留行数，超限自动截断</p>
+            </div>
 
-              {/* 单任务输出日志行数上限 */}
-              <div className="space-y-1.5">
-                <label className="h-5 font-semibold text-foreground flex items-center justify-between">
-                  <span>单任务输出日志上限</span>
-                  <span className="text-[10px] text-muted-foreground font-mono">推荐: 1000 ~ 5000</span>
-                </label>
-                <div className="relative">
-                  <input
-                    type="number"
-                    min={200}
-                    max={20000}
-                    value={formValues["limits.taskLogMaxLines"] || "2000"}
-                    onChange={(e) => handleChange("limits.taskLogMaxLines", e.target.value)}
-                    className="w-full h-11 rounded-xl border border-border/80 bg-muted/40 px-3.5 pr-10 text-xs font-mono outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 text-foreground transition-all"
-                  />
-                  <span className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground text-[11px] font-mono pointer-events-none">
-                    行
-                  </span>
-                </div>
-                <p className="text-[11px] text-muted-foreground">捕获的 stdout/stderr 输出最大保留行数，超限自动截断</p>
+            {/* 展示主题包上传限制 */}
+            <div className="space-y-1.5">
+              <label className="h-5 font-semibold text-foreground flex items-center justify-between">
+                <span>大盘主题包上传上限</span>
+                <span className="text-[10px] text-muted-foreground font-mono">推荐: 2 ~ 20</span>
+              </label>
+              <div className="relative">
+                <input
+                  type="number"
+                  min={1}
+                  max={50}
+                  value={formValues["limits.themeUploadSizeMb"] || "8"}
+                  onChange={(e) => handleChange("limits.themeUploadSizeMb", e.target.value)}
+                  className="w-full h-11 rounded-xl border border-border/80 bg-muted/40 px-3.5 pr-10 text-xs font-mono outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 text-foreground transition-all"
+                />
+                <span className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground text-[11px] font-mono pointer-events-none">
+                  MB
+                </span>
               </div>
+              <p className="text-[11px] text-muted-foreground">自定义公开状态页前端模板 ZIP 归档包单文件大小限制</p>
             </div>
           </div>
         </CardContent>

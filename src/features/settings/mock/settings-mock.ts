@@ -82,8 +82,10 @@ export interface AutoBackupPlan {
   enableRemote: boolean;
   /** 远程异地存储连接配置参数（开启 enableRemote 时必填） */
   remoteConfig?: RemoteStorageConfig;
-  /** 备份数据范围（"all" 全量数据 / "configs_only" 仅系统核心配置） */
-  scope: "all" | "configs_only";
+  /** 备份数据范围（"all" 全量 / "core_only" 核心配置 / "core_and_audit" 配置+审计 / "custom" 自定义组合） */
+  scope: "all" | "core_only" | "core_and_audit" | "custom" | "configs_only";
+  /** 自定义组合时勾选的数据模块 ID 列表 */
+  customModules?: string[];
   /** 是否采用 AES-256 对称密钥加密快照包 */
   encrypt: boolean;
   /** 计划创建时间戳（毫秒） */
@@ -130,6 +132,8 @@ export interface StorageStats {
   alertsSizeMb: number;
   /** 批量任务执行记录与脚本日志占用体积（MB） */
   tasksSizeMb: number;
+  /** API 访问与登录鉴权流水占用体积（MB） */
+  apiLogsSizeMb: number;
 }
 
 /**
@@ -196,7 +200,8 @@ class SettingsMockEngine {
     themesSizeMb: 4.8,
     auditSizeMb: 18.2,
     alertsSizeMb: 8.4,
-    tasksSizeMb: 14.6
+    tasksSizeMb: 14.6,
+    apiLogsSizeMb: 24.6
   };
 
   /** 自动备份计划列表 */
@@ -288,8 +293,10 @@ class SettingsMockEngine {
   /** 活跃会话列表 */
   private sessions: SessionInfo[] = [
     { id: "s-current", device: "Chrome 128 / Windows 11 (当前终端)", ip: "127.0.0.1 (本地)", location: "本机控制台", isCurrent: true, activeTime: "刚刚" },
-    { id: "s-mobile", device: "Safari 17.5 / iPhone 15 Pro", ip: "114.88.204.18", location: "上海市", isCurrent: false, activeTime: "2 小时前" },
-    { id: "s-cli", device: "smalux-cli v2.4.0 / Linux x86_64", ip: "43.154.210.88", location: "香港核心机房", isCurrent: false, activeTime: "1 天前" }
+    { id: "s-mac", device: "Safari 18.0 / macOS Sequoia (MacBook Pro)", ip: "122.224.18.92", location: "浙江省杭州市", isCurrent: false, activeTime: "35 分钟前" },
+    { id: "s-office", device: "Edge 128 / Windows 11 (Office Workstation)", ip: "218.241.220.10", location: "北京市海淀区", isCurrent: false, activeTime: "2 小时前" },
+    { id: "s-mobile", device: "Termius SSH / iOS 18 (iPhone 16 Pro)", ip: "113.108.88.54", location: "广东省深圳市", isCurrent: false, activeTime: "5 小时前" },
+    { id: "s-cli", device: "smalux-cli v2.4.0 / Ubuntu 24.04 LTS", ip: "43.154.210.88", location: "香港特别行政区核心机房", isCurrent: false, activeTime: "1 天前" }
   ];
 
   constructor() {
@@ -463,17 +470,17 @@ class SettingsMockEngine {
     return newToken;
   }
 
-  /** 吊销指定的 API Token */
+  /** 吸销指定的 API Token（软删除：标记 revoked=true，保留在列表中展示已注销状态） */
   public revokeToken(id: string): { ok: boolean } {
     const tok = this.tokens.find((t) => t.id === id);
-    this.tokens = this.tokens.filter((t) => t.id !== id);
     if (tok) {
+      tok.revoked = true;
       this.recordAudit("admin", "token", "token.revoke", "success", tok.name);
     }
     return { ok: true };
   }
 
-  /** 删除指定的 API Token（revokeToken 别名） */
+  /** 删除指定的 API Token（也是软删除，revokeToken 别名） */
   public deleteToken(id: string): { ok: boolean } {
     return this.revokeToken(id);
   }
@@ -539,14 +546,32 @@ class SettingsMockEngine {
 
     const now = Date.now();
     const dateStr = new Date(now).toISOString().slice(0, 10).replace(/-/g, "");
+    const scopeDescription =
+      plan.scope === "all"
+        ? "全量数据 (主机/配置/告警/任务/审计/API流水)"
+        : plan.scope === "core_only" || plan.scope === "configs_only"
+        ? "系统核心配置与资产库"
+        : plan.scope === "core_and_audit"
+        ? "核心配置 + 安全审计流水"
+        : `自定义组合 (${plan.customModules?.length || 0} 项模块)`;
+
     const newBackup: BackupArchive = {
       id: `bak_plan_${now}`,
       planId: plan.id,
       filename: `smalux_plan_${dateStr}_${Math.floor(Math.random() * 8999 + 1000)}.tar.gz`,
-      sizeBytes: 1024 * 1024 * (plan.scope === "all" ? 15.6 : 3.6),
+      sizeBytes:
+        1024 *
+        1024 *
+        (plan.scope === "all"
+          ? 18.6
+          : plan.scope === "core_and_audit"
+          ? 6.8
+          : plan.scope === "core_only" || plan.scope === "configs_only"
+          ? 3.4
+          : 8.2),
       createdAt: now,
       type: "scheduled",
-      scope: plan.scope === "all" ? "全量数据 (主机/配置/告警/任务/审计)" : "仅系统核心配置",
+      scope: scopeDescription,
       isEncrypted: plan.encrypt,
       notes: plan.name
     };
@@ -571,16 +596,39 @@ class SettingsMockEngine {
   }
 
   /** 手动创建即时快照 */
-  public createBackup(params: { scope: "all" | "configs_only"; encrypt: boolean; notes?: string }): BackupArchive {
+  public createBackup(params: {
+    scope: "all" | "core_only" | "core_and_audit" | "custom" | "configs_only";
+    encrypt: boolean;
+    notes?: string;
+    customModules?: string[];
+  }): BackupArchive {
     const now = Date.now();
     const dateStr = new Date(now).toISOString().slice(0, 10).replace(/-/g, "");
+    const scopeDesc =
+      params.scope === "all"
+        ? "全量数据 (主机/配置/告警/任务/审计/API流水)"
+        : params.scope === "core_only" || params.scope === "configs_only"
+        ? "系统核心配置与资产库"
+        : params.scope === "core_and_audit"
+        ? "核心配置 + 安全审计流水"
+        : `自定义组合 (${params.customModules?.length || 0} 项模块)`;
+
     const newBackup: BackupArchive = {
       id: `bak_${now}`,
       filename: `smalux_manual_${dateStr}_${Math.floor(Math.random() * 8999 + 1000)}.tar.gz`,
-      sizeBytes: 1024 * 1024 * (params.scope === "all" ? 15.2 : 3.4),
+      sizeBytes:
+        1024 *
+        1024 *
+        (params.scope === "all"
+          ? 18.2
+          : params.scope === "core_and_audit"
+          ? 6.5
+          : params.scope === "core_only" || params.scope === "configs_only"
+          ? 3.2
+          : 8.0),
       createdAt: now,
       type: "manual",
-      scope: params.scope === "all" ? "全量数据 (主机/配置/告警/任务/审计)" : "仅系统核心配置与资产",
+      scope: scopeDesc,
       isEncrypted: params.encrypt,
       notes: params.notes?.trim() || "管理员手动快照"
     };
@@ -630,22 +678,71 @@ class SettingsMockEngine {
   /** 按范围清理各类业务数据释放磁盘 */
   public cleanData(type: "metrics" | "audit" | "alerts" | "tasks", rule?: string): { ok: boolean; freedMb: number } {
     let freedMb = 0;
+    let ratio = 0.5;
+
+    if (rule === "all") {
+      ratio = 0.95;
+    } else if (rule === "resolved_only") {
+      ratio = 0.55;
+    } else if (rule === "completed_all") {
+      ratio = 0.70;
+    } else {
+      let days = 30;
+      if (rule?.endsWith("h")) {
+        days = (parseFloat(rule) || 1) / 24;
+      } else if (rule?.endsWith("d")) {
+        days = parseFloat(rule) || 1;
+      } else if (rule?.endsWith("m")) {
+        days = (parseFloat(rule) || 1) * 30;
+      } else if (rule?.startsWith("custom_")) {
+        const parts = rule.split("_");
+        const val = parseFloat(parts[1]) || 1;
+        const unit = parts[2] || "d";
+        days = unit === "h" ? val / 24 : unit === "m" ? val * 30 : val;
+      } else if (!isNaN(Number(rule))) {
+        days = Number(rule);
+      }
+
+      // 时间跨度越短（如 1 小时前），清理掉的历史冗余数据越多
+      if (days <= 0.05) ratio = 0.96; // 1 小时前
+      else if (days <= 0.25) ratio = 0.94; // 6 小时前
+      else if (days <= 0.5) ratio = 0.92; // 12 小时前
+      else if (days <= 1) ratio = 0.90; // 1 天前
+      else if (days <= 3) ratio = 0.88; // 3 天前
+      else if (days <= 7) ratio = 0.82; // 7 天前
+      else if (days <= 15) ratio = 0.72; // 15 天前
+      else if (days <= 30) ratio = 0.60; // 30 天前
+      else if (days <= 60) ratio = 0.45; // 60 天前
+      else if (days <= 90) ratio = 0.35; // 90 天前
+      else if (days <= 180) ratio = 0.22; // 180 天前
+      else if (days <= 365) ratio = 0.12; // 1 年前
+      else ratio = 0.05; // 2 年以上
+    }
+
     if (type === "metrics") {
-      freedMb = 68.4;
-      this.storageStats.metricsSizeMb = Math.max(12.0, this.storageStats.metricsSizeMb - freedMb);
-      this.recordAudit("admin", "config", "data_clean.metrics", "success", `时序指标 (${rule || "30"}天)`);
+      freedMb = Math.max(0.5, Math.round(this.storageStats.metricsSizeMb * ratio * 10) / 10);
+      this.storageStats.metricsSizeMb = Math.max(8.0, +(this.storageStats.metricsSizeMb - freedMb).toFixed(1));
+      this.recordAudit("admin", "config", "data_clean.metrics", "success", `时序指标 (${rule || "30"})`);
     } else if (type === "audit") {
-      freedMb = 12.0;
-      this.storageStats.auditSizeMb = Math.max(2.1, this.storageStats.auditSizeMb - freedMb);
-      this.recordAudit("admin", "config", "data_clean.audit", "success", "操作审计日志");
+      freedMb = Math.max(0.5, Math.round(this.storageStats.auditSizeMb * ratio * 10) / 10);
+      this.storageStats.auditSizeMb = Math.max(1.5, +(this.storageStats.auditSizeMb - freedMb).toFixed(1));
+      this.recordAudit("admin", "config", "data_clean.audit", "success", `操作审计 (${rule || "90"})`);
     } else if (type === "alerts") {
-      freedMb = 5.8;
-      this.storageStats.alertsSizeMb = Math.max(1.5, this.storageStats.alertsSizeMb - freedMb);
-      this.recordAudit("admin", "config", "data_clean.alerts", "success", "告警与通知推送记录");
+      freedMb = Math.max(0.5, Math.round(this.storageStats.alertsSizeMb * ratio * 10) / 10);
+      this.storageStats.alertsSizeMb = Math.max(1.0, +(this.storageStats.alertsSizeMb - freedMb).toFixed(1));
+      this.recordAudit("admin", "config", "data_clean.alerts", "success", `告警记录 (${rule || "resolved_only"})`);
     } else if (type === "tasks") {
-      freedMb = 10.2;
-      this.storageStats.tasksSizeMb = Math.max(2.0, this.storageStats.tasksSizeMb - freedMb);
-      this.recordAudit("admin", "config", "data_clean.tasks", "success", "任务执行记录与日志");
+      freedMb = Math.max(0.5, Math.round(this.storageStats.tasksSizeMb * ratio * 10) / 10);
+      this.storageStats.tasksSizeMb = Math.max(1.2, +(this.storageStats.tasksSizeMb - freedMb).toFixed(1));
+      this.recordAudit("admin", "config", "data_clean.tasks", "success", `任务日志 (${rule || "completed_all"})`);
+    } else if (type === "apilogs" || (type as string) === "api_logs") {
+      if (rule === "only_revoked_tokens") {
+        freedMb = Math.max(0.8, Math.round(this.storageStats.apiLogsSizeMb * 0.45 * 10) / 10);
+      } else {
+        freedMb = Math.max(0.8, Math.round(this.storageStats.apiLogsSizeMb * ratio * 10) / 10);
+      }
+      this.storageStats.apiLogsSizeMb = Math.max(1.5, +(this.storageStats.apiLogsSizeMb - freedMb).toFixed(1));
+      this.recordAudit("admin", "config", "data_clean.apilogs", "success", `API 访问流水 (${rule || "30"})`);
     }
     return { ok: true, freedMb };
   }
@@ -750,16 +847,101 @@ class SettingsMockEngine {
 
   // ─────────────── 7. 主题与部署模式 (Themes & Deployments) ───────────────
 
-  /** 获取可用大盘主题包列表 */
+  /** 获取可用大盘主题包列表（全量，含 archived） */
   public getThemes(): ThemeListResult {
     return { themes: [...this.themes] };
+  }
+
+  /** 上传新主题包（后端全量存储，含 configSchema 与 customHtml） */
+  public uploadTheme(params: {
+    name: string;
+    version?: string;
+    description?: string;
+    configSchema?: Theme["configSchema"];
+    customHtml?: string;
+  }): { ok: boolean; id: string } {
+    const newTheme: Theme = {
+      id: `th-${Date.now()}`,
+      name: params.name,
+      status: "draft",
+      publicVisible: false,
+      version: params.version || "1.0.0",
+      updatedAt: Date.now(),
+      author: "admin",
+      isBuiltin: false,
+      description: params.description || "",
+      configSchema: params.configSchema || [],
+      customHtml: params.customHtml
+    };
+    this.themes.unshift(newTheme);
+    return { ok: true, id: newTheme.id };
+  }
+
+  /**
+   * 发布主题为当前生效主页大盘（published）
+   * 同时将其他 published 主题降级为 draft，确保只有一个 published
+   */
+  public publishTheme(id: string): { ok: boolean } {
+    this.themes = this.themes.map((t) => ({
+      ...t,
+      status: t.id === id ? "published" : t.status === "published" ? "draft" : t.status,
+      publicVisible: t.id === id ? true : t.publicVisible,
+      updatedAt: t.id === id ? Date.now() : t.updatedAt
+    }));
+    return { ok: true };
+  }
+
+  /** 归档下架主题（archived，不再对外展示） */
+  public archiveTheme(id: string): { ok: boolean } {
+    const theme = this.themes.find((t) => t.id === id);
+    if (theme?.isBuiltin) throw new Error("内置主题不可归档");
+    this.themes = this.themes.map((t) =>
+      t.id === id ? { ...t, status: "archived", publicVisible: false, updatedAt: Date.now() } : t
+    );
+    return { ok: true };
   }
 
   /** 获取交付部署架构模式列表 */
   public getDeployments(): DeploymentListResult {
     return { targets: [...this.deployments], current: "static" };
   }
+
+  // ─────────────── 7. API 访问令牌 API (Tokens) ───────────────
+
+  /** 获取全部 API 访问令牌列表 */
+  public getTokens(): { tokens: Token[] } {
+    return { tokens: [...this.tokens] };
+  }
+
+  /** 签发新 API 访问令牌 */
+  public createToken(params: { name: string; scopes: string[]; expiresAt?: number }): Token & { rawSecret: string } {
+    const rawSecret = `smalux_live_${Math.random().toString(36).substring(2, 10)}_${Date.now()}`;
+    const newToken: Token = {
+      id: `tk${this.tokens.length + 1}`,
+      name: params.name,
+      scopes: params.scopes,
+      createdAt: Date.now(),
+      expiresAt: params.expiresAt,
+      lastUsedAt: undefined,
+      createdBy: "admin",
+      revoked: false
+    };
+    this.tokens = [newToken, ...this.tokens];
+    this.recordAudit("admin", "auth", "token.create", "success", newToken.name);
+    return { ...newToken, rawSecret };
+  }
+
+  /** 注销指定 API 访问令牌 */
+  public revokeToken(id: string): { ok: boolean } {
+    const t = this.tokens.find((x) => x.id === id);
+    if (t) {
+      t.revoked = true;
+      this.recordAudit("admin", "auth", "token.revoke", "success", t.name);
+    }
+    return { ok: true };
+  }
 }
+
 
 /** 系统设置与安全中心全局单例 Mock 引擎实例 */
 export const settingsMockEngine = new SettingsMockEngine();

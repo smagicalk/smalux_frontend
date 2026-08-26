@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   BellRing,
   ShieldAlert,
@@ -22,12 +22,35 @@ import {
 import type { AlertRule } from "@/shared/api/methods";
 
 export function AlertsPage() {
-  const [activeTab, setActiveTab] = useState<"incidents" | "rules" | "channels">("incidents");
+  const [activeTab, setActiveTab] = useState<"incidents" | "rules" | "channels">(() => {
+    const params = new URLSearchParams(window.location.search);
+    const tab = params.get("tab");
+    if (tab === "channels" || tab === "rules" || tab === "incidents") return tab;
+    return "incidents";
+  });
 
   // Dialog states
   const [ruleDialogOpen, setRuleDialogOpen] = useState(false);
   const [editingRule, setEditingRule] = useState<AlertRule | null>(null);
-  const [channelDialogOpen, setChannelDialogOpen] = useState(false);
+  const [channelDialogOpen, setChannelDialogOpen] = useState(() => {
+    const params = new URLSearchParams(window.location.search);
+    return params.get("create") === "1" || params.get("createChannel") === "1";
+  });
+
+  useEffect(() => {
+    const handlePopState = () => {
+      const params = new URLSearchParams(window.location.search);
+      const tab = params.get("tab");
+      if (tab === "channels" || tab === "rules" || tab === "incidents") {
+        setActiveTab(tab);
+      }
+      if (params.get("create") === "1" || params.get("createChannel") === "1") {
+        setChannelDialogOpen(true);
+      }
+    };
+    window.addEventListener("popstate", handlePopState);
+    return () => window.removeEventListener("popstate", handlePopState);
+  }, []);
 
   // Queries
   const {
@@ -199,6 +222,7 @@ export function AlertsPage() {
           <NotificationChannelsTab
             channels={channels}
             events={events}
+            rules={rules}
             isLoading={isLoadingNotifications}
             onRefresh={refetchNotifications}
             onOpenCreate={handleOpenCreateChannel}

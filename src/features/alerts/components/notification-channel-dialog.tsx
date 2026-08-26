@@ -30,6 +30,7 @@ import type { ChannelType } from "@/shared/api/methods";
 interface NotificationChannelDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  onSuccess?: (channelName?: string) => void;
 }
 
 const JS_SAMPLE_TEMPLATE = `/**
@@ -200,7 +201,7 @@ const CHANNEL_PRESETS: Array<{
   }
 ];
 
-export function NotificationChannelDialog({ open, onOpenChange }: NotificationChannelDialogProps) {
+export function NotificationChannelDialog({ open, onOpenChange, onSuccess }: NotificationChannelDialogProps) {
   const createChannel = useCreateChannel();
 
   const [type, setType] = useState<ChannelType>("email");
@@ -421,6 +422,7 @@ export function NotificationChannelDialog({ open, onOpenChange }: NotificationCh
       });
       toast.success(`通知渠道「${finalName}」配置成功`);
       onOpenChange(false);
+      onSuccess?.(finalName);
       setName("");
       setWebhookUrl("");
       setWebhookHeaderToken("");

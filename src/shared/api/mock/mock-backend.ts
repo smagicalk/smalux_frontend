@@ -495,13 +495,19 @@ class MockBackendImpl implements MockBackend {
       }
 
       case "task.list": {
-        const p = (params ?? {}) as { status?: string; search?: string };
+        const p = (params ?? {}) as { search?: string; status?: string; serverId?: string; batchId?: string };
         let tasks = mockTasks;
-        if (p.status) tasks = tasks.filter((t) => t.status === p.status);
+        if (p.status && p.status !== "all") tasks = tasks.filter((t) => t.status === p.status);
+        if (p.serverId) tasks = tasks.filter((t) => t.serverId === p.serverId);
+        if (p.batchId) tasks = tasks.filter((t) => t.batchId === p.batchId);
         if (p.search) {
           const q = p.search.toLowerCase();
           tasks = tasks.filter(
-            (t) => t.command.toLowerCase().includes(q) || t.serverName.toLowerCase().includes(q)
+            (t) =>
+              t.command.toLowerCase().includes(q) ||
+              t.serverName.toLowerCase().includes(q) ||
+              t.serverId.toLowerCase().includes(q) ||
+              (t.batchId && t.batchId.toLowerCase().includes(q))
           );
         }
         return { tasks, total: tasks.length };
@@ -512,22 +518,102 @@ class MockBackendImpl implements MockBackend {
       case "task.variables.list":
         return { variables: mockTaskVariables };
 
-      case "cron.list":
-        return { crons: mockCrons, total: mockCrons.length };
+      case "cron.list": {
+        const p = (params ?? {}) as { search?: string; enabled?: boolean; serverId?: string };
+        let crons = mockCrons;
+        if (typeof p.enabled === "boolean") crons = crons.filter((c) => c.enabled === p.enabled);
+        if (p.serverId) crons = crons.filter((c) => c.serverId === p.serverId);
+        if (p.search) {
+          const q = p.search.toLowerCase();
+          crons = crons.filter(
+            (c) =>
+              c.name.toLowerCase().includes(q) ||
+              c.command.toLowerCase().includes(q) ||
+              c.expression.toLowerCase().includes(q) ||
+              c.serverName.toLowerCase().includes(q) ||
+              c.serverId.toLowerCase().includes(q)
+          );
+        }
+        return { crons, total: crons.length };
+      }
 
       case "cron.logs.list": {
-        const p = (params ?? {}) as { cronId?: string; serverId?: string };
+        const p = (params ?? {}) as {
+          cronId?: string;
+          serverId?: string;
+          batchId?: string;
+          triggerType?: "all" | "cron" | "manual";
+          status?: string;
+          search?: string;
+        };
         let logs = mockCronLogs;
         if (p.cronId) logs = logs.filter((l) => l.cronId === p.cronId);
         if (p.serverId) logs = logs.filter((l) => l.serverId === p.serverId);
+        if (p.batchId) logs = logs.filter((l) => l.batchId === p.batchId);
+        if (p.triggerType && p.triggerType !== "all") logs = logs.filter((l) => l.triggerType === p.triggerType);
+        if (p.status && p.status !== "all") {
+          if (p.status === "failed") logs = logs.filter((l) => l.status === "failed" || l.status === "timeout");
+          else logs = logs.filter((l) => l.status === p.status);
+        }
+        if (p.search) {
+          const q = p.search.toLowerCase();
+          logs = logs.filter(
+            (l) =>
+              l.cronName.toLowerCase().includes(q) ||
+              l.command.toLowerCase().includes(q) ||
+              l.serverName.toLowerCase().includes(q) ||
+              l.serverId.toLowerCase().includes(q)
+          );
+        }
         return { logs, total: logs.length };
       }
 
       case "monitor.service.list":
         return { targets: mockPingTargets, total: mockPingTargets.length };
 
-      case "alert.list":
-        return { rules: mockAlertRules, history: mockAlertHistory };
+      case "alert.list": {
+        const p = (params ?? {}) as { search?: string; severity?: string; scope?: "all" | "global" | "custom" };
+        let rules = mockAlertRules;
+        let history = mockAlertHistory;
+
+        if (p.severity && p.severity !== "all") {
+          rules = rules.filter((r) => r.severity === p.severity);
+          history = history.filter((h) => h.severity === p.severity);
+        }
+
+        if (p.scope && p.scope !== "all") {
+          if (p.scope === "global") {
+            rules = rules.filter((r) => (!r.serverIds || r.serverIds.length === 0) && !r.serverId);
+          } else if (p.scope === "custom") {
+            rules = rules.filter((r) => (r.serverIds && r.serverIds.length > 0) || !!r.serverId);
+          }
+        }
+
+        if (p.search) {
+          const q = p.search.toLowerCase();
+          rules = rules.filter(
+            (r) =>
+              r.name.toLowerCase().includes(q) ||
+              r.metric.toLowerCase().includes(q) ||
+              (r.serverId && r.serverId.toLowerCase().includes(q)) ||
+              (r.serverIds && r.serverIds.some((s) => s.toLowerCase().includes(q)))
+          );
+          history = history.filter(
+            (h) =>
+              h.ruleName.toLowerCase().includes(q) ||
+              h.message.toLowerCase().includes(q) ||
+              (h.serverName && h.serverName.toLowerCase().includes(q)) ||
+              (h.serverId && h.serverId.toLowerCase().includes(q))
+          );
+        }
+
+        return {
+          rules,
+          history,
+          totalRules: rules.length,
+          totalHistory: history.length
+        };
+      }
 
       case "notification.list":
         return { channels: mockNotificationChannels, events: mockNotificationEvents };
@@ -688,7 +774,7 @@ class MockBackendImpl implements MockBackend {
       case "alert.create": {
         const p = (params ?? {}) as {
           name: string; metric: string; operator: string; threshold: number;
-          windowSec: number; severity: string; serverIds?: string[]; serverId?: string;
+          windowSec: number; repeatIntervalSec?: number; severity: string; channelIds?: string[]; serverIds?: string[]; serverId?: string;
         };
         mockAlertRules.unshift({
           id: `a${mockAlertRules.length + 1}`,
@@ -699,6 +785,8 @@ class MockBackendImpl implements MockBackend {
           operator: p.operator as AlertRule["operator"],
           threshold: p.threshold,
           windowSec: p.windowSec,
+          repeatIntervalSec: p.repeatIntervalSec ?? 0,
+          channelIds: p.channelIds ?? [],
           severity: p.severity as AlertRule["severity"],
           enabled: true,
           silenced: false
@@ -720,8 +808,8 @@ class MockBackendImpl implements MockBackend {
       case "alert.update": {
         const p = (params ?? {}) as {
           id: string; name: string; metric: string; operator: string;
-          threshold: number; windowSec: number; severity: string;
-          serverIds?: string[]; serverId?: string;
+          threshold: number; windowSec: number; repeatIntervalSec?: number; severity: string;
+          channelIds?: string[]; serverIds?: string[]; serverId?: string;
         };
         const r = mockAlertRules.find((x) => x.id === p.id);
         if (r) {
@@ -731,6 +819,8 @@ class MockBackendImpl implements MockBackend {
             operator: p.operator as AlertRule["operator"],
             threshold: p.threshold,
             windowSec: p.windowSec,
+            repeatIntervalSec: p.repeatIntervalSec ?? r.repeatIntervalSec ?? 0,
+            channelIds: p.channelIds ?? r.channelIds ?? [],
             severity: p.severity as AlertRule["severity"],
             serverIds: p.serverIds,
             serverId: p.serverId

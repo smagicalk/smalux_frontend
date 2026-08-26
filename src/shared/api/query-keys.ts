@@ -22,13 +22,13 @@ export const queryKeys = {
   /** Broad task prefix used for mutation invalidation. */
   tasks: ["tasks"] as const,
   /** Concrete task-list cache key, including active UI filters. */
-  taskList: (params?: { status?: string; search?: string }) =>
+  taskList: (params?: Record<string, unknown>) =>
     ["tasks", params ?? {}] as const,
-  cron: ["cron"] as const,
-  cronLogs: (params?: { cronId?: string; serverId?: string }) => ["cron-logs", params ?? {}] as const,
+  cron: (params?: Record<string, unknown>) => ["cron", params ?? {}] as const,
+  cronLogs: (params?: Record<string, unknown>) => ["cron-logs", params ?? {}] as const,
   ping: ["ping"] as const,
   pingHistory: (serverId: string, range: string) => ["ping-history", serverId, range] as const,
-  alerts: ["alerts"] as const,
+  alerts: (params?: Record<string, unknown>) => ["alerts", params ?? {}] as const,
   notifications: ["notifications"] as const,
   accounts: ["accounts"] as const,
   themes: ["themes"] as const,
