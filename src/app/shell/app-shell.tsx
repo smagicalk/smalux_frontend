@@ -6,14 +6,24 @@ import {
   Search,
   Radio,
   Globe,
-  ExternalLink
+  ExternalLink,
+  LogOut
 } from "lucide-react";
 import { Link, Outlet, useLocation } from "@tanstack/react-router";
 
 import { cn } from "@/shared/lib/utils";
 import { Button } from "@/shared/ui/button";
-import { Toaster } from "@/shared/ui/toaster";
+import { Toaster, toast } from "@/shared/ui/toaster";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter
+} from "@/shared/ui/dialog";
 import { useThemeStore, ACCENT_PRESETS, type ThemeMode, type AccentColor } from "@/shared/stores/theme-store";
+import { useAdminProfileStore } from "@/shared/stores/admin-profile-store";
 import { navItems, isNavActive } from "./navigation";
 import { MobileBottomNav } from "./mobile-bottom-nav";
 import { NotificationCenter } from "./notification-center";
@@ -23,7 +33,25 @@ export function AppShell() {
   const location = useLocation();
   const currentPath = location.pathname;
   const [commandOpen, setCommandOpen] = useState(false);
+  const [logoutDialogOpen, setLogoutDialogOpen] = useState(false);
   const mainRef = useRef<HTMLElement>(null);
+
+  const adminUsername = useAdminProfileStore((s) => s.username);
+  const adminAvatar = useAdminProfileStore((s) => s.avatarUrl);
+  const adminRole = useAdminProfileStore((s) => s.role);
+
+  const handleLogout = () => {
+    try {
+      localStorage.removeItem("smalux_auth_token");
+      localStorage.removeItem("smalux_user_session");
+      sessionStorage.clear();
+    } catch {}
+    setLogoutDialogOpen(false);
+    toast.success("已安全退出登录会话");
+    setTimeout(() => {
+      window.location.href = "/";
+    }, 400);
+  };
 
   // Automatically scroll to top whenever pathname or search changes
   useEffect(() => {
@@ -112,7 +140,7 @@ export function AppShell() {
         </div>
 
         {/* Sidebar Footer */}
-        <div className="border-t border-sidebar-border/60 p-3">
+        <div className="border-t border-sidebar-border/60 p-3 space-y-2">
           <button
             onClick={() => setCommandOpen(true)}
             className="flex w-full items-center justify-between rounded-lg border border-sidebar-border/80 bg-muted/40 px-2.5 py-1.5 text-xs text-muted-foreground hover:text-foreground hover:bg-muted transition-colors cursor-pointer"
@@ -125,6 +153,45 @@ export function AppShell() {
               Ctrl+K
             </kbd>
           </button>
+
+          {/* User Profile & Logout Bar */}
+          <div className="flex items-center justify-between gap-2 rounded-xl border border-sidebar-border/80 bg-muted/20 p-1.5 text-xs">
+            {/* 点击左侧区域直达「设置 -> 账号与安全」 */}
+            <Link
+              to="/admin/settings"
+              search={{ tab: "security" }}
+              title="进入账号与安全中心"
+              className="flex items-center gap-2 min-w-0 flex-1 group hover:opacity-85 transition-opacity cursor-pointer select-none px-1 py-0.5"
+            >
+              <div className="relative flex size-7 shrink-0 items-center justify-center rounded-lg bg-primary text-primary-foreground font-bold text-xs shadow-xs overflow-hidden">
+                {adminAvatar ? (
+                  <img src={adminAvatar} alt={adminUsername} className="size-full object-cover" />
+                ) : (
+                  <span>{adminUsername.charAt(0).toUpperCase() || "A"}</span>
+                )}
+                <span className="absolute -bottom-0.5 -right-0.5 size-2 rounded-full bg-emerald-500 ring-2 ring-sidebar" />
+              </div>
+              <div className="flex flex-col min-w-0">
+                <span className="text-xs font-semibold text-sidebar-foreground truncate group-hover:text-primary transition-colors">
+                  {adminUsername}
+                </span>
+                <span className="text-[10px] text-muted-foreground/80 truncate font-mono">
+                  {adminRole}
+                </span>
+              </div>
+            </Link>
+
+            {/* 退出登录按钮 */}
+            <button
+              type="button"
+              onClick={() => setLogoutDialogOpen(true)}
+              title="退出当前登录会话"
+              className="flex size-7 shrink-0 items-center justify-center rounded-lg border border-transparent hover:border-rose-500/30 text-muted-foreground hover:text-rose-400 hover:bg-rose-500/10 transition-all cursor-pointer shadow-2xs"
+            >
+              <LogOut className="size-3.5" />
+            </button>
+          </div>
+
         </div>
       </aside>
 
@@ -139,10 +206,50 @@ export function AppShell() {
 
       <MobileBottomNav />
       <CommandDialog open={commandOpen} onOpenChange={setCommandOpen} />
+
+      {/* 退出登录二次确认弹窗 */}
+      <Dialog open={logoutDialogOpen} onOpenChange={setLogoutDialogOpen}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <div className="flex items-center gap-2">
+              <div className="p-2 rounded-full bg-rose-500/10 text-rose-400 border border-rose-500/20">
+                <LogOut className="size-4" />
+              </div>
+              <DialogTitle className="text-sm font-bold text-foreground">
+                退出当前登录
+              </DialogTitle>
+            </div>
+            <DialogDescription className="text-xs font-mono text-muted-foreground pt-1">
+              确定要退出当前管理员会话吗？退出后需要重新输入凭据以访问控制台。
+            </DialogDescription>
+          </DialogHeader>
+
+          <DialogFooter className="flex justify-end gap-2 pt-3 border-t border-border/60">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setLogoutDialogOpen(false)}
+              className="cursor-pointer text-xs"
+            >
+              取消
+            </Button>
+            <Button
+              variant="danger"
+              size="sm"
+              onClick={handleLogout}
+              className="cursor-pointer text-xs font-bold px-4"
+            >
+              确认退出
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       <Toaster />
     </div>
   );
 }
+
 
 function InsecureHttpBanner() {
   const [dismissed, setDismissed] = useState(() => {

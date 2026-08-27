@@ -553,6 +553,8 @@ export function AutomationPage() {
   const [cronJobLogPageSize, setCronJobLogPageSize] = useState(5);
   const [cronBatchLogPage, setCronBatchLogPage] = useState(1);
   const [cronBatchLogPageSize, setCronBatchLogPageSize] = useState(5);
+  const [cronNodeLogPage, setCronNodeLogPage] = useState(1);
+  const [cronNodeLogPageSize, setCronNodeLogPageSize] = useState(5);
 
   // 当计划调度记录搜索或触发源/状态过滤条件改变时重置任务列表分页
   useEffect(() => {
@@ -564,6 +566,7 @@ export function AutomationPage() {
     const start = (cronJobLogPage - 1) * cronJobLogPageSize;
     return filteredCronJobGroups.slice(start, start + cronJobLogPageSize);
   }, [filteredCronJobGroups, cronJobLogPage, cronJobLogPageSize]);
+
 
   // 当前选中的 Cron Job
   const currentCronJob = useMemo<CronJobLogGroup | null>(() => {
@@ -658,6 +661,7 @@ export function AutomationPage() {
   // 任务切换或批次搜索改变时重置批次分页
   useEffect(() => {
     setCronBatchLogPage(1);
+    setCronNodeLogPage(1);
   }, [selectedCronJobId, cronDetailSearch, cronDetailViewMode]);
 
   const totalCronBatchPages = Math.max(1, Math.ceil(filteredCronBatches.length / cronBatchLogPageSize));
@@ -665,6 +669,26 @@ export function AutomationPage() {
     const start = (cronBatchLogPage - 1) * cronBatchLogPageSize;
     return filteredCronBatches.slice(start, start + cronBatchLogPageSize);
   }, [filteredCronBatches, cronBatchLogPage, cronBatchLogPageSize]);
+
+  // ── 当前任务下过滤后的按机器聚合节点列表 ──
+  const filteredCronJobNodes = useMemo(() => {
+    return currentCronJobNodes.filter((node) => {
+      if (!cronDetailSearch.trim()) return true;
+      const q = cronDetailSearch.toLowerCase().trim();
+      return (
+        node.serverName.toLowerCase().includes(q) ||
+        node.serverId.toLowerCase().includes(q) ||
+        node.latestStatus.includes(q)
+      );
+    });
+  }, [currentCronJobNodes, cronDetailSearch]);
+
+  const totalCronNodePages = Math.max(1, Math.ceil(filteredCronJobNodes.length / cronNodeLogPageSize));
+  const paginatedCronJobNodes = useMemo(() => {
+    const start = (cronNodeLogPage - 1) * cronNodeLogPageSize;
+    return filteredCronJobNodes.slice(start, start + cronNodeLogPageSize);
+  }, [filteredCronJobNodes, cronNodeLogPage, cronNodeLogPageSize]);
+
 
   // 当前选中的批次 (在当前选中的 Job 之下)
   const currentCronBatch = useMemo<CronBatchLogGroup | null>(() => {
@@ -2383,21 +2407,16 @@ export function AutomationPage() {
                               {/* ── 视图 2：按执行机器查看 (By Node) ── */}
                               {cronDetailViewMode === "node" && (
                                 <div className="space-y-1.5 pt-1">
-                                  {currentCronJobNodes
-                                    .filter((node) => {
-                                      if (!cronDetailSearch.trim()) return true;
-                                      const q = cronDetailSearch.toLowerCase().trim();
-                                      return (
-                                        node.serverName.toLowerCase().includes(q) ||
-                                        node.serverId.toLowerCase().includes(q) ||
-                                        node.latestStatus.includes(q)
-                                      );
-                                    })
-                                    .map((node) => {
+                                  {paginatedCronJobNodes.length === 0 ? (
+                                    <div className="py-6 text-center text-[10px] text-muted-foreground">
+                                      未匹配到相关执行机器
+                                    </div>
+                                  ) : (
+                                    paginatedCronJobNodes.map((node) => {
                                       const isNodeSelected = currentCronNodeLog?.serverId === node.serverId;
                                       const isNodeExpanded = expandedCronNodeSummaryId !== null
                                         ? expandedCronNodeSummaryId === node.serverId
-                                        : (isNodeSelected || currentCronJobNodes[0]?.serverId === node.serverId);
+                                        : (isNodeSelected || paginatedCronJobNodes[0]?.serverId === node.serverId);
 
                                       return (
                                         <div
@@ -2514,7 +2533,8 @@ export function AutomationPage() {
                                           )}
                                         </div>
                                       );
-                                    })}
+                                    })
+                                  )}
                                 </div>
                               )}
                             </div>
@@ -2558,7 +2578,46 @@ export function AutomationPage() {
                                 </div>
                               </div>
                             )}
+
+                            {/* 栏 2 机器列表分页控制栏 (仅在 node 模式下) */}
+                            {cronDetailViewMode === "node" && filteredCronJobNodes.length > 0 && (
+                              <div className="p-2 border-t border-border/60 bg-muted/20 flex items-center justify-between gap-1 text-xs font-mono select-none">
+                                <div className="flex items-center gap-1 text-muted-foreground text-[10px]">
+                                  <span>共 <strong>{filteredCronJobNodes.length}</strong> 台</span>
+                                  <span>·</span>
+                                  <span><strong>{cronNodeLogPage}</strong>/{totalCronNodePages}页</span>
+                                </div>
+
+                                <div className="flex items-center gap-1">
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
+                                    onClick={() => {
+                                      setCronNodeLogPage((p) => Math.max(1, p - 1));
+                                      setExpandedCronNodeSummaryId(null);
+                                    }}
+                                    disabled={cronNodeLogPage <= 1}
+                                    className="h-6 px-1.5 text-[10px] gap-0.5 cursor-pointer"
+                                  >
+                                    <ChevronLeft className="size-3" /> 上页
+                                  </Button>
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
+                                    onClick={() => {
+                                      setCronNodeLogPage((p) => Math.min(totalCronNodePages, p + 1));
+                                      setExpandedCronNodeSummaryId(null);
+                                    }}
+                                    disabled={cronNodeLogPage >= totalCronNodePages}
+                                    className="h-6 px-1.5 text-[10px] gap-0.5 cursor-pointer"
+                                  >
+                                    下页 <ChevronRight className="size-3" />
+                                  </Button>
+                                </div>
+                              </div>
+                            )}
                           </>
+
                         ) : (
                           <div className="py-20 text-center text-xs text-muted-foreground">
                             请在左侧选择计划任务

@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import QRCode from "qrcode";
 import {
   ShieldCheck,
@@ -27,7 +27,11 @@ import {
   Search,
   X,
   ChevronLeft,
-  ChevronRight
+  ChevronRight,
+  Upload,
+  Camera,
+  Mail,
+  Shield
 } from "lucide-react";
 import { Card, CardHeader, CardTitle, CardContent, CardDescription } from "@/shared/ui/card";
 import { Button } from "@/shared/ui/button";
@@ -35,6 +39,7 @@ import { Badge } from "@/shared/ui/badge";
 import { Switch } from "@/shared/ui/switch";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/shared/ui/dialog";
 import { toast } from "@/shared/ui/toaster";
+import { useAdminProfileStore } from "@/shared/stores/admin-profile-store";
 import {
   useSecurityOverview,
   useSetupTotp,
@@ -82,6 +87,50 @@ const PERMISSION_OPTIONS: Array<{
 ];
 
 export function AccountSecurityTab() {
+  // ─── 管理员全局档案 Store ───
+  const adminProfile = useAdminProfileStore();
+  const [accountUsername, setAccountUsername] = useState(adminProfile.username);
+  const [accountNickname, setAccountNickname] = useState(adminProfile.nickname);
+  const avatarFileInputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    setAccountUsername(adminProfile.username);
+    setAccountNickname(adminProfile.nickname);
+  }, [adminProfile.username, adminProfile.nickname]);
+
+  const handleAvatarSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (file.size > 2 * 1024 * 1024) {
+      toast.error("头像文件大小请不要超过 2MB");
+      return;
+    }
+
+    const reader = new FileReader();
+    reader.onload = () => {
+      const base64 = reader.result as string;
+      adminProfile.setAvatarUrl(base64);
+      toast.success("管理员头像已成功更新并实时全站生效！");
+    };
+    reader.onerror = () => {
+      toast.error("读取图片文件失败");
+    };
+    reader.readAsDataURL(file);
+  };
+
+  const handleSaveAccountInfo = () => {
+    if (!accountUsername.trim()) {
+      toast.error("管理员登录账号不能为空");
+      return;
+    }
+    adminProfile.updateProfile({
+      username: accountUsername.trim(),
+      nickname: accountNickname.trim()
+    });
+    toast.success("管理员账号配置已成功保存！");
+  };
+
   // ─── 账户安全 API Hooks ───
   const { data: securityOverview } = useSecurityOverview();
   const { data: sessionsData } = useSessions();
@@ -469,28 +518,141 @@ export function AccountSecurityTab() {
     <div className="space-y-6">
       {/* 1. 主管理员身份与账户档案 (Admin Profile) */}
       <Card>
-        <CardHeader className="py-4">
-          <CardTitle className="text-base flex items-center gap-2">
-            <User className="size-4 text-primary" />
-            主管理员账户 (Admin Account)
-          </CardTitle>
-          <CardDescription>当前实例唯一独立超级管理员凭据与权限状态</CardDescription>
+        <CardHeader className="py-4 flex flex-row items-center justify-between">
+          <div>
+            <CardTitle className="text-base flex items-center gap-2">
+              <User className="size-4 text-primary" />
+              主管理员账户档案 (Admin Account Profile)
+            </CardTitle>
+            <CardDescription>当前实例唯一独立超级管理员凭据、登录账号与自定义头像</CardDescription>
+          </div>
+
+          <div className="flex items-center gap-2">
+            <Button
+              size="sm"
+              onClick={handleSaveAccountInfo}
+              className="h-8 text-xs cursor-pointer font-bold px-4 shadow-2xs"
+            >
+              <Check className="size-3.5 mr-1" />
+              保存账号配置
+            </Button>
+          </div>
         </CardHeader>
-        <CardContent className="p-4 pt-0">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between p-4 rounded-xl border border-border/80 bg-muted/20 gap-4">
-            <div className="flex items-center gap-3.5">
-              <div className="size-11 rounded-full bg-primary/10 border border-primary/30 flex items-center justify-center text-primary font-bold font-mono text-base shrink-0">
-                A
+
+        <CardContent className="p-5 pt-1 space-y-5 text-xs">
+          {/* 隐藏的头像文件选择器 */}
+          <input
+            ref={avatarFileInputRef}
+            type="file"
+            accept="image/png,image/jpeg,image/webp,image/gif,image/svg+xml"
+            className="hidden"
+            onChange={handleAvatarSelect}
+          />
+
+          <div className="flex flex-col md:flex-row items-start md:items-center gap-6 p-4 rounded-xl border border-border/80 bg-muted/20">
+            {/* 头像区域 (支持点击上传 / 预览 / 移除) */}
+            <div className="flex flex-col items-center sm:items-start gap-2.5 shrink-0">
+              <div
+                onClick={() => avatarFileInputRef.current?.click()}
+                className="relative group size-18 rounded-2xl border-2 border-dashed border-border/80 hover:border-primary bg-muted/40 flex items-center justify-center cursor-pointer transition-all overflow-hidden shadow-xs hover:shadow-md"
+                title="点击上传或更换管理员头像"
+              >
+                {adminProfile.avatarUrl ? (
+                  <img
+                    src={adminProfile.avatarUrl}
+                    alt={adminProfile.username}
+                    className="size-full object-cover"
+                  />
+                ) : (
+                  <div className="size-full bg-gradient-to-br from-primary/20 via-primary/10 to-primary/5 flex items-center justify-center text-primary font-bold font-mono text-2xl">
+                    {adminProfile.username.charAt(0).toUpperCase() || "A"}
+                  </div>
+                )}
+
+                {/* 悬浮遮罩 */}
+                <div className="absolute inset-0 bg-black/60 text-white flex flex-col items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity gap-1 text-[10px] font-medium backdrop-blur-2xs">
+                  <Camera className="size-4" />
+                  <span>更换头像</span>
+                </div>
               </div>
-              <div className="space-y-1">
+
+              <div className="flex items-center gap-1.5">
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => avatarFileInputRef.current?.click()}
+                  className="h-6 px-2 text-[11px] font-mono cursor-pointer"
+                >
+                  <Upload className="size-2.5 mr-1" />
+                  上传头像
+                </Button>
+                {adminProfile.avatarUrl && (
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    onClick={() => {
+                      adminProfile.setAvatarUrl(null);
+                      toast.info("已重置为默认文字头像");
+                    }}
+                    className="h-6 px-1.5 text-[11px] font-mono text-rose-400 hover:bg-rose-500/10 cursor-pointer"
+                    title="移除自定义头像"
+                  >
+                    <Trash2 className="size-2.5" />
+                  </Button>
+                )}
+              </div>
+            </div>
+
+            {/* 账号与身份表单 */}
+            <div className="flex-1 w-full grid grid-cols-1 sm:grid-cols-2 gap-4">
+              {/* 登录账号名 */}
+              <div className="space-y-1.5">
+                <label className="font-semibold text-foreground flex items-center gap-1.5">
+                  <User className="size-3.5 text-primary" />
+                  管理员登录账号 (Username)
+                </label>
+                <input
+                  type="text"
+                  value={accountUsername}
+                  onChange={(e) => setAccountUsername(e.target.value)}
+                  placeholder="admin"
+                  className="w-full h-8.5 rounded-lg border border-border/80 bg-background px-3 text-xs font-mono outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 text-foreground transition-all"
+                />
+                <div className="text-[10px] text-muted-foreground">
+                  用于系统主控台登录认证凭据
+                </div>
+              </div>
+
+              {/* 管理员显示昵称 */}
+              <div className="space-y-1.5">
+                <label className="font-semibold text-foreground flex items-center gap-1.5">
+                  <User className="size-3.5 text-muted-foreground" />
+                  管理员显示昵称 (Display Name)
+                </label>
+                <input
+                  type="text"
+                  value={accountNickname}
+                  onChange={(e) => setAccountNickname(e.target.value)}
+                  placeholder="主管理员"
+                  className="w-full h-8.5 rounded-lg border border-border/80 bg-background px-3 text-xs outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 text-foreground transition-all"
+                />
+                <div className="text-[10px] text-muted-foreground">
+                  用于控制台侧栏与操作日志中的操作人展示
+                </div>
+              </div>
+
+              {/* 权限级别与状态展示 */}
+              <div className="sm:col-span-2 pt-1 border-t border-border/60 flex flex-wrap items-center justify-between gap-2 text-[11px] text-muted-foreground font-mono">
                 <div className="flex items-center gap-2 flex-wrap">
-                  <span className="text-sm font-bold text-foreground">admin</span>
+                  <span className="flex items-center gap-1">
+                    <Shield className="size-3 text-primary" /> 身份级别:
+                  </span>
                   <Badge variant="primary" className="text-[10px] px-1.5 py-0 h-4 font-mono">
-                    超级所有者 (Owner)
+                    超级所有者 (SuperAdmin · Root)
                   </Badge>
                   {mfaData?.enabled ? (
                     <Badge variant="success" className="text-[10px] px-1.5 py-0 h-4">
-                      TOTP 保护已开启
+                      TOTP 保护已激活
                     </Badge>
                   ) : (
                     <Badge variant="warning" className="text-[10px] px-1.5 py-0 h-4">
@@ -498,14 +660,10 @@ export function AccountSecurityTab() {
                     </Badge>
                   )}
                 </div>
-                <div className="text-[11px] text-muted-foreground font-mono">
-                  拥有系统最高控制权限 · 适用于个人单机独立部署
+                <div className="flex items-center gap-1">
+                  <span>支持 PNG / JPG / WebP，最大 2MB · 实时全站同步</span>
                 </div>
               </div>
-            </div>
-
-            <div className="flex items-center gap-2 font-mono text-xs text-muted-foreground self-end sm:self-center">
-              <span>状态: <strong className="text-emerald-400">已激活</strong></span>
             </div>
           </div>
         </CardContent>

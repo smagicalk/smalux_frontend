@@ -77,7 +77,9 @@ import {
 import { DynamicNotifyChannels, type NotifyChannelItem } from "../components/dynamic-notify-channels";
 import { useServerConfig } from "../api/use-server-config";
 import { ServerDedicatedTasksSection } from "../components/server-dedicated-tasks-section";
+import { ScriptLibraryWidget } from "@/shared/components/script-library/script-library-widget";
 import { AlertRuleDialog } from "@/features/alerts/components/alert-rule-dialog";
+
 import { SilenceDialog } from "@/features/alerts/components/silence-dialog";
 import {
   Dialog,
@@ -633,7 +635,7 @@ export function ServerDetailPage() {
     " 提示: 在下方输入 Linux 命令或点击快捷按钮开始交互。",
     "=========================================================================="
   ]);
-  const termEndRef = useRef<HTMLDivElement>(null);
+  const termContainerRef = useRef<HTMLDivElement>(null);
 
   const isRemoteEnabled = Boolean(
     configForm.allowRemoteExec &&
@@ -642,10 +644,11 @@ export function ServerDetailPage() {
   );
 
   useEffect(() => {
-    if (activeTab === "terminal") {
-      termEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    if (termContainerRef.current) {
+      termContainerRef.current.scrollTop = termContainerRef.current.scrollHeight;
     }
-  }, [termLogs, activeTab]);
+  }, [termLogs]);
+
 
   const executeCommand = (cmd: string) => {
     if (!cmd.trim() || !server || !isRemoteEnabled) return;
@@ -1263,8 +1266,9 @@ export function ServerDetailPage() {
                 : "border-transparent text-muted-foreground hover:text-foreground hover:bg-muted/40"
             }`}
           >
-            <Terminal className="size-4" /> Web 终端与即时命令
+            <Terminal className="size-4" /> 远程执行
           </button>
+
           <button
             type="button"
             onClick={() => setActiveTab("alerts")}
@@ -1274,11 +1278,12 @@ export function ServerDetailPage() {
                 : "border-transparent text-muted-foreground hover:text-foreground hover:bg-muted/40"
             }`}
           >
-            <Bell className="size-4" /> 告警水位、通知与日志
+            <Bell className="size-4" /> 告警策略与事件
             {serverIncidents.filter((i) => !i.resolvedAt).length > 0 && (
               <span className="size-2 rounded-full bg-rose-500 animate-pulse" />
             )}
           </button>
+
           <button
             type="button"
             onClick={() => setActiveTab("config")}
@@ -2284,7 +2289,7 @@ export function ServerDetailPage() {
                   }`}
                 >
                   <Clock className="size-3.5" />
-                  <span>定时任务与自动化流水</span>
+                  <span>计划任务与流水</span>
                 </button>
                 <button
                   type="button"
@@ -2296,7 +2301,7 @@ export function ServerDetailPage() {
                   }`}
                 >
                   <Terminal className="size-3.5" />
-                  <span>Web 终端与即时命令</span>
+                  <span>Web 终端与命令</span>
                 </button>
               </div>
 
@@ -2304,6 +2309,7 @@ export function ServerDetailPage() {
                 <span>节点锁定: <strong>{server.name}</strong></span>
               </div>
             </div>
+
 
             {/* Sub-Tab 1: 节点专属计划任务与执行日志流水 (锁定当前主机) */}
             {terminalSubTab === "tasks" && (
@@ -2332,8 +2338,9 @@ export function ServerDetailPage() {
                     <button
                       key={cmd}
                       type="button"
+                      disabled={!isRemoteEnabled}
                       onClick={() => executeCommand(cmd)}
-                      className="px-2.5 py-1 rounded bg-muted/60 hover:bg-primary/20 hover:text-primary border border-border/50 text-xs font-mono transition-colors cursor-pointer text-foreground/80"
+                      className="px-2.5 py-1 rounded bg-muted/60 hover:bg-primary/20 hover:text-primary border border-border/50 text-xs font-mono transition-colors cursor-pointer text-foreground/80 disabled:opacity-40 disabled:cursor-not-allowed"
                     >
                       {cmd}
                     </button>
@@ -2341,19 +2348,31 @@ export function ServerDetailPage() {
                 </div>
 
                 <div className="relative flex flex-col h-[600px] rounded-xl border border-zinc-800 bg-zinc-950 text-emerald-400 font-mono text-xs overflow-hidden shadow-2xl">
-                  {/* Frosted Mask Overlay when Remote Exec is Disabled */}
+                  {/* Frosted Mask Overlay when Remote Exec is Disabled / Offline */}
                   {!isRemoteEnabled && (
                     <div className="absolute inset-0 z-20 flex flex-col items-center justify-center p-6 text-center bg-zinc-950/85 backdrop-blur-md">
                       <div className="size-12 rounded-full bg-rose-500/10 border border-rose-500/20 flex items-center justify-center mb-3">
                         <Lock className="size-6 text-rose-400" />
                       </div>
-                      <h3 className="text-sm font-bold text-zinc-100 mb-1.5 font-sans">远程即时命令执行未开启</h3>
+                      <h3 className="text-sm font-bold text-zinc-100 mb-1.5 font-sans">
+                        {server.status === "offline" ? "节点处于离线状态 (Agent Offline)" : "远程即时命令执行未开启"}
+                      </h3>
                       <p className="text-xs text-zinc-400 max-w-md mb-4 leading-relaxed font-sans">
                         {server.status === "offline"
-                          ? "当前节点处于离线状态 (Offline)，无法建立远程 Web 终端与即时命令执行通道。"
+                          ? "当前节点处于离线状态，Web 终端长连接通道已中断。所有即时操作已受限，您可切换至「计划任务与流水」查阅历史运行流水。"
                           : "出于系统安全防护原则，该节点在启动 Agent 守护进程时未附加 `--enable-remote` 标志。该权限仅支持在目标节点本地启动时显式声明开启，无法通过 Web 端远程直接授予。"}
                       </p>
-                      {server.status !== "offline" && (
+
+                      {server.status === "offline" ? (
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => setTerminalSubTab("tasks")}
+                          className="h-8 text-xs bg-zinc-900 border-zinc-700 text-zinc-200 hover:bg-zinc-800 cursor-pointer font-mono font-bold"
+                        >
+                          <Clock className="size-3.5 mr-1.5 text-cyan-400" /> 查看计划任务与历史流水
+                        </Button>
+                      ) : (
                         <div className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-zinc-900 border border-zinc-800 text-[11px] font-mono text-zinc-300">
                           <span className="text-zinc-500">启动参数提示:</span>
                           <span className="text-emerald-400">smalux-agent --enable-remote</span>
@@ -2404,13 +2423,15 @@ export function ServerDetailPage() {
                     </div>
                   </div>
 
-                  <div className="flex-1 p-4 overflow-y-auto space-y-2 select-text font-mono leading-relaxed">
+                  <div
+                    ref={termContainerRef}
+                    className="flex-1 p-4 overflow-y-auto space-y-2 select-text font-mono leading-relaxed"
+                  >
                     {termLogs.map((log, idx) => (
                       <div key={idx} className="whitespace-pre-wrap">
                         {log}
                       </div>
                     ))}
-                    <div ref={termEndRef} />
                   </div>
 
                   <form
@@ -2435,8 +2456,8 @@ export function ServerDetailPage() {
                           : "输入 Linux 命令..."
                       }
                       className="flex-1 bg-transparent text-zinc-100 text-xs outline-none font-mono placeholder:text-zinc-600 disabled:opacity-50"
-                      autoFocus
                     />
+
                     <Button
                       type="submit"
                       size="sm"
@@ -2450,8 +2471,27 @@ export function ServerDetailPage() {
                 </div>
               </div>
             )}
+
+            {/* 公共脚本库浮动小部件 (在远程执行 Tab 整体展示) */}
+            <ScriptLibraryWidget
+              onSelectScript={(cmd, title) => {
+                if (server.status === "offline") {
+                  toast.error(`主机 [${server.name}] 当前处于离线状态，无法执行脚本`);
+                  return;
+                }
+                if (terminalSubTab === "terminal") {
+                  setTermInput(cmd);
+                  toast.success(`已填入脚本 [${title}] 到 Web 终端输入框`);
+                } else {
+                  navigator.clipboard.writeText(cmd);
+                  toast.success(`已复制脚本 [${title}]，可直接粘贴使用`);
+                }
+              }}
+            />
+
           </div>
         )}
+
 
 
         {/* ===================== TAB 4: ALERTS, NOTIFICATIONS & LOGS ===================== */}
@@ -2533,463 +2573,477 @@ export function ServerDetailPage() {
               );
 
               return (
-                <div className="rounded-xl border border-border/70 bg-card/60 p-5 space-y-4 shadow-2xs">
-                  {/* Header */}
-                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                    <div className="space-y-0.5">
-                      <div className="flex items-center gap-2 font-bold text-sm text-foreground">
-                        <Bell className="size-4 text-amber-400" />
-                        <span>生效于该主机的告警水位阈值与巡检规则</span>
+                <div className="rounded-xl border border-border/70 bg-card/60 p-5 flex flex-col justify-between min-h-[380px] shadow-2xs space-y-4">
+                  <div className="space-y-4">
+                    {/* Header */}
+                    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                      <div className="space-y-0.5">
+                        <div className="flex items-center gap-2 font-bold text-sm text-foreground">
+                          <Bell className="size-4 text-amber-400" />
+                          <span>生效于该主机的告警策略与规则</span>
+                        </div>
+                        <div className="text-[11px] text-muted-foreground">
+                          由告警中心集中统管，自动匹配并生效于当前主机的全局基线规则与专属特化策略
+                        </div>
                       </div>
-                      <div className="text-[11px] text-muted-foreground">
-                        由告警中心集中统管，自动匹配并生效于当前主机的全局基线规则与专属特化策略
+                      <div className="flex items-center gap-2 self-start sm:self-auto shrink-0">
+                        <Badge variant="outline" className="text-xs font-mono text-amber-400 border-amber-500/30">
+                          共 {serverCoveredRules.length} 条已生效
+                        </Badge>
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setEditingAlertRule(null);
+                            setIsAlertRuleDialogOpen(true);
+                          }}
+                          className="inline-flex items-center justify-center rounded-md font-semibold transition-all h-7 px-2.5 text-xs gap-1 border border-border/80 text-foreground bg-muted/30 hover:bg-muted/70 hover:border-border cursor-pointer shadow-2xs"
+                        >
+                          <Plus className="size-3 text-muted-foreground" />
+                          <span>新建规则</span>
+                        </button>
+                        <Link
+                          to="/admin/alerts"
+                          search={{ tab: "rules" }}
+                          className="inline-flex items-center justify-center rounded-md font-semibold transition-all h-7 px-2.5 text-xs gap-1 border border-primary/40 text-primary bg-primary/5 hover:bg-primary/15 hover:border-primary cursor-pointer shadow-2xs"
+                        >
+                          <Sliders className="size-3" />
+                          <span>前往告警中心</span>
+                          <ExternalLink className="size-2.5" />
+                        </Link>
                       </div>
                     </div>
-                    <div className="flex items-center gap-2 self-start sm:self-auto shrink-0">
-                      <Badge variant="outline" className="text-xs font-mono text-amber-400 border-amber-500/30">
-                        共 {serverCoveredRules.length} 条已生效
-                      </Badge>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setEditingAlertRule(null);
-                          setIsAlertRuleDialogOpen(true);
-                        }}
-                        className="inline-flex items-center justify-center rounded-md font-semibold transition-all h-7 px-2.5 text-xs gap-1 border border-border/80 text-foreground bg-muted/30 hover:bg-muted/70 hover:border-border cursor-pointer shadow-2xs"
-                      >
-                        <Plus className="size-3 text-muted-foreground" />
-                        <span>新建规则</span>
-                      </button>
-                      <Link
-                        to="/admin/alerts"
-                        search={{ tab: "rules" }}
-                        className="inline-flex items-center justify-center rounded-md font-semibold transition-all h-7 px-2.5 text-xs gap-1 border border-primary/40 text-primary bg-primary/5 hover:bg-primary/15 hover:border-primary cursor-pointer shadow-2xs"
-                      >
-                        <Sliders className="size-3" />
-                        <span>前往告警中心</span>
-                        <ExternalLink className="size-2.5" />
-                      </Link>
+
+                    {/* Search bar */}
+                    <div className="relative">
+                      <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-3.5 text-muted-foreground pointer-events-none" />
+                      <input
+                        type="text"
+                        placeholder="搜索规则名称、监控指标、告警级别…"
+                        value={rulesSearch}
+                        onChange={(e) => { setRulesSearch(e.target.value); setRulesPage(1); }}
+                        className="w-full h-8 pl-8 pr-3 rounded-lg border border-border/70 bg-muted/30 text-xs outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 text-foreground placeholder:text-muted-foreground transition-all"
+                      />
                     </div>
-                  </div>
 
-                  {/* Search bar */}
-                  <div className="relative">
-                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 size-3.5 text-muted-foreground pointer-events-none" />
-                    <input
-                      type="text"
-                      placeholder="搜索规则名称、监控指标、告警级别…"
-                      value={rulesSearch}
-                      onChange={(e) => { setRulesSearch(e.target.value); setRulesPage(1); }}
-                      className="w-full h-8 pl-8 pr-3 rounded-lg border border-border/70 bg-muted/30 text-xs outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 text-foreground placeholder:text-muted-foreground transition-all"
-                    />
-                  </div>
-
-                  {/* Rules Table */}
-                  <div className="overflow-x-auto rounded-lg border border-border/60">
-                    <table className="w-full text-left text-xs font-mono border-collapse">
-                      <thead className="bg-muted/40 text-muted-foreground border-b border-border/70 select-none">
-                        <tr>
-                          <th className="px-4 py-2.5 font-semibold w-[240px]">策略规则名称</th>
-                          <th className="px-3 py-2.5 font-semibold w-20 text-center">级别</th>
-                          <th className="px-3 py-2.5 font-semibold">触发条件与水位阈值</th>
-                          <th className="px-3 py-2.5 font-semibold w-28 text-center">通知渠道数量</th>
-                          <th className="px-3 py-2.5 font-semibold w-20 text-center">启用</th>
-                          <th className="px-3 py-2.5 font-semibold w-14 text-center">操作</th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-border/60">
-                        {pagedRules.length === 0 ? (
+                    {/* Rules Table (固定最小高度) */}
+                    <div className="overflow-x-auto rounded-lg border border-border/60 min-h-[220px] flex flex-col justify-between">
+                      <table className="w-full text-left text-xs font-mono border-collapse">
+                        <thead className="bg-muted/40 text-muted-foreground border-b border-border/70 select-none">
                           <tr>
-                            <td colSpan={6} className="p-8 text-center text-muted-foreground">
-                              <div className="flex flex-col items-center justify-center gap-2">
-                                <Sliders className="size-6 text-muted-foreground/40 mb-1" />
-                                {rulesSearch ? (
-                                  <span>未找到匹配「{rulesSearch}」的规则</span>
-                                ) : (
-                                  <>
-                                    <span>告警中心暂无针对该主机的生效规则</span>
+                            <th className="px-4 py-2.5 font-semibold w-[240px]">策略规则名称</th>
+                            <th className="px-3 py-2.5 font-semibold w-20 text-center">级别</th>
+                            <th className="px-3 py-2.5 font-semibold">触发条件与指标阈值</th>
+                            <th className="px-3 py-2.5 font-semibold w-28 text-center">通知渠道数量</th>
+                            <th className="px-3 py-2.5 font-semibold w-20 text-center">启用</th>
+                            <th className="px-3 py-2.5 font-semibold w-14 text-center">操作</th>
+                          </tr>
+                        </thead>
+                        <tbody className="divide-y divide-border/60">
+                          {pagedRules.length === 0 ? (
+                            <tr>
+                              <td colSpan={6} className="p-8 text-center text-muted-foreground">
+                                <div className="flex flex-col items-center justify-center gap-2">
+                                  <Sliders className="size-6 text-muted-foreground/40 mb-1" />
+                                  {rulesSearch ? (
+                                    <span>未找到匹配「{rulesSearch}」的规则</span>
+                                  ) : (
+                                    <>
+                                      <span>告警中心暂无针对该主机的生效规则</span>
+                                      <button
+                                        type="button"
+                                        onClick={() => {
+                                          setEditingAlertRule(null);
+                                          setIsAlertRuleDialogOpen(true);
+                                        }}
+                                        className="inline-flex items-center justify-center rounded-md font-semibold transition-all h-7 px-3 text-xs gap-1 border border-primary text-primary bg-primary/10 hover:bg-primary/20 mt-1 cursor-pointer"
+                                      >
+                                        <Plus className="size-3 mr-1" /> 为此主机新建规则
+                                      </button>
+                                    </>
+                                  )}
+                                </div>
+                              </td>
+                            </tr>
+                          ) : (
+                            pagedRules.map((rule) => {
+                              const isCrit = rule.severity === "critical";
+                              const isWarn = rule.severity === "warning";
+
+                              return (
+                                <tr
+                                  key={rule.id}
+                                  className={`hover:bg-muted/30 transition-colors ${
+                                    !rule.enabled ? "opacity-50" : ""
+                                  }`}
+                                >
+                                  {/* 规则名称 (单行截断) */}
+                                  <td className="px-4 py-2.5 font-semibold text-foreground max-w-[220px]">
+                                    <div className="flex items-center gap-1.5 truncate" title={`${rule.name} (${rule.id})`}>
+                                      <span className="truncate">{rule.name}</span>
+                                      <span className="text-[10px] text-muted-foreground/50 font-normal shrink-0 font-mono">
+                                        {rule.id}
+                                      </span>
+                                    </div>
+                                  </td>
+
+                                  {/* 级别 */}
+                                  <td className="px-3 py-2.5 text-center whitespace-nowrap">
+                                    <Badge
+                                      variant={isCrit ? "danger" : isWarn ? "warning" : "info"}
+                                      dot
+                                      className="text-[10px] px-1.5 py-0 h-4 font-semibold shrink-0"
+                                    >
+                                      {isCrit ? "P0" : isWarn ? "P1" : "Info"}
+                                    </Badge>
+                                  </td>
+
+                                  {/* 触发条件 */}
+                                  <td className="px-3 py-2.5 whitespace-nowrap">
+                                    <div className="flex items-center gap-1 flex-nowrap">
+                                      <span className="font-mono bg-muted px-1.5 py-0.5 rounded text-foreground font-medium text-[11px] border border-border/60 shrink-0">
+                                        {rule.metric}
+                                      </span>
+                                      <span className="font-bold text-primary shrink-0">{rule.operator}</span>
+                                      <span className="font-bold text-foreground shrink-0">
+                                        {rule.threshold}
+                                        {rule.metric?.toLowerCase().includes("speed") ? "MB/s"
+                                          : rule.metric?.toLowerCase().includes("conn") ? "个"
+                                          : rule.metric?.toLowerCase().includes("timeout") ? "s"
+                                          : "%"}
+                                      </span>
+                                      <span className="text-[10px] text-muted-foreground bg-muted/60 px-1 py-0.5 rounded border border-border/40 shrink-0">
+                                        持续 {rule.windowSec >= 60 && rule.windowSec % 60 === 0
+                                          ? `${rule.windowSec / 60}m`
+                                          : `${rule.windowSec}s`}
+                                      </span>
+                                    </div>
+                                  </td>
+
+                                  {/* 渠道数 */}
+                                  <td className="px-3 py-2.5 text-center whitespace-nowrap">
+                                    <Badge variant="neutral" className="text-[10px] px-1.5 py-0 shrink-0">
+                                      {rule.channelIds?.length ?? rule.channels?.length ?? 0}
+                                    </Badge>
+                                  </td>
+
+                                  {/* 启用状态 (开关样式) */}
+                                  <td className="px-3 py-2.5 text-center whitespace-nowrap">
+                                    <div className="flex items-center justify-center">
+                                      <Switch
+                                        checked={rule.enabled}
+                                        onCheckedChange={async (checked) => {
+                                          try {
+                                            await toggleAlertRule.mutateAsync({
+                                              id: rule.id,
+                                              enabled: checked,
+                                              fromServerDetail: true,
+                                              source: "server-detail",
+                                              targetServerId: server?.id
+                                            });
+                                            toast.success(`策略「${rule.name}」已${checked ? "启用" : "停用"}`);
+                                          } catch {
+                                            toast.error("切换规则状态失败");
+                                          }
+                                        }}
+                                      />
+                                    </div>
+                                  </td>
+
+                                  {/* 编辑按钮 (打开弹窗) */}
+                                  <td className="px-3 py-2.5 text-center whitespace-nowrap">
                                     <button
                                       type="button"
                                       onClick={() => {
-                                        setEditingAlertRule(null);
+                                        setEditingAlertRule(rule);
                                         setIsAlertRuleDialogOpen(true);
                                       }}
-                                      className="inline-flex items-center justify-center rounded-md font-semibold transition-all h-7 px-3 text-xs gap-1 border border-primary text-primary bg-primary/10 hover:bg-primary/20 mt-1 cursor-pointer"
+                                      title={`编辑规则：${rule.name}`}
+                                      className="inline-flex items-center justify-center size-6 rounded-md border border-border/70 bg-background text-muted-foreground hover:text-primary hover:border-primary/50 hover:bg-primary/5 transition-all cursor-pointer"
                                     >
-                                      <Plus className="size-3 mr-1" /> 为此主机新建规则
+                                      <Sliders className="size-3" />
                                     </button>
-                                  </>
-                                )}
-                              </div>
-                            </td>
-                          </tr>
-                        ) : (
-                          pagedRules.map((rule) => {
-                            const isCrit = rule.severity === "critical";
-                            const isWarn = rule.severity === "warning";
+                                  </td>
+                                </tr>
+                              );
+                            })
+                          )}
+                        </tbody>
+                      </table>
 
-                            return (
-                              <tr
-                                key={rule.id}
-                                className={`hover:bg-muted/30 transition-colors ${
-                                  !rule.enabled ? "opacity-50" : ""
-                                }`}
-                              >
-                                {/* 规则名称 (单行截断) */}
-                                <td className="px-4 py-2.5 font-semibold text-foreground max-w-[220px]">
-                                  <div className="flex items-center gap-1.5 truncate" title={`${rule.name} (${rule.id})`}>
-                                    <span className="truncate">{rule.name}</span>
-                                    <span className="text-[10px] text-muted-foreground/50 font-normal shrink-0 font-mono">
-                                      {rule.id}
-                                    </span>
-                                  </div>
-                                </td>
-
-                                {/* 级别 */}
-                                <td className="px-3 py-2.5 text-center whitespace-nowrap">
-                                  <Badge
-                                    variant={isCrit ? "danger" : isWarn ? "warning" : "info"}
-                                    dot
-                                    className="text-[10px] px-1.5 py-0 h-4 font-semibold shrink-0"
-                                  >
-                                    {isCrit ? "P0" : isWarn ? "P1" : "Info"}
-                                  </Badge>
-                                </td>
-
-                                {/* 触发条件 */}
-                                <td className="px-3 py-2.5 whitespace-nowrap">
-                                  <div className="flex items-center gap-1 flex-nowrap">
-                                    <span className="font-mono bg-muted px-1.5 py-0.5 rounded text-foreground font-medium text-[11px] border border-border/60 shrink-0">
-                                      {rule.metric}
-                                    </span>
-                                    <span className="font-bold text-primary shrink-0">{rule.operator}</span>
-                                    <span className="font-bold text-foreground shrink-0">
-                                      {rule.threshold}
-                                      {rule.metric?.toLowerCase().includes("speed") ? "MB/s"
-                                        : rule.metric?.toLowerCase().includes("conn") ? "个"
-                                        : rule.metric?.toLowerCase().includes("timeout") ? "s"
-                                        : "%"}
-                                    </span>
-                                    <span className="text-[10px] text-muted-foreground bg-muted/60 px-1 py-0.5 rounded border border-border/40 shrink-0">
-                                      持续 {rule.windowSec >= 60 && rule.windowSec % 60 === 0
-                                        ? `${rule.windowSec / 60}m`
-                                        : `${rule.windowSec}s`}
-                                    </span>
-                                  </div>
-                                </td>
-
-                                {/* 渠道数 */}
-                                <td className="px-3 py-2.5 text-center whitespace-nowrap">
-                                  <Badge variant="neutral" className="text-[10px] px-1.5 py-0 shrink-0">
-                                    {rule.channelIds?.length ?? rule.channels?.length ?? 0}
-                                  </Badge>
-                                </td>
-
-                                {/* 启用状态 (开关样式) */}
-                                <td className="px-3 py-2.5 text-center whitespace-nowrap">
-                                  <div className="flex items-center justify-center">
-                                    <Switch
-                                      checked={rule.enabled}
-                                      onCheckedChange={async (checked) => {
-                                        try {
-                                          await toggleAlertRule.mutateAsync({
-                                            id: rule.id,
-                                            enabled: checked,
-                                            fromServerDetail: true,
-                                            source: "server-detail",
-                                            targetServerId: server?.id
-                                          });
-                                          toast.success(`策略「${rule.name}」已${checked ? "启用" : "停用"}`);
-                                        } catch {
-                                          toast.error("切换规则状态失败");
-                                        }
-                                      }}
-                                    />
-                                  </div>
-                                </td>
-
-                                {/* 编辑按钮 (打开弹窗) */}
-                                <td className="px-3 py-2.5 text-center whitespace-nowrap">
-                                  <button
-                                    type="button"
-                                    onClick={() => {
-                                      setEditingAlertRule(rule);
-                                      setIsAlertRuleDialogOpen(true);
-                                    }}
-                                    title={`编辑规则：${rule.name}`}
-                                    className="inline-flex items-center justify-center size-6 rounded-md border border-border/70 bg-background text-muted-foreground hover:text-primary hover:border-primary/50 hover:bg-primary/5 transition-all cursor-pointer"
-                                  >
-                                    <Sliders className="size-3" />
-                                  </button>
-                                </td>
-                              </tr>
-                            );
-                          })
-                        )}
-                      </tbody>
-                    </table>
+                      {/* 未占满页容量时的小字提示 */}
+                      {pagedRules.length > 0 && pagedRules.length < RULES_PAGE_SIZE && (
+                        <div className="py-2.5 px-4 text-center text-[11px] text-muted-foreground/60 font-mono italic select-none border-t border-border/30 bg-muted/10">
+                          * 当前页展示全部 {pagedRules.length} 条策略规则（标准单页容量为 {RULES_PAGE_SIZE} 条）
+                        </div>
+                      )}
+                    </div>
                   </div>
 
-                  {/* Pagination */}
-                  {filteredRules.length > RULES_PAGE_SIZE && (
-                    <div className="flex items-center justify-between pt-1 text-xs text-muted-foreground">
-                      <span className="font-mono">
-                        第 {(rulesPage - 1) * RULES_PAGE_SIZE + 1}–{Math.min(rulesPage * RULES_PAGE_SIZE, filteredRules.length)} 条，共 {filteredRules.length} 条
-                      </span>
-                      <div className="flex items-center gap-1">
-                        <button
-                          type="button"
-                          disabled={rulesPage === 1}
-                          onClick={() => setRulesPage((p) => p - 1)}
-                          className="h-6 px-2 rounded border border-border/70 bg-muted/30 hover:bg-muted/60 disabled:opacity-40 disabled:pointer-events-none transition-colors cursor-pointer font-mono"
-                        >
-                          ‹ 上一页
-                        </button>
-                        {Array.from({ length: totalRulesPages }).map((_, i) => (
-                          <button
-                            key={i}
-                            type="button"
-                            onClick={() => setRulesPage(i + 1)}
-                            className={`size-6 rounded border text-[10px] font-mono transition-colors cursor-pointer ${
-                              rulesPage === i + 1
-                                ? "border-primary bg-primary/15 text-primary font-bold"
-                                : "border-border/70 bg-muted/20 text-muted-foreground hover:bg-muted/60"
-                            }`}
-                          >
-                            {i + 1}
-                          </button>
-                        ))}
-                        <button
-                          type="button"
-                          disabled={rulesPage === totalRulesPages}
-                          onClick={() => setRulesPage((p) => p - 1)}
-                          className="h-6 px-2 rounded border border-border/70 bg-muted/30 hover:bg-muted/60 disabled:opacity-40 disabled:pointer-events-none transition-colors cursor-pointer font-mono"
-                        >
-                          下一页 ›
-                        </button>
-                      </div>
+                  {/* 常驻 Pagination */}
+                  <div className="flex items-center justify-between pt-2 border-t border-border/50 text-xs text-muted-foreground font-mono select-none">
+                    <span>
+                      共 <strong>{filteredRules.length}</strong> 条规则 · 第 <strong>{rulesPage}</strong> / {totalRulesPages} 页
+                    </span>
+                    <div className="flex items-center gap-1">
+                      <button
+                        type="button"
+                        disabled={rulesPage <= 1}
+                        onClick={() => setRulesPage((p) => Math.max(1, p - 1))}
+                        className="h-6 px-2 rounded border border-border/70 bg-muted/30 hover:bg-muted/60 disabled:opacity-40 disabled:pointer-events-none transition-colors cursor-pointer font-mono"
+                      >
+                        ‹ 上一页
+                      </button>
+                      <button
+                        type="button"
+                        disabled={rulesPage >= totalRulesPages}
+                        onClick={() => setRulesPage((p) => Math.min(totalRulesPages, p + 1))}
+                        className="h-6 px-2 rounded border border-border/70 bg-muted/30 hover:bg-muted/60 disabled:opacity-40 disabled:pointer-events-none transition-colors cursor-pointer font-mono"
+                      >
+                        下一页 ›
+                      </button>
                     </div>
-                  )}
+                  </div>
                 </div>
               );
             })()}
 
             {/* Section 3: Alert Incidents & Trigger Logs Table */}
-            <div className="rounded-xl border border-border/70 bg-card/60 p-5 space-y-4 shadow-2xs">
-              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-                <div className="space-y-0.5">
-                  <div className="flex items-center gap-2 font-bold text-sm text-foreground">
-                    <Clock className="size-4 text-amber-400" />
-                    <span>节点专属告警历史与巡检触发事件流水 (Alert Incidents & Logs)</span>
+            <div className="rounded-xl border border-border/70 bg-card/60 p-5 flex flex-col justify-between min-h-[420px] shadow-2xs space-y-4">
+              <div className="space-y-4">
+                <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                  <div className="space-y-0.5">
+                    <div className="flex items-center gap-2 font-bold text-sm text-foreground">
+                      <Clock className="size-4 text-amber-400" />
+                      <span>节点专属告警历史与巡检触发事件流水 (Alert Incidents & Logs)</span>
+                    </div>
+                    <div className="text-[11px] text-muted-foreground">
+                      记录该节点历次指标超标、离线失联及异常恢复事件
+                    </div>
                   </div>
-                  <div className="text-[11px] text-muted-foreground">
-                    记录该节点历次指标超标、离线失联及异常恢复事件
+
+                  <div className="flex items-center gap-2 self-end sm:self-center flex-wrap">
+                    {/* Search */}
+                    <div className="relative w-40">
+                      <Search className="size-3 absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground" />
+                      <input
+                        type="text"
+                        value={alertSearchQuery}
+                        onChange={(e) => {
+                          setAlertSearchQuery(e.target.value);
+                          setAlertLogPage(1);
+                        }}
+                        placeholder="搜索告警/原因..."
+                        className="w-full h-7 pl-7 pr-2 rounded border border-border/80 bg-background text-xs font-mono outline-none"
+                      />
+                    </div>
+
+                    {/* Severity */}
+                    <select
+                      value={alertSeverityFilter}
+                      onChange={(e) => {
+                        setAlertSeverityFilter(e.target.value);
+                        setAlertLogPage(1);
+                      }}
+                      className="h-7 px-2 rounded border border-border/80 bg-background text-xs font-mono"
+                    >
+                      <option value="all">全部级别</option>
+                      <option value="critical">P0 严重</option>
+                      <option value="warning">P1 警告</option>
+                      <option value="info">Info 提示</option>
+                    </select>
+
+                    {/* Status */}
+                    <select
+                      value={alertStatusFilter}
+                      onChange={(e) => {
+                        setAlertStatusFilter(e.target.value as any);
+                        setAlertLogPage(1);
+                      }}
+                      className="h-7 px-2 rounded border border-border/80 bg-background text-xs font-mono"
+                    >
+                      <option value="all">全部状态</option>
+                      <option value="active">告警中</option>
+                      <option value="resolved">已恢复</option>
+                    </select>
+
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => refetchServerAlerts()}
+                      className="h-7 px-2.5 text-xs font-mono cursor-pointer"
+                      title="刷新告警流水"
+                    >
+                      <RotateCw className={`size-3 ${isLoadingServerAlerts ? "animate-spin text-primary" : ""}`} />
+                    </Button>
                   </div>
                 </div>
 
-                <div className="flex items-center gap-2 self-end sm:self-center flex-wrap">
-                  {/* Search */}
-                  <div className="relative w-40">
-                    <Search className="size-3 absolute left-2.5 top-1/2 -translate-y-1/2 text-muted-foreground" />
-                    <input
-                      type="text"
-                      value={alertSearchQuery}
-                      onChange={(e) => {
-                        setAlertSearchQuery(e.target.value);
-                        setAlertLogPage(1);
-                      }}
-                      placeholder="搜索告警/原因..."
-                      className="w-full h-7 pl-7 pr-2 rounded border border-border/80 bg-background text-xs font-mono outline-none"
-                    />
-                  </div>
+                {/* Table (固定最小高度) */}
+                <div className="overflow-x-auto rounded-lg border border-border/60 min-h-[240px] flex flex-col justify-between">
+                  <table className="w-full text-left text-xs font-mono border-collapse min-w-[650px]">
+                    <thead className="bg-muted/40 text-muted-foreground border-b border-border/70 select-none">
+                      <tr>
+                        <th className="px-4 py-2.5 font-semibold">告警规则 / 事件名称</th>
+                        <th className="px-3 py-2.5 font-semibold w-24 text-center">级别</th>
+                        <th className="px-3 py-2.5 font-semibold min-w-[200px]">触发详情与采样值</th>
+                        <th className="px-3 py-2.5 font-semibold w-36">触发时间</th>
+                        <th className="px-3 py-2.5 font-semibold w-24 text-center">状态</th>
+                        <th className="px-3 py-2.5 font-semibold w-28 text-center">操作</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-border/60">
+                      {filteredServerIncidents.length === 0 ? (
+                        <tr>
+                          <td colSpan={6} className="p-8 text-center text-muted-foreground">
+                            暂无符合条件的告警与巡检流水记录
+                          </td>
+                        </tr>
+                      ) : (
+                        paginatedServerIncidents.map((inc) => {
+                          const isCrit = inc.severity === "critical";
+                          const isWarn = inc.severity === "warning";
+                          const isResolved = Boolean(inc.resolvedAt);
 
-                  {/* Severity */}
+                          return (
+                            <tr
+                              key={inc.id}
+                              className="hover:bg-muted/30 transition-colors"
+                            >
+                              {/* 规则名称与事件 ID (单行截断) */}
+                              <td className="px-4 py-2.5 font-semibold text-foreground max-w-[200px]">
+                                <div className="flex items-center gap-1.5 truncate" title={`${inc.ruleName} (${inc.id})`}>
+                                  <span className="truncate">{inc.ruleName}</span>
+                                  <span className="text-[10px] text-muted-foreground/60 font-normal shrink-0 font-mono">
+                                    {inc.id}
+                                  </span>
+                                </div>
+                              </td>
+
+                              {/* 级别 */}
+                              <td className="px-3 py-2.5 text-center whitespace-nowrap">
+                                <Badge
+                                  variant={isCrit ? "danger" : isWarn ? "warning" : "info"}
+                                  dot
+                                  className="text-[10px] px-1.5 py-0 font-semibold shrink-0"
+                                >
+                                  {isCrit ? "P0 严重" : isWarn ? "P1 警告" : "Info 提示"}
+                                </Badge>
+                              </td>
+
+                              {/* 触发详情与采样值 (单行截断) */}
+                              <td className="px-3 py-2.5 text-muted-foreground text-[11px] max-w-[340px]">
+                                <div className="flex items-center gap-1.5 truncate" title={inc.message}>
+                                  <span className="truncate">{inc.message}</span>
+                                  {typeof inc.value === "number" && (
+                                    <span className="font-bold text-foreground shrink-0 font-mono text-[10px] bg-muted/60 px-1 py-0.5 rounded border border-border/40">
+                                      {Math.round(inc.value * 100)}%
+                                    </span>
+                                  )}
+                                </div>
+                              </td>
+
+                              {/* 触发时间 */}
+                              <td className="px-3 py-2.5 text-muted-foreground text-[11px] whitespace-nowrap">
+                                {new Date(inc.triggeredAt).toLocaleString("zh-CN", { hour12: false })}
+                              </td>
+
+                              {/* 状态 (单行居中) */}
+                              <td className="px-3 py-2.5 text-center whitespace-nowrap">
+                                {isResolved ? (
+                                  <Badge variant="outline" className="text-[10px] text-emerald-400 border-emerald-500/30 bg-emerald-500/5 font-mono whitespace-nowrap shrink-0">
+                                    ✓ 已恢复
+                                  </Badge>
+                                ) : (
+                                  <Badge variant="danger" dot className="text-[10px] font-mono animate-pulse whitespace-nowrap shrink-0">
+                                    ● 告警中
+                                  </Badge>
+                                )}
+                              </td>
+
+                              {/* 操作 */}
+                              <td className="px-3 py-2.5 text-center whitespace-nowrap">
+                                <div className="flex items-center justify-center gap-1">
+                                  <Button
+                                    size="sm"
+                                    variant="ghost"
+                                    onClick={() => setSelectedIncident(inc)}
+                                    className="h-6 px-1.5 text-[11px] font-mono text-muted-foreground hover:text-foreground hover:bg-muted/60 border border-border/50 hover:border-border cursor-pointer transition-all shrink-0"
+                                    title="查看该事件详细诊断报告与全量日志"
+                                  >
+                                    <Eye className="size-3 mr-0.5 text-muted-foreground/70" />
+                                    详情
+                                  </Button>
+                                  <Button
+                                    size="sm"
+                                    variant="ghost"
+                                    onClick={() => setSilenceTarget({ id: inc.id, name: inc.ruleName, ruleId: inc.ruleId })}
+                                    className="h-6 px-1.5 text-[11px] font-mono text-muted-foreground hover:text-foreground hover:bg-muted/60 border border-border/50 hover:border-border cursor-pointer transition-all shrink-0"
+                                    title="为此事件关联的告警规则设置静默"
+                                  >
+                                    <Volume2 className="size-3 mr-0.5 text-muted-foreground/70" />
+                                    静默
+                                  </Button>
+                                </div>
+                              </td>
+                            </tr>
+                          );
+                        })
+                      )}
+                    </tbody>
+                  </table>
+
+                  {/* 未占满页容量时的小字提示 */}
+                  {paginatedServerIncidents.length > 0 && paginatedServerIncidents.length < alertLogPageSize && (
+                    <div className="py-2.5 px-4 text-center text-[11px] text-muted-foreground/60 font-mono italic select-none border-t border-border/30 bg-muted/10">
+                      * 当前页展示全部 {paginatedServerIncidents.length} 条事件记录（标准单页容量为 {alertLogPageSize} 条）
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* 常驻 Pagination */}
+              <div className="flex flex-wrap items-center justify-between gap-3 text-xs pt-2 border-t border-border/50 font-mono select-none">
+                <div className="flex items-center gap-2 text-muted-foreground">
+                  <span>
+                    共 <strong>{filteredServerIncidents.length}</strong> 条记录 · 第 <strong>{alertLogPage}</strong> / {totalAlertPages} 页
+                  </span>
+                  <span>·</span>
                   <select
-                    value={alertSeverityFilter}
+                    value={alertLogPageSize}
                     onChange={(e) => {
-                      setAlertSeverityFilter(e.target.value);
+                      setAlertLogPageSize(Number(e.target.value));
                       setAlertLogPage(1);
                     }}
-                    className="h-7 px-2 rounded border border-border/80 bg-background text-xs font-mono"
+                    className="bg-muted/40 border border-border/80 rounded px-1.5 py-0.5 text-[11px] outline-none font-semibold text-foreground cursor-pointer"
                   >
-                    <option value="all">全部级别</option>
-                    <option value="critical">P0 严重</option>
-                    <option value="warning">P1 警告</option>
-                    <option value="info">Info 提示</option>
+                    <option value={5}>5 条/页</option>
+                    <option value={10}>10 条/页</option>
+                    <option value={20}>20 条/页</option>
                   </select>
-
-                  {/* Status */}
-                  <select
-                    value={alertStatusFilter}
-                    onChange={(e) => {
-                      setAlertStatusFilter(e.target.value as any);
-                      setAlertLogPage(1);
-                    }}
-                    className="h-7 px-2 rounded border border-border/80 bg-background text-xs font-mono"
-                  >
-                    <option value="all">全部状态</option>
-                    <option value="active">告警中</option>
-                    <option value="resolved">已恢复</option>
-                  </select>
-
+                </div>
+                <div className="flex items-center gap-1.5">
                   <Button
                     size="sm"
                     variant="outline"
-                    onClick={() => refetchServerAlerts()}
-                    className="h-7 px-2.5 text-xs font-mono cursor-pointer"
-                    title="刷新告警流水"
+                    disabled={alertLogPage <= 1}
+                    onClick={() => setAlertLogPage((p) => Math.max(1, p - 1))}
+                    className="h-7 px-2 text-xs cursor-pointer font-mono"
                   >
-                    <RotateCw className={`size-3 ${isLoadingServerAlerts ? "animate-spin text-primary" : ""}`} />
+                    上一页
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    disabled={alertLogPage >= totalAlertPages}
+                    onClick={() => setAlertLogPage((p) => Math.min(totalAlertPages, p + 1))}
+                    className="h-7 px-2 text-xs cursor-pointer font-mono"
+                  >
+                    下一页
                   </Button>
                 </div>
               </div>
-
-              {/* Table */}
-              <div className="overflow-x-auto rounded-lg border border-border/60">
-                <table className="w-full text-left text-xs font-mono border-collapse min-w-[650px]">
-                  <thead className="bg-muted/40 text-muted-foreground border-b border-border/70 select-none">
-                    <tr>
-                      <th className="px-4 py-2.5 font-semibold">告警规则 / 事件名称</th>
-                      <th className="px-3 py-2.5 font-semibold w-24 text-center">级别</th>
-                      <th className="px-3 py-2.5 font-semibold min-w-[200px]">触发详情与采样值</th>
-                      <th className="px-3 py-2.5 font-semibold w-36">触发时间</th>
-                      <th className="px-3 py-2.5 font-semibold w-24 text-center">状态</th>
-                      <th className="px-3 py-2.5 font-semibold w-28 text-center">操作</th>
-                    </tr>
-                  </thead>
-                  <tbody className="divide-y divide-border/60">
-                    {filteredServerIncidents.length === 0 ? (
-                      <tr>
-                        <td colSpan={6} className="p-8 text-center text-muted-foreground">
-                          暂无符合条件的告警与巡检流水记录
-                        </td>
-                      </tr>
-                    ) : (
-                      paginatedServerIncidents.map((inc) => {
-                        const isCrit = inc.severity === "critical";
-                        const isWarn = inc.severity === "warning";
-                        const isResolved = Boolean(inc.resolvedAt);
-
-                        return (
-                          <tr
-                            key={inc.id}
-                            className="hover:bg-muted/30 transition-colors"
-                          >
-                            {/* 规则名称与事件 ID (单行截断) */}
-                            <td className="px-4 py-2.5 font-semibold text-foreground max-w-[200px]">
-                              <div className="flex items-center gap-1.5 truncate" title={`${inc.ruleName} (${inc.id})`}>
-                                <span className="truncate">{inc.ruleName}</span>
-                                <span className="text-[10px] text-muted-foreground/60 font-normal shrink-0 font-mono">
-                                  {inc.id}
-                                </span>
-                              </div>
-                            </td>
-
-                            {/* 级别 */}
-                            <td className="px-3 py-2.5 text-center whitespace-nowrap">
-                              <Badge
-                                variant={isCrit ? "danger" : isWarn ? "warning" : "info"}
-                                dot
-                                className="text-[10px] px-1.5 py-0 font-semibold shrink-0"
-                              >
-                                {isCrit ? "P0 严重" : isWarn ? "P1 警告" : "Info 提示"}
-                              </Badge>
-                            </td>
-
-                            {/* 触发详情与采样值 (单行截断) */}
-                            <td className="px-3 py-2.5 text-muted-foreground text-[11px] max-w-[340px]">
-                              <div className="flex items-center gap-1.5 truncate" title={inc.message}>
-                                <span className="truncate">{inc.message}</span>
-                                {typeof inc.value === "number" && (
-                                  <span className="font-bold text-foreground shrink-0 font-mono text-[10px] bg-muted/60 px-1 py-0.5 rounded border border-border/40">
-                                    {Math.round(inc.value * 100)}%
-                                  </span>
-                                )}
-                              </div>
-                            </td>
-
-                            {/* 触发时间 */}
-                            <td className="px-3 py-2.5 text-muted-foreground text-[11px] whitespace-nowrap">
-                              {new Date(inc.triggeredAt).toLocaleString("zh-CN", { hour12: false })}
-                            </td>
-
-                            {/* 状态 (单行居中) */}
-                            <td className="px-3 py-2.5 text-center whitespace-nowrap">
-                              {isResolved ? (
-                                <Badge variant="outline" className="text-[10px] text-emerald-400 border-emerald-500/30 bg-emerald-500/5 font-mono whitespace-nowrap shrink-0">
-                                  ✓ 已恢复
-                                </Badge>
-                              ) : (
-                                <Badge variant="danger" dot className="text-[10px] font-mono animate-pulse whitespace-nowrap shrink-0">
-                                  ● 告警中
-                                </Badge>
-                              )}
-                            </td>
-
-                            {/* 操作 */}
-                            <td className="px-3 py-2.5 text-center whitespace-nowrap">
-                              <div className="flex items-center justify-center gap-1">
-                                <Button
-                                  size="sm"
-                                  variant="ghost"
-                                  onClick={() => setSelectedIncident(inc)}
-                                  className="h-6 px-1.5 text-[11px] font-mono text-muted-foreground hover:text-foreground hover:bg-muted/60 border border-border/50 hover:border-border cursor-pointer transition-all shrink-0"
-                                  title="查看该事件详细诊断报告与全量日志"
-                                >
-                                  <Eye className="size-3 mr-0.5 text-muted-foreground/70" />
-                                  详情
-                                </Button>
-                                <Button
-                                  size="sm"
-                                  variant="ghost"
-                                  onClick={() => setSilenceTarget({ id: inc.id, name: inc.ruleName, ruleId: inc.ruleId })}
-                                  className="h-6 px-1.5 text-[11px] font-mono text-muted-foreground hover:text-foreground hover:bg-muted/60 border border-border/50 hover:border-border cursor-pointer transition-all shrink-0"
-                                  title="为此事件关联的告警规则设置静默"
-                                >
-                                  <Volume2 className="size-3 mr-0.5 text-muted-foreground/70" />
-                                  静默
-                                </Button>
-                              </div>
-                            </td>
-                          </tr>
-                        );
-                      })
-                    )}
-                  </tbody>
-
-                </table>
-              </div>
-
-
-              {/* Pagination */}
-              {filteredServerIncidents.length > 0 && (
-                <div className="flex flex-wrap items-center justify-between gap-3 text-xs pt-1 font-mono">
-                  <div className="text-muted-foreground">
-                    共 <strong>{filteredServerIncidents.length}</strong> 条记录 · 第 <strong>{alertLogPage}</strong> / {totalAlertPages} 页
-                  </div>
-                  <div className="flex items-center gap-1.5">
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      disabled={alertLogPage <= 1}
-                      onClick={() => setAlertLogPage((p) => Math.max(1, p - 1))}
-                      className="h-7 px-2 text-xs cursor-pointer"
-                    >
-                      上一页
-                    </Button>
-                    <Button
-                      size="sm"
-                      variant="outline"
-                      disabled={alertLogPage >= totalAlertPages}
-                      onClick={() => setAlertLogPage((p) => Math.min(totalAlertPages, p + 1))}
-                      className="h-7 px-2 text-xs cursor-pointer"
-                    >
-                      下一页
-                    </Button>
-                  </div>
-                </div>
-              )}
             </div>
+
 
             {/* Save & Reset Sticky Footer */}
             <div className="pt-4 border-t border-border/70 flex items-center justify-end gap-3">
