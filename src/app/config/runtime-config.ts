@@ -84,7 +84,10 @@ export async function loadRuntimeConfig(
   fetcher: typeof fetch = fetch
 ): Promise<RuntimeConfig> {
   try {
-    const response = await fetcher("/app-config.json", {
+    const baseUrl = (typeof import.meta !== "undefined" && import.meta.env?.BASE_URL) || "/";
+    const configPath = baseUrl.endsWith("/") ? `${baseUrl}app-config.json` : `${baseUrl}/app-config.json`;
+
+    const response = await fetcher(configPath, {
       cache: "no-store"
     });
 

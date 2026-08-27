@@ -195,8 +195,10 @@ const deploymentRedirectRoute = createRoute({
 });
 
 export function createAppRouter(context: RouterContext) {
+  const basepath = (typeof import.meta !== "undefined" && import.meta.env?.BASE_URL) || "/";
   return createRouter({
     routeTree: buildRouteTree(),
+    basepath: basepath.replace(/\/+$/, "") || undefined,
     context
   });
 }
