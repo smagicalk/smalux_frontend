@@ -31,42 +31,46 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      # 2. 配置 Node.js 环境 (Node 22 满足 pnpm 11 和 node:sqlite 要求)
+      # 2. 配置 Node.js 22 环境
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
           node-version: 22
 
-      # 3. 安装 pnpm 包管理器（自动遵循 package.json 中的 packageManager 声明）
+      # 3. 安装 pnpm 包管理器
       - name: Install pnpm
         uses: pnpm/action-setup@v4
 
-      # 4. 安装依赖
+      # 4. 安装项目依赖
       - name: Install dependencies
         run: pnpm install --no-frozen-lockfile
 
-      # 5. 编译打包（强制开启 Mock 仿真模式）
+      # 5. 初始化配置 GitHub Pages 环境（在 build 前执行以获取 base_path）
+      - name: Setup Pages
+        id: pages
+        uses: actions/configure-pages@v5
+
+      # 6. 编译打包（强制开启 Mock 仿真模式并注入 Pages 子路径）
       - name: Build project (Mock Mode)
         env:
           VITE_ENABLE_MOCK: "true"
           VITE_TRANSPORT: "mock"
+          VITE_BASE_PATH: ${{ steps.pages.outputs.base_path || '/smalux_frontend/' }}
         run: pnpm run build
 
-      # 6. 生成 404.html 解决 SPA 单页应用刷新 404 问题
-      - name: Create 404.html for Single-Page Application routing
-        run: cp dist/index.html dist/404.html
+      # 7. 写入 .nojekyll 并生成 404.html 防止 GitHub 过滤静态资源与 SPA 刷新 404
+      - name: Configure GitHub Pages routing & disable Jekyll
+        run: |
+          touch dist/.nojekyll
+          cp dist/index.html dist/404.html
 
-      # 7. 配置 GitHub Pages 环境
-      - name: Setup Pages
-        uses: actions/configure-pages@v5
-
-      # 8. 上传构建产物至 GitHub Pages Artifact
+      # 8. 上传构建产物至 GitHub Pages
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@v3
         with:
           path: "./dist"
 
-      # 9. 部署发布到 GitHub Pages
+      # 9. 执行 GitHub Pages 发布
       - name: Deploy to GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v4
