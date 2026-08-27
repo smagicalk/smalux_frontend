@@ -38,6 +38,10 @@ const SettingsPage = lazyRouteComponent(
   () => import("@/features/settings/pages/settings-page"),
   "SettingsPage"
 );
+const FormDesignerPage = lazyRouteComponent(
+  () => import("@/features/form-designer/pages/form-designer-page"),
+  "FormDesignerPage"
+);
 
 export interface RouterContext {
   config: RuntimeConfig;
@@ -58,6 +62,7 @@ function buildRouteTree() {
       infrastructureServerTasksRoute,
       automationRoute,
       alertsRoute,
+      formDesignerRoute,
       settingsRoute,
       // Legacy redirects to cohesive modules
       serversRedirectRoute,
@@ -129,6 +134,12 @@ const alertsRoute = createRoute({
   getParentRoute: () => adminRoute,
   path: "alerts",
   component: AlertsPage
+});
+
+const formDesignerRoute = createRoute({
+  getParentRoute: () => adminRoute,
+  path: "form-designer",
+  component: FormDesignerPage
 });
 
 const settingsRoute = createRoute({
