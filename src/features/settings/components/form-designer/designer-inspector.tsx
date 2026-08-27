@@ -173,6 +173,76 @@ export function DesignerInspector({
             </div>
           </div>
 
+          {/* 高度与尺寸规格 */}
+          <div className="space-y-2.5 pt-2 border-t border-border/60">
+            <div className="flex items-center justify-between">
+              <span className="text-[10px] font-bold text-muted-foreground/70 uppercase tracking-wider font-mono">
+                高度与尺寸 (Size & Height)
+              </span>
+              <span className="text-[10px] font-mono text-muted-foreground">
+                {selectedField.size || "md"}
+              </span>
+            </div>
+
+            <div className="grid grid-cols-3 gap-1.5 font-mono text-xs">
+              {[
+                { label: "紧凑 (Sm · 32px)", key: "sm" },
+                { label: "标准 (Md · 36px)", key: "md" },
+                { label: "舒适 (Lg · 44px)", key: "lg" }
+              ].map((s) => (
+                <button
+                  key={s.key}
+                  type="button"
+                  onClick={() => onUpdateField({ ...selectedField, size: s.key as any })}
+                  className={`p-1.5 rounded-lg border text-center transition-all cursor-pointer ${
+                    (selectedField.size || "md") === s.key
+                      ? "bg-primary text-primary-foreground font-bold border-primary shadow-xs"
+                      : "border-border/80 bg-muted/20 text-muted-foreground hover:text-foreground hover:bg-muted/50"
+                  }`}
+                >
+                  <span className="text-[10px] block truncate">{s.label.split(" ")[0]}</span>
+                </button>
+              ))}
+            </div>
+
+            {selectedField.type === "textarea" ? (
+              <div className="grid grid-cols-2 gap-2 pt-1">
+                <div className="space-y-1">
+                  <label className="text-[11px] font-medium text-foreground">显示行数 (Rows)</label>
+                  <input
+                    type="number"
+                    min={2}
+                    max={20}
+                    value={selectedField.rows || 3}
+                    onChange={(e) => onUpdateField({ ...selectedField, rows: parseInt(e.target.value) || 3 })}
+                    className="w-full h-8 rounded-lg border border-border/80 bg-muted/30 px-2.5 text-xs font-mono outline-none focus:border-primary text-foreground"
+                  />
+                </div>
+                <div className="space-y-1">
+                  <label className="text-[11px] font-medium text-foreground">固定像素 (如 120px)</label>
+                  <input
+                    type="text"
+                    placeholder="如 120px"
+                    value={selectedField.customHeight || ""}
+                    onChange={(e) => onUpdateField({ ...selectedField, customHeight: e.target.value })}
+                    className="w-full h-8 rounded-lg border border-border/80 bg-muted/30 px-2.5 text-xs font-mono outline-none focus:border-primary text-foreground"
+                  />
+                </div>
+              </div>
+            ) : (
+              <div className="space-y-1 pt-1">
+                <label className="text-[11px] font-medium text-foreground">自定义高度 (Custom Height)</label>
+                <input
+                  type="text"
+                  placeholder="默认自适应，可输入 40px / 48px 等"
+                  value={selectedField.customHeight || ""}
+                  onChange={(e) => onUpdateField({ ...selectedField, customHeight: e.target.value })}
+                  className="w-full h-8 rounded-lg border border-border/80 bg-muted/30 px-2.5 text-xs font-mono outline-none focus:border-primary text-foreground"
+                />
+              </div>
+            )}
+          </div>
+
           {/* 数值度量类特有属性 */}
           {isNumberSupported && (
             <div className="space-y-3 pt-2 border-t border-border/60">

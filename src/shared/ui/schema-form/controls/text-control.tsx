@@ -17,6 +17,8 @@ export function TextControl({ field, value = "", onChange, disabled, hasError }:
   const isTextarea = field.type === "textarea";
   const Icon = field.icon;
 
+  const heightClass = field.size === "sm" ? "h-8 text-[11px]" : field.size === "lg" ? "h-11 text-sm" : "h-9 text-xs";
+
   if (isTextarea) {
     return (
       <div className="relative">
@@ -27,8 +29,10 @@ export function TextControl({ field, value = "", onChange, disabled, hasError }:
           disabled={disabled}
           readOnly={field.readOnly}
           placeholder={field.placeholder}
+          style={field.customHeight ? { height: field.customHeight } : undefined}
           className={cn(
-            "w-full rounded-xl border bg-muted/40 px-3.5 py-2.5 text-xs font-mono outline-none transition-all resize-y",
+            "w-full rounded-xl border bg-muted/40 px-3.5 py-2.5 font-mono outline-none transition-all resize-y",
+            field.size === "sm" ? "text-[11px]" : field.size === "lg" ? "text-sm" : "text-xs",
             "placeholder:text-muted-foreground/50 text-foreground",
             "focus:border-primary focus:ring-2 focus:ring-primary/20",
             disabled && "opacity-60 cursor-not-allowed bg-muted/20",
@@ -55,8 +59,10 @@ export function TextControl({ field, value = "", onChange, disabled, hasError }:
         disabled={disabled}
         readOnly={field.readOnly}
         placeholder={field.placeholder}
+        style={field.customHeight ? { height: field.customHeight } : undefined}
         className={cn(
-          "w-full h-9 rounded-xl border bg-muted/40 px-3.5 text-xs font-mono outline-none transition-all",
+          "w-full rounded-xl border bg-muted/40 px-3.5 font-mono outline-none transition-all",
+          heightClass,
           Icon && "pl-9",
           isPassword && "pr-10",
           "placeholder:text-muted-foreground/50 text-foreground",

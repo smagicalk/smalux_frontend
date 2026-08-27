@@ -1,3 +1,4 @@
+import { useState } from "react";
 import {
   ChevronUp,
   ChevronDown,
@@ -6,19 +7,16 @@ import {
   Layers,
   FolderPlus,
   Settings,
-  Eye,
-  Sliders,
-  ToggleLeft,
-  KeyRound,
+  GripVertical,
   Minus,
   Plus,
-  Tag,
-  List
+  KeyRound
 } from "lucide-react";
 import { Badge } from "@/shared/ui/badge";
 import { Switch } from "@/shared/ui/switch";
 import { cn } from "@/shared/lib/utils";
 import type { FormSectionSchema, FormFieldSchema } from "@/shared/ui/schema-form";
+import type { PaletteItem } from "./designer-palette";
 
 export interface DesignerCanvasProps {
   sections: FormSectionSchema[];
@@ -30,10 +28,12 @@ export interface DesignerCanvasProps {
   onMoveField: (sectionId: string, fieldIndex: number, direction: "up" | "down") => void;
   onDuplicateField: (sectionId: string, fieldIndex: number) => void;
   onDeleteField: (fieldName: string) => void;
+  onDropFieldReorder?: (sourceSectionId: string, sourceIndex: number, targetSectionId: string, targetIndex: number) => void;
+  onDropNewField?: (item: PaletteItem, targetSectionId: string, targetIndex?: number) => void;
   onAddSection: () => void;
 }
 
-/** 栅格宽度映射表（支持12、9、8、6、4、3、2列宽） */
+/** 栅格宽度映射表 */
 const COL_SPAN_MAP: Record<number, string> = {
   1: "col-span-12 sm:col-span-1",
   2: "col-span-12 sm:col-span-2",
@@ -50,14 +50,23 @@ const COL_SPAN_MAP: Record<number, string> = {
 };
 
 /**
- * 在设计画布中渲染真实高颜值的控件外观预览
+ * 真实控件高颜值外观预览（支持根据 size 与 customHeight / rows 实时调整高度）
  */
 function CanvasFieldVisualPreview({ field }: { field: FormFieldSchema }) {
+  const size = field.size || "md";
+  const heightClass = size === "sm" ? "h-7 text-[10px]" : size === "lg" ? "h-10 text-xs" : "h-8 text-xs";
+
   if (field.type === "switch") {
     return (
-      <div className="flex items-center justify-between p-2 rounded-lg bg-muted/40 border border-border/60">
-        <span className="text-[11px] text-muted-foreground">
-          {field.defaultValue ? "已开启" : "已关闭"}
+      <div
+        style={field.customHeight ? { height: field.customHeight } : undefined}
+        className={cn(
+          "flex items-center justify-between p-2 rounded-lg bg-muted/40 border border-border/60",
+          heightClass
+        )}
+      >
+        <span className="text-[11px] text-muted-foreground font-mono">
+          {field.defaultValue ? "已启用 (Enabled)" : "已停用 (Disabled)"}
         </span>
         <Switch checked={Boolean(field.defaultValue ?? true)} disabled className="scale-75 origin-right" />
       </div>
@@ -67,7 +76,10 @@ function CanvasFieldVisualPreview({ field }: { field: FormFieldSchema }) {
   if (field.type === "pill-select") {
     const options = field.options || [{ label: "选项 1", value: "1" }, { label: "选项 2", value: "2" }];
     return (
-      <div className="flex flex-wrap gap-1 p-1 rounded-lg bg-muted/30 border border-border/60">
+      <div
+        style={field.customHeight ? { height: field.customHeight } : undefined}
+        className="flex flex-wrap gap-1 p-1 rounded-lg bg-muted/30 border border-border/60"
+      >
         {options.slice(0, 3).map((opt, i) => (
           <span
             key={i}
@@ -89,7 +101,10 @@ function CanvasFieldVisualPreview({ field }: { field: FormFieldSchema }) {
   if (field.type === "slider") {
     const val = field.defaultValue ?? 75;
     return (
-      <div className="space-y-1 p-2 rounded-lg bg-muted/30 border border-border/60">
+      <div
+        style={field.customHeight ? { height: field.customHeight } : undefined}
+        className="space-y-1 p-2 rounded-lg bg-muted/30 border border-border/60"
+      >
         <div className="flex justify-between text-[10px] font-mono text-muted-foreground">
           <span>0{field.unit}</span>
           <span className="font-bold text-primary">{val}{field.unit || "%"}</span>
@@ -104,7 +119,13 @@ function CanvasFieldVisualPreview({ field }: { field: FormFieldSchema }) {
 
   if (field.type === "number") {
     return (
-      <div className="flex items-center rounded-lg border border-border/60 bg-muted/30 overflow-hidden h-7 text-xs font-mono">
+      <div
+        style={field.customHeight ? { height: field.customHeight } : undefined}
+        className={cn(
+          "flex items-center rounded-lg border border-border/60 bg-muted/30 overflow-hidden font-mono",
+          heightClass
+        )}
+      >
         <div className="px-2 bg-muted/60 text-muted-foreground flex items-center h-full"><Minus className="size-2.5" /></div>
         <div className="flex-1 text-center text-[11px] text-foreground">{field.defaultValue ?? 100} {field.unit}</div>
         <div className="px-2 bg-muted/60 text-muted-foreground flex items-center h-full"><Plus className="size-2.5" /></div>
@@ -115,7 +136,10 @@ function CanvasFieldVisualPreview({ field }: { field: FormFieldSchema }) {
   if (field.type === "key-value") {
     const pairs = Array.isArray(field.defaultValue) ? field.defaultValue : [{ key: "X-Key", value: "Value" }];
     return (
-      <div className="space-y-1 p-1.5 rounded-lg border border-border/60 bg-muted/30 font-mono text-[10px]">
+      <div
+        style={field.customHeight ? { height: field.customHeight } : undefined}
+        className="space-y-1 p-1.5 rounded-lg border border-border/60 bg-muted/30 font-mono text-[10px]"
+      >
         {pairs.slice(0, 2).map((p: any, i: number) => (
           <div key={i} className="flex items-center gap-1 text-muted-foreground">
             <span className="px-1.5 py-0.5 rounded bg-background border border-border/60 text-foreground font-bold">{p.key || "key"}</span>
@@ -130,7 +154,10 @@ function CanvasFieldVisualPreview({ field }: { field: FormFieldSchema }) {
   if (field.type === "tags") {
     const tags = Array.isArray(field.defaultValue) && field.defaultValue.length > 0 ? field.defaultValue : ["tag-1", "tag-2"];
     return (
-      <div className="flex flex-wrap gap-1 p-1.5 rounded-lg border border-border/60 bg-muted/30">
+      <div
+        style={field.customHeight ? { height: field.customHeight } : undefined}
+        className="flex flex-wrap gap-1 p-1.5 rounded-lg border border-border/60 bg-muted/30"
+      >
         {tags.map((t: string, i: number) => (
           <span key={i} className="px-1.5 py-0.5 rounded bg-primary/10 text-primary border border-primary/20 text-[10px] font-mono">
             #{t}
@@ -141,16 +168,26 @@ function CanvasFieldVisualPreview({ field }: { field: FormFieldSchema }) {
   }
 
   if (field.type === "textarea") {
+    const defaultRowsHeight = (field.rows || 3) * 22 + 16;
     return (
-      <div className="h-12 rounded-lg border border-border/60 bg-muted/30 p-1.5 text-[11px] text-muted-foreground/60 font-mono resize-none">
+      <div
+        style={{ height: field.customHeight || `${defaultRowsHeight}px` }}
+        className="rounded-lg border border-border/60 bg-muted/30 p-2 text-[11px] text-muted-foreground/60 font-mono resize-none overflow-hidden"
+      >
         {field.placeholder || "多行长文本输入区域..."}
       </div>
     );
   }
 
-  // 默认文本/密码/邮箱类
+  // 默认普通输入框
   return (
-    <div className="h-7 rounded-lg border border-border/60 bg-muted/30 px-2.5 flex items-center justify-between text-xs text-muted-foreground/60 font-mono truncate">
+    <div
+      style={field.customHeight ? { height: field.customHeight } : undefined}
+      className={cn(
+        "rounded-lg border border-border/60 bg-muted/30 px-2.5 flex items-center justify-between font-mono truncate",
+        heightClass
+      )}
+    >
       <span className="truncate">{field.placeholder || `输入${field.label}...`}</span>
       {field.type === "password" && <KeyRound className="size-3 text-muted-foreground/50 shrink-0" />}
     </div>
@@ -167,8 +204,38 @@ export function DesignerCanvas({
   onMoveField,
   onDuplicateField,
   onDeleteField,
+  onDropFieldReorder,
+  onDropNewField,
   onAddSection
 }: DesignerCanvasProps) {
+  // 正在拖拽的源数据
+  const [draggingItem, setDraggingItem] = useState<{ sectionId: string; index: number } | null>(null);
+  // 拖拽悬浮目标位置（指示线）
+  const [dragOverTarget, setDragOverTarget] = useState<{ sectionId: string; index: number } | null>(null);
+
+  // 拖拽放置处理
+  const handleDrop = (e: React.DragEvent, targetSectionId: string, targetIndex: number) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setDragOverTarget(null);
+
+    const rawData = e.dataTransfer.getData("application/json");
+    if (!rawData) return;
+
+    try {
+      const data = JSON.parse(rawData);
+      if (data.source === "palette" && data.item && onDropNewField) {
+        // 从物料库拖拽新控件
+        onDropNewField(data.item, targetSectionId, targetIndex);
+      } else if (data.source === "canvas" && onDropFieldReorder) {
+        // 画布已有字段移动排序
+        onDropFieldReorder(data.sectionId, data.index, targetSectionId, targetIndex);
+      }
+    } catch {
+      // ignore JSON parse error
+    }
+  };
+
   return (
     <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-6 bg-background/50">
       {sections.length === 0 ? (
@@ -177,7 +244,7 @@ export function DesignerCanvas({
           <div className="space-y-1">
             <h4 className="text-sm font-bold text-foreground">画布当前为空</h4>
             <p className="text-xs text-muted-foreground">
-              点击左侧物料库的控件，或点击下方按钮新建您的第一个分块卡片。
+              拖拽左侧物料库控件到此处，或点击下方按钮新建分块卡片。
             </p>
           </div>
           <button
@@ -202,6 +269,11 @@ export function DesignerCanvas({
                   e.stopPropagation();
                   onSelectSection(sec);
                 }}
+                onDragOver={(e) => {
+                  e.preventDefault();
+                  e.dataTransfer.dropEffect = "move";
+                }}
+                onDrop={(e) => handleDrop(e, sec.id, sec.fields.length)}
                 className={cn(
                   "rounded-2xl border bg-card/70 backdrop-blur-md shadow-xs overflow-hidden transition-all",
                   isSectionSelected
@@ -235,25 +307,56 @@ export function DesignerCanvas({
                   </div>
 
                   <span className="text-[10px] font-mono text-muted-foreground/70 bg-muted px-2 py-0.5 rounded-md">
-                    {sec.fields.length} 个字段
+                    {sec.fields.length} 个字段 · 支持拖拽调序
                   </span>
                 </div>
 
                 {/* 字段列表容器 */}
                 <div className="p-4 sm:p-5">
                   {sec.fields.length === 0 ? (
-                    <div className="p-6 border border-dashed border-border/80 rounded-xl text-center text-xs text-muted-foreground/60 font-mono">
-                      👈 点击左侧物料库控件，将字段添加至此分块
+                    <div
+                      onDragOver={(e) => {
+                        e.preventDefault();
+                        e.dataTransfer.dropEffect = "copy";
+                      }}
+                      onDrop={(e) => handleDrop(e, sec.id, 0)}
+                      className="p-8 border-2 border-dashed border-border/80 rounded-xl text-center text-xs text-muted-foreground/70 font-mono bg-muted/10 hover:bg-primary/5 hover:border-primary/40 transition-colors"
+                    >
+                      ✨ 拖拽左侧物料控件至此处放入
                     </div>
                   ) : (
                     <div className="grid grid-cols-12 gap-3.5">
                       {sec.fields.map((field, idx) => {
                         const isFieldSelected = selectedField?.name === field.name;
                         const colClass = COL_SPAN_MAP[field.colSpan || 12] || "col-span-12";
+                        const isDragOver = dragOverTarget?.sectionId === sec.id && dragOverTarget?.index === idx;
 
                         return (
                           <div
                             key={field.name}
+                            draggable
+                            onDragStart={(e) => {
+                              e.stopPropagation();
+                              setDraggingItem({ sectionId: sec.id, index: idx });
+                              e.dataTransfer.setData(
+                                "application/json",
+                                JSON.stringify({ source: "canvas", sectionId: sec.id, index: idx })
+                              );
+                              e.dataTransfer.effectAllowed = "move";
+                            }}
+                            onDragEnd={() => {
+                              setDraggingItem(null);
+                              setDragOverTarget(null);
+                            }}
+                            onDragOver={(e) => {
+                              e.preventDefault();
+                              e.stopPropagation();
+                              e.dataTransfer.dropEffect = "move";
+                              if (dragOverTarget?.sectionId !== sec.id || dragOverTarget?.index !== idx) {
+                                setDragOverTarget({ sectionId: sec.id, index: idx });
+                              }
+                            }}
+                            onDrop={(e) => handleDrop(e, sec.id, idx)}
                             onClick={(e) => {
                               e.stopPropagation();
                               onSelectField(field, sec);
@@ -263,11 +366,15 @@ export function DesignerCanvas({
                               "group relative rounded-xl border p-2.5 transition-all cursor-pointer select-none",
                               isFieldSelected
                                 ? "border-primary bg-primary/5 ring-2 ring-primary/20 shadow-sm"
-                                : "border-border/70 bg-muted/20 hover:border-border hover:bg-muted/40"
+                                : "border-border/70 bg-muted/20 hover:border-border hover:bg-muted/40",
+                              isDragOver && "border-t-2 border-t-primary ring-2 ring-primary/30"
                             )}
                           >
                             {/* 字段悬浮操作按钮组 */}
                             <div className="absolute right-1.5 top-1.5 hidden group-hover:flex items-center gap-0.5 bg-background/95 backdrop-blur-xs border border-border/80 p-0.5 rounded-lg shadow-sm z-10">
+                              <div className="p-1 text-muted-foreground/60 cursor-grab active:cursor-grabbing hover:text-foreground" title="按住拖拽排序">
+                                <GripVertical className="size-3" />
+                              </div>
                               <button
                                 type="button"
                                 onClick={(e) => {
@@ -320,6 +427,7 @@ export function DesignerCanvas({
                             <div className="space-y-1.5">
                               <div className="flex items-center justify-between pr-1">
                                 <span className="text-xs font-semibold text-foreground flex items-center gap-1">
+                                  <GripVertical className="size-3 text-muted-foreground/40 group-hover:text-primary cursor-grab" />
                                   <span>{field.label}</span>
                                   {field.validation?.required && <span className="text-rose-500 font-bold">*</span>}
                                 </span>

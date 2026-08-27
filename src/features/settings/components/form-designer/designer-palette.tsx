@@ -97,11 +97,15 @@ export function DesignerPalette({ onAddField, onAddSection }: DesignerPalettePro
               {cat.items.map((item) => {
                 const Icon = item.icon;
                 return (
-                  <button
+                  <div
                     key={item.type}
-                    type="button"
+                    draggable
+                    onDragStart={(e) => {
+                      e.dataTransfer.setData("application/json", JSON.stringify({ source: "palette", item }));
+                      e.dataTransfer.effectAllowed = "copy";
+                    }}
                     onClick={() => onAddField(item)}
-                    className="flex items-center gap-2.5 p-2 rounded-xl border border-border/60 bg-muted/20 hover:bg-muted/60 hover:border-primary/40 text-left transition-all group cursor-pointer shadow-2xs"
+                    className="flex items-center gap-2.5 p-2 rounded-xl border border-border/60 bg-muted/20 hover:bg-muted/60 hover:border-primary/40 text-left transition-all group cursor-grab active:cursor-grabbing shadow-2xs select-none"
                   >
                     <div className="flex size-7 items-center justify-center rounded-lg bg-background border border-border/80 text-muted-foreground group-hover:text-primary group-hover:border-primary/30 transition-colors shrink-0">
                       <Icon className="size-3.5" />
@@ -115,7 +119,7 @@ export function DesignerPalette({ onAddField, onAddSection }: DesignerPalettePro
                       </div>
                     </div>
                     <Plus className="size-3 text-muted-foreground/40 group-hover:text-primary transition-colors shrink-0" />
-                  </button>
+                  </div>
                 );
               })}
             </div>

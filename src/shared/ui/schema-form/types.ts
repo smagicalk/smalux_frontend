@@ -89,8 +89,10 @@ export interface FormFieldSchema<FormData = Record<string, any>> {
   unit?: string;
   /** 步进增量（适用于 number 和 slider） */
   step?: number;
-  /** 选项列表（适用于 select, pill-select, multi-select） */
-  options?: SelectOption[];
+  /** 控件尺寸规格 / 高度模式 (sm: 32px / md: 36px / lg: 44px) */
+  size?: "sm" | "md" | "lg";
+  /** 自定义高度 (如 '80px', '120px') */
+  customHeight?: string;
   /** 多行文本行数（适用于 textarea） */
   rows?: number;
   /** 提示徽章（展示在 Label 右侧） */

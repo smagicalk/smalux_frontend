@@ -179,6 +179,85 @@ export function FormDesignerTab() {
     toast.success("字段已复制");
   };
 
+  // ─── 9. 拖拽排序/跨分块移动 ───
+  const handleDropFieldReorder = (
+    sourceSectionId: string,
+    sourceIndex: number,
+    targetSectionId: string,
+    targetIndex: number
+  ) => {
+    let movedField: FormFieldSchema | null = null;
+
+    // 先找到并取出该字段
+    const nextSections = sections.map((sec) => {
+      if (sec.id === sourceSectionId) {
+        const fields = [...sec.fields];
+        movedField = fields.splice(sourceIndex, 1)[0] || null;
+        return { ...sec, fields };
+      }
+      return sec;
+    });
+
+    if (!movedField) return;
+
+    // 插入到目标位置
+    const finalSections = nextSections.map((sec) => {
+      if (sec.id === targetSectionId) {
+        const fields = [...sec.fields];
+        const insertIdx = targetIndex >= 0 ? targetIndex : fields.length;
+        fields.splice(insertIdx, 0, movedField!);
+        return { ...sec, fields };
+      }
+      return sec;
+    });
+
+    setSections(finalSections);
+    setSelectedField(movedField);
+    toast.success("字段顺序已调整");
+  };
+
+  // ─── 10. 从物料库直接拖拽创建新字段 ───
+  const handleDropNewField = (item: PaletteItem, targetSectionId: string, targetIndex?: number) => {
+    const timestamp = Date.now().toString().slice(-4);
+    const newField: FormFieldSchema = {
+      name: `${item.type}_${timestamp}`,
+      type: item.type,
+      label: `${item.label} ${timestamp}`,
+      description: item.description,
+      colSpan: item.defaultColSpan,
+      placeholder: `请输入${item.label}...`,
+      validation: { required: false }
+    };
+
+    if (item.type === "pill-select" || item.type === "select") {
+      newField.options = [
+        { label: "选项 A", value: "opt_a" },
+        { label: "选项 B", value: "opt_b" }
+      ];
+      newField.defaultValue = "opt_a";
+    } else if (item.type === "number") {
+      newField.defaultValue = 100;
+      newField.unit = "";
+    } else if (item.type === "slider") {
+      newField.defaultValue = 50;
+      newField.unit = "%";
+    }
+
+    const finalSections = sections.map((sec) => {
+      if (sec.id === targetSectionId) {
+        const fields = [...sec.fields];
+        const idx = targetIndex !== undefined && targetIndex >= 0 ? targetIndex : fields.length;
+        fields.splice(idx, 0, newField);
+        return { ...sec, fields };
+      }
+      return sec;
+    });
+
+    setSections(finalSections);
+    setSelectedField(newField);
+    toast.success(`已放置控件「${item.label}」`);
+  };
+
   return (
     <div className="flex flex-col h-[calc(100vh-140px)] min-h-[640px] rounded-2xl border border-border/80 bg-background overflow-hidden shadow-md">
       {/* 顶部工具栏 */}
@@ -300,6 +379,8 @@ export function FormDesignerTab() {
             onMoveField={handleMoveField}
             onDuplicateField={handleDuplicateField}
             onDeleteField={handleDeleteField}
+            onDropFieldReorder={handleDropFieldReorder}
+            onDropNewField={handleDropNewField}
             onAddSection={handleAddSection}
           />
 
