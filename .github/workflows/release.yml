@@ -66,11 +66,10 @@ jobs:
           echo "mock_mode=$MOCK_MODE" >> $GITHUB_OUTPUT
           echo "notes=$NOTES" >> $GITHUB_OUTPUT
 
-      # 3. 安装 pnpm 包管理器
+      # 3. 安装 pnpm 包管理器（自动遵循 package.json 中的 packageManager 声明）
       - name: Install pnpm
         uses: pnpm/action-setup@v4
-        with:
-          version: 10
+
 
       # 4. 配置 Node.js 环境与缓存
       - name: Set up Node.js

@@ -31,11 +31,10 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      # 2. 安装 pnpm 包管理器
+      # 2. 安装 pnpm 包管理器（自动遵循 package.json 中的 packageManager 声明）
       - name: Install pnpm
         uses: pnpm/action-setup@v4
-        with:
-          version: 10
+
 
       # 3. 配置 Node.js 环境与缓存
       - name: Set up Node.js
