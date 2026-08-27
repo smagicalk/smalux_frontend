@@ -5,7 +5,8 @@ import {
   Settings,
   Terminal,
   Palette,
-  Database
+  Database,
+  Sparkles
 } from "lucide-react";
 import { PageHeader } from "@/shared/ui/page-header";
 import {
@@ -14,10 +15,11 @@ import {
   SystemConfigTab,
   BuiltinTaskConfigTab,
   AppearanceTab,
-  DataBackupTab
+  DataBackupTab,
+  FormDesignerTab
 } from "../components";
 
-type SettingsTab = "account" | "audit" | "config" | "task-defaults" | "appearance" | "backup";
+type SettingsTab = "account" | "audit" | "config" | "task-defaults" | "designer" | "appearance" | "backup";
 
 export function SettingsPage() {
   const [activeTab, setActiveTab] = useState<SettingsTab>("account");
@@ -26,7 +28,7 @@ export function SettingsPage() {
     <div className="flex flex-col min-h-full">
       <PageHeader
         title="系统与安全设置"
-        subtitle="统一管理账户身份验证、API 访问令牌、多因素认证与会话、全站审计日志、实例运行参数、内置 Task 默认调度策略与数据备份"
+        subtitle="统一管理账户身份验证、API 访问令牌、多因素认证与会话、全站审计日志、实例运行参数、低代码表单设计器与数据备份"
       />
 
       <div className="flex-1 space-y-6 p-6">
@@ -37,6 +39,7 @@ export function SettingsPage() {
             { key: "audit" as const, label: "操作审计日志", icon: ScrollText, desc: "Audit & Security" },
             { key: "config" as const, label: "系统配置与安全基线", icon: Settings, desc: "Configs & Baseline" },
             { key: "task-defaults" as const, label: "内置 Task 默认配置", icon: Terminal, desc: "Task Defaults & Templates" },
+            { key: "designer" as const, label: "可视化表单设计器", icon: Sparkles, desc: "Low-Code Form Studio" },
             { key: "appearance" as const, label: "外观与公开状态页", icon: Palette, desc: "Themes & Status Page" },
             { key: "backup" as const, label: "数据与备份", icon: Database, desc: "Snapshots & Backups" }
           ].map((tab) => {
@@ -71,12 +74,16 @@ export function SettingsPage() {
         {/* Tab 4: 内置 Task 默认配置 */}
         {activeTab === "task-defaults" && <BuiltinTaskConfigTab />}
 
-        {/* Tab 5: 外观与公开状态页 */}
+        {/* Tab 5: 可视化表单设计器 */}
+        {activeTab === "designer" && <FormDesignerTab />}
+
+        {/* Tab 6: 外观与公开状态页 */}
         {activeTab === "appearance" && <AppearanceTab />}
 
-        {/* Tab 6: 数据与备份 */}
+        {/* Tab 7: 数据与备份 */}
         {activeTab === "backup" && <DataBackupTab />}
       </div>
     </div>
   );
 }
+
