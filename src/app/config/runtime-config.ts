@@ -18,12 +18,18 @@ const runtimeEndpointSchema = z.string().min(1).refine(isSafeRuntimeEndpoint, {
 const transportSchema = z.enum(["mock", "ws", "http"]).default("mock");
 
 /**
- * 全局运行时动态配置 Schema（从 /app-config.json 加载）
+ * 全局运行时动态配置 Schema（从 /app-config.json 或 .env 环境变量加载）
  */
 const runtimeConfigSchema = z.object({
   /** 应用标题名称 */
   appName: z.string().min(1).default("smalux"),
-  /** 传统 API 基础路径 */
+  /** 
+   * 💡 是否启用本地 Mock 仿真数据引擎
+   * - true  : 使用本地内存 Mock 引擎（免后端脱机开发）
+   * - false : 直连真实后端接口（向 apiBaseUrl 发送标准 HTTP 请求）
+   */
+  enableMock: z.boolean().default(true),
+  /** 传统 RESTful API 基础路径 */
   apiBaseUrl: runtimeEndpointSchema.default("/api"),
   /** WebSocket 长连接服务地址 */
   wsBaseUrl: runtimeEndpointSchema.default("/ws"),
@@ -38,17 +44,32 @@ const runtimeConfigSchema = z.object({
 export type TransportMode = z.infer<typeof transportSchema>;
 export type RuntimeConfig = z.infer<typeof runtimeConfigSchema>;
 
+/** 从 import.meta.env 读取环境变量兜底 */
+const envEnableMock = typeof import.meta !== "undefined" && import.meta.env?.VITE_ENABLE_MOCK !== undefined
+  ? import.meta.env.VITE_ENABLE_MOCK === "true" || import.meta.env.VITE_ENABLE_MOCK === true
+  : true;
+
+const envApiBaseUrl = typeof import.meta !== "undefined" && import.meta.env?.VITE_API_BASE_URL
+  ? import.meta.env.VITE_API_BASE_URL
+  : "/api";
+
+const envWsBaseUrl = typeof import.meta !== "undefined" && import.meta.env?.VITE_WS_BASE_URL
+  ? import.meta.env.VITE_WS_BASE_URL
+  : "/ws";
+
 /**
  * 默认基础兜底配置（当 /app-config.json 请求失败或字段不全时采用）
  */
 export const defaultRuntimeConfig: RuntimeConfig = {
   appName: "smalux",
-  apiBaseUrl: "/api",
-  wsBaseUrl: "/ws",
+  enableMock: envEnableMock,
+  apiBaseUrl: envApiBaseUrl,
+  wsBaseUrl: envWsBaseUrl,
   rpcBaseUrl: "/rpc",
-  transport: "mock",
+  transport: envEnableMock ? "mock" : "http",
   theme: "system"
 };
+
 
 /**
  * 在应用启动前异步加载运行时配置（/app-config.json）

@@ -1,0 +1,127 @@
+name: Build and Create GitHub Release
+
+on:
+  # 1. 支持在 GitHub Actions 界面手动触发并自定义参数
+  workflow_dispatch:
+    inputs:
+      tag_name:
+        description: "发布版本号 Tag (例如 v0.2.0)"
+        required: true
+        type: string
+        default: "v0.2.0"
+      release_title:
+        description: "发布标题 (Release Title)"
+        required: false
+        type: string
+        default: "Smalux Console Release"
+      enable_mock:
+        description: "构建版本类型 (true: 内置 Mock 仿真数据 / false: 生产真实 API 模式)"
+        required: true
+        type: boolean
+        default: false
+      custom_notes:
+        description: "版本发布说明 / 更新日志 (可选)"
+        required: false
+        type: string
+        default: "🎉 Smalux 控制台前端产物打包发布。"
+
+  # 2. 支持推送 Git Tag 时自动触发
+  push:
+    tags:
+      - "v*.*.*"
+
+permissions:
+  contents: write
+
+jobs:
+  build-and-release:
+    name: Build and Release Asset
+    runs-on: ubuntu-latest
+
+    steps:
+      # 1. 检出代码（支持指定 Tag 或当前 Ref）
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          ref: ${{ github.event.inputs.tag_name || github.ref }}
+
+      # 2. 确定版本号 Tag
+      - name: Determine Tag Name
+        id: vars
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            TAG="${{ github.event.inputs.tag_name }}"
+            TITLE="${{ github.event.inputs.release_title }} - $TAG"
+            MOCK_MODE="${{ github.event.inputs.enable_mock }}"
+            NOTES="${{ github.event.inputs.custom_notes }}"
+          else
+            TAG="${GITHUB_REF#refs/tags/}"
+            TITLE="Smalux Console Release - $TAG"
+            MOCK_MODE="false"
+            NOTES="🚀 自动根据 Tag $TAG 创建的版本发布。"
+          fi
+          echo "tag=$TAG" >> $GITHUB_OUTPUT
+          echo "title=$TITLE" >> $GITHUB_OUTPUT
+          echo "mock_mode=$MOCK_MODE" >> $GITHUB_OUTPUT
+          echo "notes=$NOTES" >> $GITHUB_OUTPUT
+
+      # 3. 安装 pnpm 包管理器
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      # 4. 配置 Node.js 环境与缓存
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: "pnpm"
+
+      # 5. 安装依赖
+      - name: Install dependencies
+        run: pnpm install --no-frozen-lockfile
+
+      # 6. 执行生产打包
+      - name: Build production bundle
+        env:
+          VITE_ENABLE_MOCK: ${{ steps.vars.outputs.mock_mode }}
+          VITE_TRANSPORT: ${{ steps.vars.outputs.mock_mode == 'true' && 'mock' || 'http' }}
+        run: pnpm run build
+
+      # 7. 将 dist 目录打包为 zip 和 tar.gz 压缩包
+      - name: Archive dist artifacts
+        run: |
+          TAG="${{ steps.vars.outputs.tag }}"
+          # 生成 ZIP 压缩包
+          cd dist && zip -r "../smalux-frontend-${TAG}.zip" ./* && cd ..
+          # 生成 TAR.GZ 压缩包
+          tar -czvf "smalux-frontend-${TAG}.tar.gz" -C dist .
+
+      # 8. 发布 Release 并上传构建产物包
+      - name: Create GitHub Release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.vars.outputs.tag }}
+          name: ${{ steps.vars.outputs.title }}
+          body: |
+            ## 📦 Release ${{ steps.vars.outputs.tag }}
+            
+            ${{ steps.vars.outputs.notes }}
+            
+            ---
+            ### 🛠️ 构建参数
+            - **版本类型**: ${{ steps.vars.outputs.mock_mode == 'true' && '🧪 Mock 仿真数据版 (免后端)' || '🚀 Production 真实接口版' }}
+            - **提交 Commit**: `${{ github.sha }}`
+            - **打包时间**: `${{ github.event.head_commit.timestamp || github.event.repository.updated_at }}`
+            
+            ### 📥 下载静态资源包
+            解压后将静态文件放置于 Nginx / Web 服务器根目录，或根据需要修改 `app-config.json` 即可直接运行。
+          files: |
+            smalux-frontend-${{ steps.vars.outputs.tag }}.zip
+            smalux-frontend-${{ steps.vars.outputs.tag }}.tar.gz
+          draft: false
+          prerelease: false
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

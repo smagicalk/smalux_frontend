@@ -1,5 +1,6 @@
 {
   "appName": "smalux",
+  "enableMock": true,
   "apiBaseUrl": "/api",
   "wsBaseUrl": "/ws",
   "rpcBaseUrl": "/rpc",

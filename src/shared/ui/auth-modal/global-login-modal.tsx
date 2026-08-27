@@ -414,7 +414,9 @@ export function GlobalLoginModal() {
                 {totpDigits.map((digit, idx) => (
                   <input
                     key={idx}
-                    ref={(el) => (totpInputRefs.current[idx] = el)}
+                    ref={(el) => {
+                      totpInputRefs.current[idx] = el;
+                    }}
                     type="text"
                     inputMode="numeric"
                     maxLength={1}

@@ -1,0 +1,75 @@
+name: Deploy Mock Version to GitHub Pages
+
+on:
+  # 当推送到 main 或 vibe-dev 分支时自动触发部署
+  push:
+    branches:
+      - main
+      - vibe-dev
+  # 支持在 GitHub 仓库 Actions 页面手动一键触发运行
+  workflow_dispatch:
+
+# 设置 GitHub Pages 部署所需的 GITHUB_TOKEN 权限
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# 保证同一时间只有一个 Pages 部署在运行，避免并发冲突
+concurrency:
+  group: "pages"
+  cancel-in-progress: false
+
+jobs:
+  build-and-deploy:
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    runs-on: ubuntu-latest
+    steps:
+      # 1. 检出仓库代码
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      # 2. 安装 pnpm 包管理器
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10
+
+      # 3. 配置 Node.js 环境与缓存
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+          cache: "pnpm"
+
+      # 4. 安装依赖
+      - name: Install dependencies
+        run: pnpm install --no-frozen-lockfile
+
+      # 5. 编译打包（强制开启 Mock 仿真模式）
+      - name: Build project (Mock Mode)
+        env:
+          VITE_ENABLE_MOCK: "true"
+          VITE_TRANSPORT: "mock"
+        run: pnpm run build
+
+      # 6. 生成 404.html 解决 SPA 单页应用刷新 404 问题
+      - name: Create 404.html for Single-Page Application routing
+        run: cp dist/index.html dist/404.html
+
+      # 7. 配置 GitHub Pages 环境
+      - name: Setup Pages
+        uses: actions/configure-pages@v5
+
+      # 8. 上传构建产物至 GitHub Pages Artifact
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: "./dist"
+
+      # 9. 部署发布到 GitHub Pages
+      - name: Deploy to GitHub Pages
+        id: deployment
+        uses: actions/deploy-pages@v4

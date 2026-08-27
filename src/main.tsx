@@ -4,6 +4,7 @@ import { RouterProvider } from "@tanstack/react-router";
 
 import "@/app/styles/globals.css";
 import { loadRuntimeConfig, type RuntimeConfig } from "@/app/config/runtime-config";
+import { httpClient } from "@/shared/api/http/http-client";
 import { createAppRouter } from "@/app/router/router";
 import { RpcProvider } from "@/app/providers/rpc-provider";
 import { QueryProvider } from "@/app/providers/query-provider";
@@ -21,6 +22,9 @@ if (!rootEl) {
  * context are never created without the transport choice.
  */
 loadRuntimeConfig().then((config: RuntimeConfig) => {
+  // 💡 同步更新 HTTP Client 的 Mock 开关与 API 基础地址
+  httpClient.updateConfig(config);
+
   // Apply the theme class on <html> BEFORE first render. Chart options read
   // CSS color tokens (oklch) during render to build canvas gradients; if the
   // .dark class only lands in an effect after paint, the first chartPalette()

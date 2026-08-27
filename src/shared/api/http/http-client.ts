@@ -6,7 +6,7 @@
  * 同时内建开发阶段 Mock 拦截器，保证脱机或后端接口尚未就绪时平滑联调。
  */
 
-import { defaultRuntimeConfig } from "@/app/config/runtime-config";
+import { defaultRuntimeConfig, type RuntimeConfig } from "@/app/config/runtime-config";
 import {
   mockAccounts,
   mockAlertHistory,
@@ -47,6 +47,7 @@ export class HttpError extends Error {
 class HttpClient {
   private token: string = "";
   private baseUrl: string = defaultRuntimeConfig.apiBaseUrl || "";
+  private enableMock: boolean = defaultRuntimeConfig.enableMock ?? (defaultRuntimeConfig.transport === "mock");
 
   public setToken(token: string) {
     this.token = token;
@@ -54,6 +55,26 @@ class HttpClient {
 
   public setBaseUrl(url: string) {
     this.baseUrl = url;
+  }
+
+  /**
+   * 运行时动态更新配置（从 /app-config.json 加载完毕后同步）
+   */
+  public updateConfig(config: RuntimeConfig) {
+    if (config.apiBaseUrl) {
+      this.baseUrl = config.apiBaseUrl;
+    }
+    this.enableMock = config.enableMock ?? (config.transport === "mock");
+    if (!this.enableMock) {
+      console.log(`%c[Smalux API Client]%c 真实后端接口模式已启用 (Base URL: ${this.baseUrl})`, "color:#10b981;font-weight:bold;", "color:inherit;");
+    } else {
+      console.log(`%c[Smalux API Client]%c 本地 Mock 仿真数据模式已启用`, "color:#3b82f6;font-weight:bold;", "color:inherit;");
+    }
+  }
+
+  /** 当前是否处于 Mock 本地仿真数据模式 */
+  public isMockActive(): boolean {
+    return this.enableMock;
   }
 
   private getHeaders(customHeaders?: HeadersInit): Headers {
@@ -87,7 +108,7 @@ class HttpClient {
   }
 
   public async get<T>(path: string, params?: Record<string, string | number | boolean | undefined>): Promise<T> {
-    if (defaultRuntimeConfig.transport === "mock") {
+    if (this.isMockActive()) {
       return this.handleMockFallback<T>("GET", path, params);
     }
     const url = this.buildUrl(path, params);
@@ -110,7 +131,7 @@ class HttpClient {
   }
 
   public async post<T, B = unknown>(path: string, body?: B): Promise<T> {
-    if (defaultRuntimeConfig.transport === "mock") {
+    if (this.isMockActive()) {
       return this.handleMockFallback<T>("POST", path, body);
     }
     const url = this.buildUrl(path);
@@ -133,7 +154,7 @@ class HttpClient {
   }
 
   public async put<T, B = unknown>(path: string, body?: B): Promise<T> {
-    if (defaultRuntimeConfig.transport === "mock") {
+    if (this.isMockActive()) {
       return this.handleMockFallback<T>("PUT", path, body);
     }
     const url = this.buildUrl(path);
@@ -156,7 +177,7 @@ class HttpClient {
   }
 
   public async delete<T>(path: string): Promise<T> {
-    if (defaultRuntimeConfig.transport === "mock") {
+    if (this.isMockActive()) {
       return this.handleMockFallback<T>("DELETE", path);
     }
     const url = this.buildUrl(path);
@@ -176,6 +197,7 @@ class HttpClient {
       return this.handleMockFallback<T>("DELETE", path);
     }
   }
+
 
   /**
    * 脱机开发时的智能 Mock 映射
