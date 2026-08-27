@@ -31,17 +31,15 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      # 2. 安装 pnpm 包管理器（自动遵循 package.json 中的 packageManager 声明）
-      - name: Install pnpm
-        uses: pnpm/action-setup@v4
-
-
-      # 3. 配置 Node.js 环境与缓存
+      # 2. 配置 Node.js 环境 (Node 22 满足 pnpm 11 和 node:sqlite 要求)
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: 20
-          cache: "pnpm"
+          node-version: 22
+
+      # 3. 安装 pnpm 包管理器（自动遵循 package.json 中的 packageManager 声明）
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
 
       # 4. 安装依赖
       - name: Install dependencies

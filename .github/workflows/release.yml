@@ -66,17 +66,15 @@ jobs:
           echo "mock_mode=$MOCK_MODE" >> $GITHUB_OUTPUT
           echo "notes=$NOTES" >> $GITHUB_OUTPUT
 
-      # 3. 安装 pnpm 包管理器（自动遵循 package.json 中的 packageManager 声明）
-      - name: Install pnpm
-        uses: pnpm/action-setup@v4
-
-
-      # 4. 配置 Node.js 环境与缓存
+      # 3. 配置 Node.js 环境 (Node 22 满足 pnpm 11 和 node:sqlite 要求)
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: 20
-          cache: "pnpm"
+          node-version: 22
+
+      # 4. 安装 pnpm 包管理器（自动遵循 package.json 中的 packageManager 声明）
+      - name: Install pnpm
+        uses: pnpm/action-setup@v4
 
       # 5. 安装依赖
       - name: Install dependencies
