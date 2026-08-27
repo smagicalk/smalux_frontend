@@ -91,7 +91,9 @@ export interface FormFieldSchema<FormData = Record<string, any>> {
   step?: number;
   /** 控件尺寸规格 / 高度模式 (sm: 32px / md: 36px / lg: 44px) */
   size?: "sm" | "md" | "lg";
-  /** 自定义高度 (如 '80px', '120px') */
+  /** 高度网格单位 (1x: 单行高度, 2x: 双倍高度, 3x: 三倍高度...) */
+  heightUnit?: number;
+  /** 自定义像素高度 (如 '80px', '120px') */
   customHeight?: string;
   /** 多行文本行数（适用于 textarea） */
   rows?: number;

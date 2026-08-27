@@ -177,7 +177,39 @@ export function DesignerInspector({
           <div className="space-y-2.5 pt-2 border-t border-border/60">
             <div className="flex items-center justify-between">
               <span className="text-[10px] font-bold text-muted-foreground/70 uppercase tracking-wider font-mono">
-                高度与尺寸 (Size & Height)
+                高度网格单位 (Height Units)
+              </span>
+              <span className="text-[10px] font-mono text-primary font-bold">
+                {selectedField.heightUnit || 1}x 单位
+              </span>
+            </div>
+
+            {/* 1x ~ 4x 快速单位切换 */}
+            <div className="grid grid-cols-4 gap-1.5 font-mono text-xs">
+              {[
+                { label: "1x (单行)", unit: 1 },
+                { label: "2x (双倍)", unit: 2 },
+                { label: "3x (三倍)", unit: 3 },
+                { label: "4x (四倍)", unit: 4 }
+              ].map((u) => (
+                <button
+                  key={u.unit}
+                  type="button"
+                  onClick={() => onUpdateField({ ...selectedField, heightUnit: u.unit, customHeight: undefined })}
+                  className={`p-1.5 rounded-lg border text-center transition-all cursor-pointer ${
+                    (selectedField.heightUnit || 1) === u.unit && !selectedField.customHeight
+                      ? "bg-primary text-primary-foreground font-bold border-primary shadow-xs"
+                      : "border-border/80 bg-muted/20 text-muted-foreground hover:text-foreground hover:bg-muted/50"
+                  }`}
+                >
+                  <span className="text-[10px] block truncate">{u.label}</span>
+                </button>
+              ))}
+            </div>
+
+            <div className="flex items-center justify-between pt-1">
+              <span className="text-[10px] font-bold text-muted-foreground/70 uppercase tracking-wider font-mono">
+                控件尺寸规格 (Size Mode)
               </span>
               <span className="text-[10px] font-mono text-muted-foreground">
                 {selectedField.size || "md"}
@@ -231,10 +263,10 @@ export function DesignerInspector({
               </div>
             ) : (
               <div className="space-y-1 pt-1">
-                <label className="text-[11px] font-medium text-foreground">自定义高度 (Custom Height)</label>
+                <label className="text-[11px] font-medium text-foreground">自定义像素高度 (Custom Height)</label>
                 <input
                   type="text"
-                  placeholder="默认自适应，可输入 40px / 48px 等"
+                  placeholder="默认自适应，可输入 50px / 80px / 120px 等"
                   value={selectedField.customHeight || ""}
                   onChange={(e) => onUpdateField({ ...selectedField, customHeight: e.target.value })}
                   className="w-full h-8 rounded-lg border border-border/80 bg-muted/30 px-2.5 text-xs font-mono outline-none focus:border-primary text-foreground"

@@ -50,19 +50,34 @@ const COL_SPAN_MAP: Record<number, string> = {
 };
 
 /**
- * 真实控件高颜值外观预览（支持根据 size 与 customHeight / rows 实时调整高度）
+ * 计算字段在画布中的真实渲染高度
+ */
+function getFieldVisualHeight(field: FormFieldSchema): string | undefined {
+  if (field.customHeight) return field.customHeight;
+  const unit = field.heightUnit || 1;
+  const size = field.size || "md";
+  const baseH = size === "sm" ? 30 : size === "lg" ? 42 : 36;
+  if (unit > 1) {
+    return `${baseH * unit + (unit - 1) * 8}px`;
+  }
+  return undefined;
+}
+
+/**
+ * 真实控件高颜值外观预览（支持根据 size 与 customHeight / heightUnit 实时调整高度）
  */
 function CanvasFieldVisualPreview({ field }: { field: FormFieldSchema }) {
   const size = field.size || "md";
+  const computedHeight = getFieldVisualHeight(field);
   const heightClass = size === "sm" ? "h-7 text-[10px]" : size === "lg" ? "h-10 text-xs" : "h-8 text-xs";
 
   if (field.type === "switch") {
     return (
       <div
-        style={field.customHeight ? { height: field.customHeight } : undefined}
+        style={computedHeight ? { height: computedHeight } : undefined}
         className={cn(
           "flex items-center justify-between p-2 rounded-lg bg-muted/40 border border-border/60",
-          heightClass
+          !computedHeight && heightClass
         )}
       >
         <span className="text-[11px] text-muted-foreground font-mono">
@@ -77,8 +92,11 @@ function CanvasFieldVisualPreview({ field }: { field: FormFieldSchema }) {
     const options = field.options || [{ label: "选项 1", value: "1" }, { label: "选项 2", value: "2" }];
     return (
       <div
-        style={field.customHeight ? { height: field.customHeight } : undefined}
-        className="flex flex-wrap gap-1 p-1 rounded-lg bg-muted/30 border border-border/60"
+        style={computedHeight ? { height: computedHeight } : undefined}
+        className={cn(
+          "flex flex-wrap items-center gap-1 p-1 rounded-lg bg-muted/30 border border-border/60",
+          !computedHeight && "min-h-8"
+        )}
       >
         {options.slice(0, 3).map((opt, i) => (
           <span
@@ -102,8 +120,8 @@ function CanvasFieldVisualPreview({ field }: { field: FormFieldSchema }) {
     const val = field.defaultValue ?? 75;
     return (
       <div
-        style={field.customHeight ? { height: field.customHeight } : undefined}
-        className="space-y-1 p-2 rounded-lg bg-muted/30 border border-border/60"
+        style={computedHeight ? { height: computedHeight } : undefined}
+        className="flex flex-col justify-center space-y-1 p-2 rounded-lg bg-muted/30 border border-border/60"
       >
         <div className="flex justify-between text-[10px] font-mono text-muted-foreground">
           <span>0{field.unit}</span>
@@ -120,10 +138,10 @@ function CanvasFieldVisualPreview({ field }: { field: FormFieldSchema }) {
   if (field.type === "number") {
     return (
       <div
-        style={field.customHeight ? { height: field.customHeight } : undefined}
+        style={computedHeight ? { height: computedHeight } : undefined}
         className={cn(
           "flex items-center rounded-lg border border-border/60 bg-muted/30 overflow-hidden font-mono",
-          heightClass
+          !computedHeight && heightClass
         )}
       >
         <div className="px-2 bg-muted/60 text-muted-foreground flex items-center h-full"><Minus className="size-2.5" /></div>
@@ -137,10 +155,10 @@ function CanvasFieldVisualPreview({ field }: { field: FormFieldSchema }) {
     const pairs = Array.isArray(field.defaultValue) ? field.defaultValue : [{ key: "X-Key", value: "Value" }];
     return (
       <div
-        style={field.customHeight ? { height: field.customHeight } : undefined}
-        className="space-y-1 p-1.5 rounded-lg border border-border/60 bg-muted/30 font-mono text-[10px]"
+        style={computedHeight ? { height: computedHeight } : undefined}
+        className="space-y-1 p-1.5 rounded-lg border border-border/60 bg-muted/30 font-mono text-[10px] overflow-hidden"
       >
-        {pairs.slice(0, 2).map((p: any, i: number) => (
+        {pairs.slice(0, 3).map((p: any, i: number) => (
           <div key={i} className="flex items-center gap-1 text-muted-foreground">
             <span className="px-1.5 py-0.5 rounded bg-background border border-border/60 text-foreground font-bold">{p.key || "key"}</span>
             <span>:</span>
@@ -155,8 +173,8 @@ function CanvasFieldVisualPreview({ field }: { field: FormFieldSchema }) {
     const tags = Array.isArray(field.defaultValue) && field.defaultValue.length > 0 ? field.defaultValue : ["tag-1", "tag-2"];
     return (
       <div
-        style={field.customHeight ? { height: field.customHeight } : undefined}
-        className="flex flex-wrap gap-1 p-1.5 rounded-lg border border-border/60 bg-muted/30"
+        style={computedHeight ? { height: computedHeight } : undefined}
+        className="flex flex-wrap items-center gap-1 p-1.5 rounded-lg border border-border/60 bg-muted/30"
       >
         {tags.map((t: string, i: number) => (
           <span key={i} className="px-1.5 py-0.5 rounded bg-primary/10 text-primary border border-primary/20 text-[10px] font-mono">
@@ -171,7 +189,7 @@ function CanvasFieldVisualPreview({ field }: { field: FormFieldSchema }) {
     const defaultRowsHeight = (field.rows || 3) * 22 + 16;
     return (
       <div
-        style={{ height: field.customHeight || `${defaultRowsHeight}px` }}
+        style={{ height: computedHeight || `${defaultRowsHeight}px` }}
         className="rounded-lg border border-border/60 bg-muted/30 p-2 text-[11px] text-muted-foreground/60 font-mono resize-none overflow-hidden"
       >
         {field.placeholder || "多行长文本输入区域..."}
@@ -182,10 +200,10 @@ function CanvasFieldVisualPreview({ field }: { field: FormFieldSchema }) {
   // 默认普通输入框
   return (
     <div
-      style={field.customHeight ? { height: field.customHeight } : undefined}
+      style={computedHeight ? { height: computedHeight } : undefined}
       className={cn(
         "rounded-lg border border-border/60 bg-muted/30 px-2.5 flex items-center justify-between font-mono truncate",
-        heightClass
+        !computedHeight && heightClass
       )}
     >
       <span className="truncate">{field.placeholder || `输入${field.label}...`}</span>

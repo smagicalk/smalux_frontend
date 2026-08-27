@@ -17,6 +17,8 @@ export function TextControl({ field, value = "", onChange, disabled, hasError }:
   const isTextarea = field.type === "textarea";
   const Icon = field.icon;
 
+  const baseH = field.size === "sm" ? 32 : field.size === "lg" ? 44 : 36;
+  const computedHeight = field.customHeight || (field.heightUnit && field.heightUnit > 1 ? `${baseH * field.heightUnit + (field.heightUnit - 1) * 8}px` : undefined);
   const heightClass = field.size === "sm" ? "h-8 text-[11px]" : field.size === "lg" ? "h-11 text-sm" : "h-9 text-xs";
 
   if (isTextarea) {
@@ -29,7 +31,7 @@ export function TextControl({ field, value = "", onChange, disabled, hasError }:
           disabled={disabled}
           readOnly={field.readOnly}
           placeholder={field.placeholder}
-          style={field.customHeight ? { height: field.customHeight } : undefined}
+          style={computedHeight ? { height: computedHeight } : undefined}
           className={cn(
             "w-full rounded-xl border bg-muted/40 px-3.5 py-2.5 font-mono outline-none transition-all resize-y",
             field.size === "sm" ? "text-[11px]" : field.size === "lg" ? "text-sm" : "text-xs",
@@ -59,7 +61,7 @@ export function TextControl({ field, value = "", onChange, disabled, hasError }:
         disabled={disabled}
         readOnly={field.readOnly}
         placeholder={field.placeholder}
-        style={field.customHeight ? { height: field.customHeight } : undefined}
+        style={computedHeight ? { height: computedHeight } : undefined}
         className={cn(
           "w-full rounded-xl border bg-muted/40 px-3.5 font-mono outline-none transition-all",
           heightClass,
