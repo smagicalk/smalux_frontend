@@ -139,14 +139,23 @@ export function DesignerInspector({
 
           {/* 栅格排版 */}
           <div className="space-y-2 pt-2 border-t border-border/60">
-            <div className="text-[10px] font-bold text-muted-foreground/70 uppercase tracking-wider font-mono">
-              栅格列宽 (Layout Width)
+            <div className="flex items-center justify-between">
+              <span className="text-[10px] font-bold text-muted-foreground/70 uppercase tracking-wider font-mono">
+                栅格列宽 (Layout Width)
+              </span>
+              <span className="text-[10px] font-mono text-primary font-bold">
+                {selectedField.colSpan || 12}/12 ({(Math.round(((selectedField.colSpan || 12) / 12) * 100))}%)
+              </span>
             </div>
-            <div className="grid grid-cols-3 gap-1.5 font-mono text-xs">
+            <div className="grid grid-cols-4 gap-1.5 font-mono text-xs">
               {[
-                { label: "全宽 (12/12)", span: 12 },
-                { label: "半宽 (6/12)", span: 6 },
-                { label: "三分之一 (4/12)", span: 4 }
+                { label: "1/1 全宽", span: 12 },
+                { label: "3/4 宽", span: 9 },
+                { label: "2/3 宽", span: 8 },
+                { label: "1/2 半宽", span: 6 },
+                { label: "1/3 宽", span: 4 },
+                { label: "1/4 宽", span: 3 },
+                { label: "1/6 宽", span: 2 }
               ].map((g) => (
                 <button
                   key={g.span}
@@ -155,10 +164,10 @@ export function DesignerInspector({
                   className={`p-1.5 rounded-lg border text-center transition-all cursor-pointer ${
                     (selectedField.colSpan || 12) === g.span
                       ? "bg-primary text-primary-foreground font-bold border-primary shadow-xs"
-                      : "border-border/80 bg-muted/20 text-muted-foreground hover:text-foreground"
+                      : "border-border/80 bg-muted/20 text-muted-foreground hover:text-foreground hover:bg-muted/50"
                   }`}
                 >
-                  <span className="text-[10px]">{g.label.split(" ")[0]}</span>
+                  <span className="text-[10px] block truncate">{g.label}</span>
                 </button>
               ))}
             </div>

@@ -3,15 +3,20 @@ import {
   ChevronDown,
   Copy,
   Trash2,
-  Plus,
   Layers,
   FolderPlus,
-  HelpCircle,
+  Settings,
   Eye,
   Sliders,
-  Settings
+  ToggleLeft,
+  KeyRound,
+  Minus,
+  Plus,
+  Tag,
+  List
 } from "lucide-react";
 import { Badge } from "@/shared/ui/badge";
+import { Switch } from "@/shared/ui/switch";
 import { cn } from "@/shared/lib/utils";
 import type { FormSectionSchema, FormFieldSchema } from "@/shared/ui/schema-form";
 
@@ -28,7 +33,7 @@ export interface DesignerCanvasProps {
   onAddSection: () => void;
 }
 
-/** 栅格宽度映射 */
+/** 栅格宽度映射表（支持12、9、8、6、4、3、2列宽） */
 const COL_SPAN_MAP: Record<number, string> = {
   1: "col-span-12 sm:col-span-1",
   2: "col-span-12 sm:col-span-2",
@@ -43,6 +48,114 @@ const COL_SPAN_MAP: Record<number, string> = {
   11: "col-span-12 sm:col-span-11",
   12: "col-span-12"
 };
+
+/**
+ * 在设计画布中渲染真实高颜值的控件外观预览
+ */
+function CanvasFieldVisualPreview({ field }: { field: FormFieldSchema }) {
+  if (field.type === "switch") {
+    return (
+      <div className="flex items-center justify-between p-2 rounded-lg bg-muted/40 border border-border/60">
+        <span className="text-[11px] text-muted-foreground">
+          {field.defaultValue ? "已开启" : "已关闭"}
+        </span>
+        <Switch checked={Boolean(field.defaultValue ?? true)} disabled className="scale-75 origin-right" />
+      </div>
+    );
+  }
+
+  if (field.type === "pill-select") {
+    const options = field.options || [{ label: "选项 1", value: "1" }, { label: "选项 2", value: "2" }];
+    return (
+      <div className="flex flex-wrap gap-1 p-1 rounded-lg bg-muted/30 border border-border/60">
+        {options.slice(0, 3).map((opt, i) => (
+          <span
+            key={i}
+            className={cn(
+              "px-2 py-0.5 rounded text-[10px] font-mono",
+              i === 0 ? "bg-primary text-primary-foreground font-semibold" : "bg-muted text-muted-foreground"
+            )}
+          >
+            {opt.label}
+          </span>
+        ))}
+        {options.length > 3 && (
+          <span className="text-[10px] text-muted-foreground/60 self-center">+{options.length - 3}</span>
+        )}
+      </div>
+    );
+  }
+
+  if (field.type === "slider") {
+    const val = field.defaultValue ?? 75;
+    return (
+      <div className="space-y-1 p-2 rounded-lg bg-muted/30 border border-border/60">
+        <div className="flex justify-between text-[10px] font-mono text-muted-foreground">
+          <span>0{field.unit}</span>
+          <span className="font-bold text-primary">{val}{field.unit || "%"}</span>
+          <span>100{field.unit}</span>
+        </div>
+        <div className="h-1.5 w-full bg-muted rounded-full overflow-hidden">
+          <div className="h-full bg-primary rounded-full" style={{ width: `${val}%` }} />
+        </div>
+      </div>
+    );
+  }
+
+  if (field.type === "number") {
+    return (
+      <div className="flex items-center rounded-lg border border-border/60 bg-muted/30 overflow-hidden h-7 text-xs font-mono">
+        <div className="px-2 bg-muted/60 text-muted-foreground flex items-center h-full"><Minus className="size-2.5" /></div>
+        <div className="flex-1 text-center text-[11px] text-foreground">{field.defaultValue ?? 100} {field.unit}</div>
+        <div className="px-2 bg-muted/60 text-muted-foreground flex items-center h-full"><Plus className="size-2.5" /></div>
+      </div>
+    );
+  }
+
+  if (field.type === "key-value") {
+    const pairs = Array.isArray(field.defaultValue) ? field.defaultValue : [{ key: "X-Key", value: "Value" }];
+    return (
+      <div className="space-y-1 p-1.5 rounded-lg border border-border/60 bg-muted/30 font-mono text-[10px]">
+        {pairs.slice(0, 2).map((p: any, i: number) => (
+          <div key={i} className="flex items-center gap-1 text-muted-foreground">
+            <span className="px-1.5 py-0.5 rounded bg-background border border-border/60 text-foreground font-bold">{p.key || "key"}</span>
+            <span>:</span>
+            <span className="px-1.5 py-0.5 rounded bg-background border border-border/60 text-muted-foreground truncate">{p.value || "val"}</span>
+          </div>
+        ))}
+      </div>
+    );
+  }
+
+  if (field.type === "tags") {
+    const tags = Array.isArray(field.defaultValue) && field.defaultValue.length > 0 ? field.defaultValue : ["tag-1", "tag-2"];
+    return (
+      <div className="flex flex-wrap gap-1 p-1.5 rounded-lg border border-border/60 bg-muted/30">
+        {tags.map((t: string, i: number) => (
+          <span key={i} className="px-1.5 py-0.5 rounded bg-primary/10 text-primary border border-primary/20 text-[10px] font-mono">
+            #{t}
+          </span>
+        ))}
+      </div>
+    );
+  }
+
+  if (field.type === "textarea") {
+    return (
+      <div className="h-12 rounded-lg border border-border/60 bg-muted/30 p-1.5 text-[11px] text-muted-foreground/60 font-mono resize-none">
+        {field.placeholder || "多行长文本输入区域..."}
+      </div>
+    );
+  }
+
+  // 默认文本/密码/邮箱类
+  return (
+    <div className="h-7 rounded-lg border border-border/60 bg-muted/30 px-2.5 flex items-center justify-between text-xs text-muted-foreground/60 font-mono truncate">
+      <span className="truncate">{field.placeholder || `输入${field.label}...`}</span>
+      {field.type === "password" && <KeyRound className="size-3 text-muted-foreground/50 shrink-0" />}
+    </div>
+  );
+}
 
 export function DesignerCanvas({
   sections,
@@ -127,13 +240,13 @@ export function DesignerCanvas({
                 </div>
 
                 {/* 字段列表容器 */}
-                <div className="p-5 sm:p-6">
+                <div className="p-4 sm:p-5">
                   {sec.fields.length === 0 ? (
                     <div className="p-6 border border-dashed border-border/80 rounded-xl text-center text-xs text-muted-foreground/60 font-mono">
                       👈 点击左侧物料库控件，将字段添加至此分块
                     </div>
                   ) : (
-                    <div className="grid grid-cols-12 gap-4">
+                    <div className="grid grid-cols-12 gap-3.5">
                       {sec.fields.map((field, idx) => {
                         const isFieldSelected = selectedField?.name === field.name;
                         const colClass = COL_SPAN_MAP[field.colSpan || 12] || "col-span-12";
@@ -147,14 +260,14 @@ export function DesignerCanvas({
                             }}
                             className={cn(
                               colClass,
-                              "group relative rounded-xl border p-3 transition-all cursor-pointer select-none",
+                              "group relative rounded-xl border p-2.5 transition-all cursor-pointer select-none",
                               isFieldSelected
                                 ? "border-primary bg-primary/5 ring-2 ring-primary/20 shadow-sm"
                                 : "border-border/70 bg-muted/20 hover:border-border hover:bg-muted/40"
                             )}
                           >
                             {/* 字段悬浮操作按钮组 */}
-                            <div className="absolute right-2 top-2 hidden group-hover:flex items-center gap-1 bg-background/90 backdrop-blur-xs border border-border/80 p-0.5 rounded-lg shadow-xs z-10">
+                            <div className="absolute right-1.5 top-1.5 hidden group-hover:flex items-center gap-0.5 bg-background/95 backdrop-blur-xs border border-border/80 p-0.5 rounded-lg shadow-sm z-10">
                               <button
                                 type="button"
                                 onClick={(e) => {
@@ -203,25 +316,23 @@ export function DesignerCanvas({
                               </button>
                             </div>
 
-                            {/* 字段模拟外观 */}
+                            {/* 字段 Header */}
                             <div className="space-y-1.5">
-                              <div className="flex items-center justify-between">
+                              <div className="flex items-center justify-between pr-1">
                                 <span className="text-xs font-semibold text-foreground flex items-center gap-1">
                                   <span>{field.label}</span>
                                   {field.validation?.required && <span className="text-rose-500 font-bold">*</span>}
                                 </span>
                                 <span className="text-[10px] font-mono text-muted-foreground/60">
-                                  {field.type} · {field.colSpan || 12}/12
+                                  {field.colSpan || 12}/12
                                 </span>
                               </div>
 
-                              {/* 模拟输入框骨架 */}
-                              <div className="h-8 rounded-lg border border-border/60 bg-background/80 px-2.5 flex items-center text-xs text-muted-foreground/50 font-mono truncate">
-                                {field.placeholder || `${field.label} 输入区域...`}
-                              </div>
+                              {/* 💡 真实高颜值控件外观预览 */}
+                              <CanvasFieldVisualPreview field={field} />
 
                               {field.description && (
-                                <p className="text-[10px] text-muted-foreground/70 truncate">
+                                <p className="text-[10px] text-muted-foreground/70 truncate pt-0.5">
                                   {field.description}
                                 </p>
                               )}
