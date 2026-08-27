@@ -19,6 +19,7 @@ import { Badge } from "@/shared/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/shared/ui/dialog";
 import { toast } from "@/shared/ui/toaster";
 import { useTokens, useCreateToken, useRevokeToken } from "../hooks/use-tokens";
+import { useAuthModal } from "@/shared/ui/auth-modal";
 import type { Token } from "@/shared/api/methods";
 
 type TokenPermission = "read" | "admin";
@@ -61,6 +62,7 @@ const EXPIRATION_OPTIONS = [
 ];
 
 export function AccessTokensTab() {
+  const { openLoginModal } = useAuthModal();
   const { data, isLoading, refetch } = useTokens();
   const createMutation = useCreateToken();
   const revokeMutation = useRevokeToken();
@@ -85,7 +87,12 @@ export function AccessTokensTab() {
     setDialogOpen(true);
   };
 
-  const handleConfirmCreate = async () => {
+  /**
+   * 确认签发令牌：支持二次验证挑战
+   */
+  const handleConfirmCreate = async (isSudoRetry?: any) => {
+    const isRetry = isSudoRetry === true;
+
     if (!tokenName.trim()) {
       toast.error("请输入令牌名称");
       return;
@@ -97,15 +104,34 @@ export function AccessTokensTab() {
       const res: any = await createMutation.mutateAsync({
         name: tokenName.trim(),
         scopes,
-        expiresAt
+        expiresAt,
+        sudoVerified: isRetry
       });
+
+      // 💡 拦截二次验证挑战
+      if (res?.requireSudo) {
+        setDialogOpen(false);
+        openLoginModal({
+          mode: res.sudoType === "totp" ? "totp_only" : "full",
+          lockUsername: true,
+          title: "签发 API 访问令牌二次安全验证",
+          description: res.message || "签发具备高控制权限的 API 访问令牌，请验证管理员安全口令",
+          onSuccess: () => {
+            setDialogOpen(true);
+            handleConfirmCreate(true);
+          }
+        });
+        return;
+      }
+
       const rawSecret = res?.rawSecret || `smalux_live_${Math.random().toString(36).substring(2, 10)}_${Date.now()}`;
       setCreatedSecret(rawSecret);
-      toast.success("API 访问令牌签发成功！");
+      toast.success(res?.message || "API 访问令牌签发成功！");
     } catch (err: any) {
       toast.error(err?.message || "签发令牌失败");
     }
   };
+
 
   const handleRevokeToken = async (tok: Token) => {
     if (!window.confirm(`确定要注销 API 访问令牌「${tok.name}」吗？已集成的脚本将立刻无法调用。`)) return;
@@ -473,7 +499,7 @@ export function AccessTokensTab() {
                 <Button variant="outline" size="sm" onClick={() => setDialogOpen(false)} className="cursor-pointer">
                   取消
                 </Button>
-                <Button size="sm" onClick={handleConfirmCreate} disabled={createMutation.isPending} className="cursor-pointer">
+                <Button size="sm" onClick={() => handleConfirmCreate(false)} disabled={createMutation.isPending} className="cursor-pointer">
                   {createMutation.isPending ? "签发中..." : "确认签发"}
                 </Button>
               </div>

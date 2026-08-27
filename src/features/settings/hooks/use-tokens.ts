@@ -15,15 +15,22 @@ export function useTokens() {
 
 /**
  * 签发新的 API Token Hook（HTTP POST /api/v1/tokens）
+ * 
+ * 💡 支持传入 `sudoVerified: boolean` 用于二次验证通过后重新提交。
  */
 export function useCreateToken() {
   const qc = useQueryClient();
   return useMutation({
-    mutationFn: (params: { name: string; scopes: string[]; expiresAt?: number }) =>
-      httpClient.post("/api/v1/tokens", params),
+    mutationFn: (params: {
+      name: string;
+      scopes: string[];
+      expiresAt?: number;
+      sudoVerified?: boolean;
+    }) => httpClient.post<any>("/api/v1/tokens", params),
     onSuccess: () => qc.invalidateQueries({ queryKey: queryKeys.tokens })
   });
 }
+
 
 /**
  * 吊销/撤销 Token Hook（HTTP DELETE /api/v1/tokens/:id）

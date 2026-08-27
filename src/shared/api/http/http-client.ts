@@ -87,6 +87,9 @@ class HttpClient {
   }
 
   public async get<T>(path: string, params?: Record<string, string | number | boolean | undefined>): Promise<T> {
+    if (defaultRuntimeConfig.transport === "mock") {
+      return this.handleMockFallback<T>("GET", path, params);
+    }
     const url = this.buildUrl(path, params);
 
     try {
@@ -107,6 +110,9 @@ class HttpClient {
   }
 
   public async post<T, B = unknown>(path: string, body?: B): Promise<T> {
+    if (defaultRuntimeConfig.transport === "mock") {
+      return this.handleMockFallback<T>("POST", path, body);
+    }
     const url = this.buildUrl(path);
 
     try {
@@ -127,6 +133,9 @@ class HttpClient {
   }
 
   public async put<T, B = unknown>(path: string, body?: B): Promise<T> {
+    if (defaultRuntimeConfig.transport === "mock") {
+      return this.handleMockFallback<T>("PUT", path, body);
+    }
     const url = this.buildUrl(path);
 
     try {
@@ -147,6 +156,9 @@ class HttpClient {
   }
 
   public async delete<T>(path: string): Promise<T> {
+    if (defaultRuntimeConfig.transport === "mock") {
+      return this.handleMockFallback<T>("DELETE", path);
+    }
     const url = this.buildUrl(path);
 
     try {

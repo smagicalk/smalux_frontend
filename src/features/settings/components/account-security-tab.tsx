@@ -40,6 +40,7 @@ import { Switch } from "@/shared/ui/switch";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/shared/ui/dialog";
 import { toast } from "@/shared/ui/toaster";
 import { useAdminProfileStore } from "@/shared/stores/admin-profile-store";
+import { useAuthModal } from "@/shared/ui/auth-modal";
 import {
   useSecurityOverview,
   useSetupTotp,
@@ -87,8 +88,11 @@ const PERMISSION_OPTIONS: Array<{
 ];
 
 export function AccountSecurityTab() {
+  const { openLoginModal } = useAuthModal();
+
   // ─── 管理员全局档案 Store ───
   const adminProfile = useAdminProfileStore();
+
   const [accountUsername, setAccountUsername] = useState(adminProfile.username);
   const [accountNickname, setAccountNickname] = useState(adminProfile.nickname);
   const avatarFileInputRef = useRef<HTMLInputElement>(null);
@@ -265,8 +269,23 @@ export function AccountSecurityTab() {
     setTokenDialogOpen(true);
   };
 
-  /** 确认签发令牌，调用 API 并展示明文 Secret */
-  const handleConfirmCreateToken = async () => {
+  /** 
+   * 确认签发令牌：
+   * 
+   * 💡 二次安全验证处理流程：
+   * 1. 首次点击提交，发送创建请求到后端；
+   * 2. 若后端识别到签发管理员权限令牌并返回 `{ requireSudo: true, sudoType, message }`：
+   *    - 唤起全局认证弹窗 `<GlobalLoginModal />` 进行密码或 TOTP 动态口令二次核验；
+   *    - 锁屏弹窗内自动锁定当前管理员身份，无需重复录入用户名；
+   * 3. 验证通过后（触发 onSuccess 回调），携带 `sudoVerified: true` 自动重新提交；
+   * 4. 后端正式生成 Token，下发 Secret 并在弹窗内展示复制。
+   * 
+   * @param isSudoRetry 是否为二次验证通过后的重试提交
+   */
+  const handleConfirmCreateToken = async (isSudoRetry?: any) => {
+    // 💡 严格判断是否为显式的布尔值 true（避免 React onClick 默认传入 MouseEvent 事件对象被误判为 true）
+    const isRetry = isSudoRetry === true;
+
     if (!tokenName.trim()) {
       toast.error("请输入令牌名称");
       return;
@@ -274,14 +293,46 @@ export function AccountSecurityTab() {
     try {
       const expiresAt = tokenExpireMs > 0 ? Date.now() + tokenExpireMs : undefined;
       const scopes = selectedPermission === "admin" ? ["admin", "read"] : ["read"];
-      const res: any = await createTokenMutation.mutateAsync({ name: tokenName.trim(), scopes, expiresAt });
+
+      // 调用签发 API（携带 sudoVerified 标记）
+      const res: any = await createTokenMutation.mutateAsync({
+        name: tokenName.trim(),
+        scopes,
+        expiresAt,
+        sudoVerified: isRetry
+      });
+
+
+      // 💡 1. 拦截后端返回的二次验证挑战 (Sudo Challenge)
+      if (res?.requireSudo) {
+        // 先临时收起当前签发配置弹窗，避免 Radix Modal Focus Trap 冲突
+        setTokenDialogOpen(false);
+
+        openLoginModal({
+          // 若后端指定要求 TOTP 则直接进入 TOTP 模式，否则进入密码验证
+          mode: res.sudoType === "totp" ? "totp_only" : "full",
+          lockUsername: true, // 二次验证无需输入用户名
+          title: "签发 API 访问令牌二次安全验证",
+          description: res.message || "签发高权限 API 令牌属于敏感操作，请验证管理员安全口令",
+          onSuccess: () => {
+            // 二次身份验证通过后，重新打开弹窗并携带 sudoVerified: true 自动完成签发
+            setTokenDialogOpen(true);
+            handleConfirmCreateToken(true);
+          }
+        });
+        return;
+      }
+
+
+      // 💡 2. 验证通过并签发成功，展示一次性明文 Secret
       const rawSecret = res?.rawSecret || `smalux_live_${Math.random().toString(36).substring(2, 10)}_${Date.now()}`;
       setCreatedTokenSecret(rawSecret);
-      toast.success("API 访问令牌签发成功！");
+      toast.success(res?.message || "API 访问令牌签发成功！");
     } catch (err: any) {
       toast.error(err?.message || "签发令牌失败");
     }
   };
+
 
   /** 注销指定令牌 */
   const handleRevokeToken = async (tok: Token) => {
@@ -1558,12 +1609,235 @@ export function AccountSecurityTab() {
 
               <div className="flex justify-end gap-2 pt-3 border-t border-border/60">
                 <Button variant="outline" size="sm" onClick={() => setTokenDialogOpen(false)} className="cursor-pointer">取消</Button>
-                <Button size="sm" onClick={handleConfirmCreateToken} disabled={createTokenMutation.isPending} className="cursor-pointer">
+                <Button size="sm" onClick={() => handleConfirmCreateToken(false)} disabled={createTokenMutation.isPending} className="cursor-pointer">
                   {createTokenMutation.isPending ? "签发中..." : "确认签发"}
                 </Button>
               </div>
             </div>
           )}
+        </DialogContent>
+      </Dialog>
+
+      {/* 弹窗 1：绑定 TOTP 动态身份验证器 */}
+      <Dialog open={bindDialogOpen} onOpenChange={setBindDialogOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <div className="flex items-center gap-2">
+              <div className="size-8 rounded-lg bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center text-emerald-400">
+                <Smartphone className="size-4" />
+              </div>
+              <div>
+                <DialogTitle className="text-base font-bold text-foreground">
+                  绑定 TOTP 双因子安全验证器
+                </DialogTitle>
+                <DialogDescription className="text-xs text-muted-foreground">
+                  使用 Google Authenticator / Microsoft Authenticator 扫描绑定
+                </DialogDescription>
+              </div>
+            </div>
+          </DialogHeader>
+
+          <div className="space-y-4 pt-1 text-xs">
+            {/* 步骤 1：扫描二维码 */}
+            <div className="flex flex-col items-center justify-center p-4 rounded-xl border border-border/80 bg-muted/30 gap-3">
+              <div className="bg-white p-2 rounded-xl border border-border/80 shadow-xs">
+                {qrDataUrl ? (
+                  <img src={qrDataUrl} alt="TOTP QR Code" className="size-36" />
+                ) : (
+                  <div className="size-36 flex items-center justify-center text-muted-foreground text-xs font-mono">
+                    正在生成二维码...
+                  </div>
+                )}
+              </div>
+              <div className="text-center space-y-1">
+                <div className="font-semibold text-foreground">步骤 1: 使用手机验证器 App 扫描上方二维码</div>
+                <div className="text-[11px] text-muted-foreground">
+                  若无法扫码，可手动录入安全密钥：
+                </div>
+                <div className="flex items-center justify-center gap-1.5 pt-0.5">
+                  <code className="px-2 py-1 rounded bg-muted font-mono font-bold text-xs text-primary border border-border/60 select-all">
+                    {tempMfaSecret}
+                  </code>
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    className="h-6 px-1.5 text-xs text-muted-foreground hover:text-foreground cursor-pointer"
+                    onClick={() => {
+                      navigator.clipboard.writeText(tempMfaSecret);
+                      toast.success("已复制 TOTP 密钥到剪贴板");
+                    }}
+                  >
+                    <Copy className="size-3" />
+                  </Button>
+                </div>
+              </div>
+            </div>
+
+            {/* 步骤 2：输入 6 位动态验证码 */}
+            <div className="space-y-1.5">
+              <label className="font-semibold text-foreground flex items-center justify-between">
+                <span>步骤 2: 输入 App 算出的 6 位动态验证码</span>
+                <span className="text-[10px] text-muted-foreground font-mono">每 30 秒自动刷新</span>
+              </label>
+              <input
+                type="text"
+                maxLength={6}
+                inputMode="numeric"
+                value={bindCode}
+                onChange={(e) => setBindCode(e.target.value.replace(/\D/g, ""))}
+                placeholder="例如: 123456"
+                className="w-full h-10 rounded-xl border border-border/80 bg-muted/40 px-3.5 text-center font-mono font-bold text-base tracking-widest outline-none focus:border-emerald-500 focus:ring-2 focus:ring-emerald-500/20 text-foreground transition-all"
+              />
+            </div>
+
+            <div className="flex justify-end gap-2 pt-2 border-t border-border/60">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setBindDialogOpen(false)}
+                className="cursor-pointer text-xs"
+              >
+                取消
+              </Button>
+              <Button
+                size="sm"
+                onClick={handleConfirmBindMFA}
+                disabled={isVerifyingBind || bindCode.length !== 6}
+                className="cursor-pointer text-xs font-bold bg-emerald-600 hover:bg-emerald-500 text-white"
+              >
+                {isVerifyingBind ? "正在校验激活..." : "确认绑定并激活"}
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* 弹窗 2：关闭 / 解绑 TOTP 密码身份核验 */}
+      <Dialog open={disableMfaDialogOpen} onOpenChange={setDisableMfaDialogOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <div className="flex items-center gap-2">
+              <div className="size-8 rounded-lg bg-amber-500/10 border border-amber-500/20 flex items-center justify-center text-amber-500">
+                <AlertTriangle className="size-4" />
+              </div>
+              <div>
+                <DialogTitle className="text-base font-bold text-foreground">
+                  关闭 TOTP 双因子安全保护
+                </DialogTitle>
+                <DialogDescription className="text-xs text-muted-foreground">
+                  关闭后将仅依靠账号密码进行控制台登录，安全性将降低
+                </DialogDescription>
+              </div>
+            </div>
+          </DialogHeader>
+
+          <div className="space-y-4 pt-1 text-xs">
+            <div className="p-3.5 rounded-xl border border-rose-500/30 bg-rose-500/10 text-rose-400 space-y-1">
+              <div className="font-bold flex items-center gap-1.5">
+                <ShieldAlert className="size-3.5 shrink-0" />
+                安全敏感操作确认
+              </div>
+              <div className="text-[11px] leading-relaxed">
+                为防止未授权降级，关闭 TOTP 双因子保护必须验证当前管理员登录密码。
+              </div>
+            </div>
+
+            <div className="space-y-1.5">
+              <label className="font-semibold text-foreground flex items-center justify-between">
+                <span>当前管理员登录密码</span>
+                <span className="text-[10px] text-muted-foreground font-mono">必填</span>
+              </label>
+              <div className="relative">
+                <input
+                  type={showVerifyPassword ? "text" : "password"}
+                  value={verifyPasswordForDisable}
+                  onChange={(e) => setVerifyPasswordForDisable(e.target.value)}
+                  placeholder="请输入当前管理员密码以确认身份"
+                  className="w-full h-9 rounded-xl border border-border/80 bg-muted/40 px-3.5 pr-10 text-xs font-mono outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 text-foreground transition-all"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowVerifyPassword(!showVerifyPassword)}
+                  className="absolute right-2.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground cursor-pointer p-1"
+                >
+                  {showVerifyPassword ? <EyeOff className="size-4" /> : <Eye className="size-4" />}
+                </button>
+              </div>
+            </div>
+
+            <div className="flex justify-end gap-2 pt-2 border-t border-border/60">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setDisableMfaDialogOpen(false)}
+                className="cursor-pointer text-xs"
+              >
+                取消
+              </Button>
+              <Button
+                variant="danger"
+                size="sm"
+                onClick={handleConfirmDisableMFA}
+                disabled={isVerifyingDisable || !verifyPasswordForDisable.trim()}
+                className="cursor-pointer text-xs font-bold"
+              >
+                {isVerifyingDisable ? "正在核验并关闭..." : "确认关闭 TOTP"}
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* 弹窗 3：更换绑定设备密码核验 */}
+      <Dialog open={changeDeviceDialogOpen} onOpenChange={setChangeDeviceDialogOpen}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <div className="flex items-center gap-2">
+              <div className="size-8 rounded-lg bg-primary/10 border border-primary/20 flex items-center justify-center text-primary">
+                <RotateCcw className="size-4" />
+              </div>
+              <div>
+                <DialogTitle className="text-base font-bold text-foreground">
+                  更换 TOTP 绑定设备
+                </DialogTitle>
+                <DialogDescription className="text-xs text-muted-foreground">
+                  验证管理员密码后将生成新二维码供新设备扫码绑定
+                </DialogDescription>
+              </div>
+            </div>
+          </DialogHeader>
+
+          <div className="space-y-4 pt-1 text-xs">
+            <div className="space-y-1.5">
+              <label className="font-semibold text-foreground">当前管理员登录密码</label>
+              <input
+                type="password"
+                value={verifyPasswordForChangeDevice}
+                onChange={(e) => setVerifyPasswordForChangeDevice(e.target.value)}
+                placeholder="请输入密码进行安全验证"
+                className="w-full h-9 rounded-xl border border-border/80 bg-muted/40 px-3.5 text-xs font-mono outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 text-foreground transition-all"
+              />
+            </div>
+
+            <div className="flex justify-end gap-2 pt-2 border-t border-border/60">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setChangeDeviceDialogOpen(false)}
+                className="cursor-pointer text-xs"
+              >
+                取消
+              </Button>
+              <Button
+                size="sm"
+                onClick={handleConfirmChangeDevice}
+                disabled={isVerifyingChangeDevice || !verifyPasswordForChangeDevice.trim()}
+                className="cursor-pointer text-xs font-bold"
+              >
+                {isVerifyingChangeDevice ? "核验中..." : "下一步：扫码绑定"}
+              </Button>
+            </div>
+          </div>
         </DialogContent>
       </Dialog>
     </div>

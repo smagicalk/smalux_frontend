@@ -454,8 +454,32 @@ class SettingsMockEngine {
     return { tokens: [...this.tokens] };
   }
 
-  /** 签发新的 API Token */
-  public createToken(params: { name: string; scopes: string[]; expiresAt?: number }): Token {
+  /** 
+   * 签发新的 API Token 
+   * 
+   * 💡 后端二次验证模拟逻辑：
+   * 1. 当用户请求签发令牌且未携带 `sudoVerified: true` 时，若系统安全策略要求（或签发了 admin 管理权限），
+   *    后端返回 `{ requireSudo: true, sudoType: "totp" | "password", message: "..." }`；
+   * 2. 前端弹出认证弹窗校验通过后，再次提交携带 `sudoVerified: true`，此时生成真实令牌并下发明文 Secret。
+   */
+  public createToken(params: {
+    name: string;
+    scopes: string[];
+    expiresAt?: number;
+    sudoVerified?: boolean;
+  }): any {
+    // 💡 模拟拦截判断：若尚未通过二次身份核验，触发 Sudo Challenge
+    if (!params.sudoVerified) {
+      const hasTotp = Boolean(this.securityOverview.mfaEnabled);
+      return {
+        requireSudo: true,
+        // 若系统开启了 TOTP 则优先请求 TOTP 6 位动态口令，否则请求管理员登录密码
+        sudoType: hasTotp ? "totp" : "password",
+        message: "签发具备高控制权限的 API 访问令牌，需要验证管理员安全口令以确认身份。"
+      };
+    }
+
+    // 💡 已通过二次验证：正常创建令牌并返回
     const newToken: Token = {
       id: `tok-${Date.now()}`,
       name: params.name,
@@ -467,8 +491,16 @@ class SettingsMockEngine {
     };
     this.tokens = [newToken, ...this.tokens];
     this.recordAudit("admin", "token", "token.create", "success", newToken.name);
-    return newToken;
+    
+    // 生成一次性明文 Secret（以 smalux_live_ 开头）
+    const rawSecret = `smalux_live_${Math.random().toString(36).substring(2, 10)}_${Date.now()}`;
+    return {
+      token: newToken,
+      rawSecret,
+      message: "二次身份核验通过，API 访问令牌签发成功！"
+    };
   }
+
 
   /** 吸销指定的 API Token（软删除：标记 revoked=true，保留在列表中展示已注销状态） */
   public revokeToken(id: string): { ok: boolean } {
@@ -905,42 +937,8 @@ class SettingsMockEngine {
   public getDeployments(): DeploymentListResult {
     return { targets: [...this.deployments], current: "static" };
   }
-
-  // ─────────────── 7. API 访问令牌 API (Tokens) ───────────────
-
-  /** 获取全部 API 访问令牌列表 */
-  public getTokens(): { tokens: Token[] } {
-    return { tokens: [...this.tokens] };
-  }
-
-  /** 签发新 API 访问令牌 */
-  public createToken(params: { name: string; scopes: string[]; expiresAt?: number }): Token & { rawSecret: string } {
-    const rawSecret = `smalux_live_${Math.random().toString(36).substring(2, 10)}_${Date.now()}`;
-    const newToken: Token = {
-      id: `tk${this.tokens.length + 1}`,
-      name: params.name,
-      scopes: params.scopes,
-      createdAt: Date.now(),
-      expiresAt: params.expiresAt,
-      lastUsedAt: undefined,
-      createdBy: "admin",
-      revoked: false
-    };
-    this.tokens = [newToken, ...this.tokens];
-    this.recordAudit("admin", "auth", "token.create", "success", newToken.name);
-    return { ...newToken, rawSecret };
-  }
-
-  /** 注销指定 API 访问令牌 */
-  public revokeToken(id: string): { ok: boolean } {
-    const t = this.tokens.find((x) => x.id === id);
-    if (t) {
-      t.revoked = true;
-      this.recordAudit("admin", "auth", "token.revoke", "success", t.name);
-    }
-    return { ok: true };
-  }
 }
+
 
 
 /** 系统设置与安全中心全局单例 Mock 引擎实例 */

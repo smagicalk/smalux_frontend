@@ -24,6 +24,8 @@ import {
 } from "@/shared/ui/dialog";
 import { useThemeStore, ACCENT_PRESETS, type ThemeMode, type AccentColor } from "@/shared/stores/theme-store";
 import { useAdminProfileStore } from "@/shared/stores/admin-profile-store";
+import { useAuthModalStore } from "@/shared/stores/auth-modal-store";
+import { GlobalLoginModal } from "@/shared/ui/auth-modal";
 import { navItems, isNavActive } from "./navigation";
 import { MobileBottomNav } from "./mobile-bottom-nav";
 import { NotificationCenter } from "./notification-center";
@@ -39,6 +41,7 @@ export function AppShell() {
   const adminUsername = useAdminProfileStore((s) => s.username);
   const adminAvatar = useAdminProfileStore((s) => s.avatarUrl);
   const adminRole = useAdminProfileStore((s) => s.role);
+  const openLoginModal = useAuthModalStore((s) => s.openLoginModal);
 
   const handleLogout = () => {
     try {
@@ -48,9 +51,11 @@ export function AppShell() {
     } catch {}
     setLogoutDialogOpen(false);
     toast.success("已安全退出登录会话");
-    setTimeout(() => {
-      window.location.href = "/";
-    }, 400);
+    // 弹出全局全屏遮罩登录弹窗
+    openLoginModal({
+      isBlocking: true,
+      description: "当前会话已退出，请输入管理员凭据重新登录"
+    });
   };
 
   // Automatically scroll to top whenever pathname or search changes
@@ -245,6 +250,7 @@ export function AppShell() {
         </DialogContent>
       </Dialog>
 
+      <GlobalLoginModal />
       <Toaster />
     </div>
   );
