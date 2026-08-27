@@ -10,16 +10,16 @@ export interface KeyValueControlProps {
 }
 
 export function KeyValueControl({ field, value, onChange, disabled }: KeyValueControlProps) {
-  // 规范化为 KeyValuePair 数组
+  // 规范化为纯净的 KeyValuePair 数组（去除 id）
   const items: KeyValuePair[] = Array.isArray(value)
-    ? value
+    ? value.map((it: any) => ({ key: it.key ?? "", value: it.value ?? "" }))
     : value && typeof value === "object"
-      ? Object.entries(value).map(([k, v], idx) => ({ id: String(idx), key: k, value: String(v) }))
+      ? Object.entries(value).map(([k, v]) => ({ key: k, value: String(v) }))
       : [];
 
   const handleAdd = () => {
     if (disabled) return;
-    const newItem: KeyValuePair = { id: `kv_${Date.now()}_${Math.random().toString(36).substring(2, 6)}`, key: "", value: "" };
+    const newItem: KeyValuePair = { key: "", value: "" };
     onChange([...items, newItem]);
   };
 
@@ -49,7 +49,7 @@ export function KeyValueControl({ field, value, onChange, disabled }: KeyValueCo
       ) : (
         <div className="space-y-1.5">
           {items.map((item, idx) => (
-            <div key={item.id || idx} className="flex items-center gap-2">
+            <div key={idx} className="flex items-center gap-2">
               <input
                 type="text"
                 placeholder="Key (如 Authorization)"

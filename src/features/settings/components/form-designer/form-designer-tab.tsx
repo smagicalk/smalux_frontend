@@ -2,52 +2,50 @@ import { useState } from "react";
 import {
   Sparkles,
   Eye,
-  Edit3,
   Download,
   Upload,
   RotateCcw,
-  Trash2,
-  CheckCircle2,
   Code2,
-  Layers,
-  FolderPlus
+  FolderPlus,
+  Trash2
 } from "lucide-react";
 import { Button } from "@/shared/ui/button";
 import { Badge } from "@/shared/ui/badge";
 import { toast } from "@/shared/ui/toaster";
-import { SchemaForm, type FormSectionSchema, type FormFieldSchema } from "@/shared/ui/schema-form";
-import { DEFAULT_DESIGNER_SECTIONS } from "./default-designer-schema";
+import type { FormSectionSchema, FormFieldSchema, FormSchemaDefinition } from "@/shared/ui/schema-form";
+import { DEFAULT_DESIGNER_SECTIONS, DEFAULT_FORM_DEFINITION } from "./default-designer-schema";
 import { DesignerPalette, type PaletteItem } from "./designer-palette";
 import { DesignerCanvas } from "./designer-canvas";
 import { DesignerInspector } from "./designer-inspector";
 import { SchemaImportExportModal } from "./schema-import-export-modal";
+import { FormPreviewModal } from "./form-preview-modal";
 
 export function FormDesignerTab() {
-  // 当前设计中的表单 Schema
-  const [sections, setSections] = useState<FormSectionSchema[]>(() => DEFAULT_DESIGNER_SECTIONS);
+  // 当前全局表单元数据（必填 id 与 name）
+  const [formMeta, setFormMeta] = useState({
+    id: DEFAULT_FORM_DEFINITION.id,
+    name: DEFAULT_FORM_DEFINITION.name,
+    version: DEFAULT_FORM_DEFINITION.version || "1.0.0",
+    description: DEFAULT_FORM_DEFINITION.description || ""
+  });
 
-  // 模式切换："design" | "preview"
-  const [viewMode, setViewMode] = useState<"design" | "preview">("design");
+  // 当前设计中的表单分块列表
+  const [sections, setSections] = useState<FormSectionSchema[]>(() => DEFAULT_DESIGNER_SECTIONS);
 
   // 选中状态
   const [selectedField, setSelectedField] = useState<FormFieldSchema | null>(null);
-  const [selectedSection, setSelectedSection] = useState<FormSectionSchema | null>(() => sections[0] || null);
+  const [selectedSection, setSelectedSection] = useState<FormSectionSchema | null>(null);
 
   // 导入/导出弹窗
   const [modalMode, setModalMode] = useState<"export" | "import" | null>(null);
 
-  // 预览模式下的提交数据展示
-  const [previewResult, setPreviewResult] = useState<any>(null);
+  // 实时预览弹窗开关
+  const [previewOpen, setPreviewOpen] = useState(false);
 
-  // ─── 1. 添加控件到当前分块 ───
-  const handleAddField = (item: PaletteItem) => {
-    if (sections.length === 0) {
-      handleAddSection();
-    }
-
-    const targetSection = selectedSection || sections[0];
+  // 辅助函数：根据物料生成标准 FormFieldSchema
+  const createFieldFromPaletteItem = (item: PaletteItem): FormFieldSchema => {
     const timestamp = Date.now().toString().slice(-4);
-    const newField: FormFieldSchema = {
+    const baseField: FormFieldSchema = {
       name: `${item.type}_${timestamp}`,
       type: item.type,
       label: `${item.label} ${timestamp}`,
@@ -58,18 +56,73 @@ export function FormDesignerTab() {
     };
 
     if (item.type === "pill-select" || item.type === "select") {
-      newField.options = [
+      baseField.options = [
         { label: "选项 A", value: "opt_a" },
-        { label: "选项 B", value: "opt_b" }
+        { label: "选项 B", value: "opt_b" },
+        { label: "选项 C", value: "opt_c" }
       ];
-      newField.defaultValue = "opt_a";
+      baseField.defaultValue = "opt_a";
+      if (item.type === "pill-select") baseField.align = "justify";
+    } else if (item.type === "checkbox-group") {
+      baseField.options = [
+        { label: "自动备份", value: "auto_backup" },
+        { label: "高可用容灾", value: "ha_cluster" },
+        { label: "告警推送", value: "alert_push" }
+      ];
+      baseField.defaultValue = ["auto_backup", "alert_push"];
+    } else if (item.type === "radio-group") {
+      baseField.options = [
+        { label: "标准生产模式", value: "standard", description: "推荐普通业务及边缘节点使用" },
+        { label: "高性能加速模式", value: "performance", description: "开启内核级并发加速与持久缓存" }
+      ];
+      baseField.defaultValue = "standard";
     } else if (item.type === "number") {
-      newField.defaultValue = 100;
-      newField.unit = "";
+      baseField.defaultValue = 100;
+      baseField.unit = "";
     } else if (item.type === "slider") {
-      newField.defaultValue = 50;
-      newField.unit = "%";
+      baseField.defaultValue = 50;
+      baseField.unit = "%";
+    } else if (item.type === "date") {
+      baseField.defaultValue = "2026-08-28";
+    } else if (item.type === "time") {
+      baseField.defaultValue = "14:30";
+    } else if (item.type === "datetime") {
+      baseField.defaultValue = "2026-08-28T14:30";
+    } else if (item.type === "color") {
+      baseField.defaultValue = "#3b82f6";
+    } else if (item.type === "rate") {
+      baseField.defaultValue = 4;
+      baseField.maxRate = 5;
+    } else if (item.type === "code") {
+      baseField.language = "yaml";
+      baseField.rows = 5;
+      baseField.defaultValue = "# 集群初始化脚本配置\nnode:\n  id: worker-01\n  region: ap-east-1\n  replicas: 3";
+    } else if (item.type === "alert") {
+      baseField.alertType = "info";
+      baseField.label = "环境安全注意事项";
+      baseField.description = "在下发生产环境配置前，请确保网络防火墙与安全组已按规范正确开放。";
+    } else if (item.type === "divider") {
+      baseField.label = "扩展高级配置";
+    } else if (item.type === "key-value") {
+      baseField.defaultValue = [
+        { key: "X-Trace-Id", value: "trace_alpha_01" },
+        { key: "X-Node-Env", value: "production" }
+      ];
+    } else if (item.type === "tags") {
+      baseField.defaultValue = ["production", "v2-core"];
     }
+
+    return baseField;
+  };
+
+  // ─── 1. 添加控件到当前分块 ───
+  const handleAddField = (item: PaletteItem) => {
+    if (sections.length === 0) {
+      handleAddSection();
+    }
+
+    const targetSection = selectedSection || sections[0];
+    const newField = createFieldFromPaletteItem(item);
 
     const updatedSections = sections.map((sec) => {
       if (sec.id === targetSection.id) {
@@ -188,7 +241,6 @@ export function FormDesignerTab() {
   ) => {
     let movedField: FormFieldSchema | null = null;
 
-    // 先找到并取出该字段
     const nextSections = sections.map((sec) => {
       if (sec.id === sourceSectionId) {
         const fields = [...sec.fields];
@@ -200,7 +252,6 @@ export function FormDesignerTab() {
 
     if (!movedField) return;
 
-    // 插入到目标位置
     const finalSections = nextSections.map((sec) => {
       if (sec.id === targetSectionId) {
         const fields = [...sec.fields];
@@ -218,30 +269,7 @@ export function FormDesignerTab() {
 
   // ─── 10. 从物料库直接拖拽创建新字段 ───
   const handleDropNewField = (item: PaletteItem, targetSectionId: string, targetIndex?: number) => {
-    const timestamp = Date.now().toString().slice(-4);
-    const newField: FormFieldSchema = {
-      name: `${item.type}_${timestamp}`,
-      type: item.type,
-      label: `${item.label} ${timestamp}`,
-      description: item.description,
-      colSpan: item.defaultColSpan,
-      placeholder: `请输入${item.label}...`,
-      validation: { required: false }
-    };
-
-    if (item.type === "pill-select" || item.type === "select") {
-      newField.options = [
-        { label: "选项 A", value: "opt_a" },
-        { label: "选项 B", value: "opt_b" }
-      ];
-      newField.defaultValue = "opt_a";
-    } else if (item.type === "number") {
-      newField.defaultValue = 100;
-      newField.unit = "";
-    } else if (item.type === "slider") {
-      newField.defaultValue = 50;
-      newField.unit = "%";
-    }
+    const newField = createFieldFromPaletteItem(item);
 
     const finalSections = sections.map((sec) => {
       if (sec.id === targetSectionId) {
@@ -258,8 +286,17 @@ export function FormDesignerTab() {
     toast.success(`已放置控件「${item.label}」`);
   };
 
+  // 组装完整的 FormSchemaDefinition 对象
+  const fullFormDefinition: FormSchemaDefinition = {
+    id: formMeta.id || "form_schema",
+    name: formMeta.name || "未命名表单",
+    version: formMeta.version || "1.0.0",
+    description: formMeta.description,
+    sections
+  };
+
   return (
-    <div className="flex flex-col h-[calc(100vh-140px)] min-h-[640px] rounded-2xl border border-border/80 bg-background overflow-hidden shadow-md">
+    <div className="relative flex flex-col h-[calc(100vh-140px)] min-h-[640px] rounded-2xl border border-border/80 bg-background overflow-hidden shadow-md">
       {/* 顶部工具栏 */}
       <div className="flex flex-wrap items-center justify-between gap-3 px-4 py-3 border-b border-border/80 bg-card/60 backdrop-blur-md shrink-0">
         <div className="flex items-center gap-3">
@@ -269,50 +306,32 @@ export function FormDesignerTab() {
           <div>
             <div className="flex items-center gap-2">
               <span className="text-sm font-bold text-foreground">可视化 Schema 表单设计器</span>
+              <Badge variant="primary" className="text-[10px] px-1.5 py-0 h-4 font-mono">
+                ID: {formMeta.id || "未设置"}
+              </Badge>
               <Badge variant="success" className="text-[10px] px-1.5 py-0 h-4 font-mono">
                 Low-Code Studio
               </Badge>
             </div>
             <p className="text-[11px] text-muted-foreground">
-              拖拽/点击物料自动生成 Schema，支持双向代码导出与真实表单还原
+              拖拽/点击物料自动生成 Schema，支持带全局 ID 的规范定义导出与运行预览
             </p>
           </div>
         </div>
 
-        {/* 右侧模式切换与操作按钮组 */}
+        {/* 右侧操作按钮组 */}
         <div className="flex items-center gap-2">
-          {/* 模式切换 Tabs */}
-          <div className="flex items-center gap-1 bg-muted/60 p-0.5 rounded-xl border border-border/80 font-mono text-xs">
-            <button
-              type="button"
-              onClick={() => setViewMode("design")}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg transition-all cursor-pointer ${
-                viewMode === "design"
-                  ? "bg-background text-foreground font-bold shadow-xs"
-                  : "text-muted-foreground hover:text-foreground"
-              }`}
-            >
-              <Edit3 className="size-3.5" />
-              <span>设计画布</span>
-            </button>
-            <button
-              type="button"
-              onClick={() => {
-                setViewMode("preview");
-                setPreviewResult(null);
-              }}
-              className={`flex items-center gap-1.5 px-3 py-1.5 rounded-lg transition-all cursor-pointer ${
-                viewMode === "preview"
-                  ? "bg-primary text-primary-foreground font-bold shadow-xs"
-                  : "text-muted-foreground hover:text-foreground"
-              }`}
-            >
-              <Eye className="size-3.5" />
-              <span>实时运行预览</span>
-            </button>
-          </div>
+          {/* 实时预览按钮 */}
+          <Button
+            size="sm"
+            onClick={() => setPreviewOpen(true)}
+            className="h-8 text-xs font-bold font-mono px-3.5 shadow-sm cursor-pointer"
+          >
+            <Eye className="size-3.5 mr-1.5" />
+            实时运行预览
+          </Button>
 
-          <div className="h-4 w-px bg-border/80 mx-1" />
+          <div className="h-4 w-px bg-border/80 mx-0.5" />
 
           {/* 导入 Schema */}
           <Button
@@ -320,7 +339,7 @@ export function FormDesignerTab() {
             variant="outline"
             onClick={() => setModalMode("import")}
             className="h-8 text-xs cursor-pointer font-mono shadow-2xs"
-            title="导入已有的 JSON Schema 还原表单"
+            title="导入包含 id、name 与 sections 的标准 JSON Schema"
           >
             <Upload className="size-3.5 mr-1 text-primary" />
             导入 Schema
@@ -332,10 +351,33 @@ export function FormDesignerTab() {
             variant="outline"
             onClick={() => setModalMode("export")}
             className="h-8 text-xs cursor-pointer font-mono shadow-2xs"
-            title="导出当前表单的 JSON/TS Schema 代码"
+            title="导出当前表单的完整 FormSchemaDefinition JSON 代码"
           >
             <Code2 className="size-3.5 mr-1 text-emerald-400" />
             导出代码
+          </Button>
+
+          {/* 一键清空画布 */}
+          <Button
+            size="sm"
+            variant="ghost"
+            onClick={() => {
+              if (sections.length === 0) {
+                toast.info("画布当前已经是清空状态");
+                return;
+              }
+              if (window.confirm("确定要全部清空当前画布中的所有分块与控件吗？")) {
+                setSections([]);
+                setSelectedField(null);
+                setSelectedSection(null);
+                toast.success("画布已全部清空，您可以重新设计或添加新分块");
+              }
+            }}
+            className="h-8 text-xs cursor-pointer text-muted-foreground hover:text-rose-400 hover:bg-rose-500/10 font-mono transition-colors"
+            title="一键全部删除/清空所有分块与控件"
+          >
+            <Trash2 className="size-3.5 mr-1 text-rose-400" />
+            清空画布
           </Button>
 
           {/* 重置为预设 */}
@@ -343,109 +385,82 @@ export function FormDesignerTab() {
             size="sm"
             variant="ghost"
             onClick={() => {
+              setFormMeta({
+                id: DEFAULT_FORM_DEFINITION.id,
+                name: DEFAULT_FORM_DEFINITION.name,
+                version: DEFAULT_FORM_DEFINITION.version || "1.0.0",
+                description: DEFAULT_FORM_DEFINITION.description || ""
+              });
               setSections(DEFAULT_DESIGNER_SECTIONS);
-              setSelectedSection(DEFAULT_DESIGNER_SECTIONS[0]);
+              setSelectedSection(null);
               setSelectedField(null);
-              toast.success("已恢复默认模板 Schema");
+              toast.success("已恢复官方预设模板");
             }}
-            className="h-8 text-xs cursor-pointer text-muted-foreground hover:text-foreground"
+            className="h-8 text-xs cursor-pointer text-muted-foreground hover:text-foreground font-mono"
             title="重置为官方预设模板"
           >
-            <RotateCcw className="size-3.5" />
+            <RotateCcw className="size-3.5 mr-1" />
+            预设模板
           </Button>
         </div>
       </div>
 
-      {/* 主体区域 */}
-      {viewMode === "design" ? (
-        <div className="flex-1 flex min-h-0 overflow-hidden">
-          {/* 左侧：物料库 */}
-          <DesignerPalette onAddField={handleAddField} onAddSection={handleAddSection} />
+      {/* 主体三栏工作区 */}
+      <div className="flex-1 flex min-h-0 overflow-hidden relative">
+        {/* 左侧：物料库 */}
+        <DesignerPalette onAddField={handleAddField} onAddSection={handleAddSection} />
 
-          {/* 中间：画布 */}
-          <DesignerCanvas
-            sections={sections}
-            selectedField={selectedField}
-            selectedSection={selectedSection}
-            activeSectionId={selectedSection?.id || null}
-            onSelectField={(f, s) => {
-              setSelectedField(f);
-              setSelectedSection(s);
-            }}
-            onSelectSection={(s) => {
-              setSelectedSection(s);
-              setSelectedField(null);
-            }}
-            onMoveField={handleMoveField}
-            onDuplicateField={handleDuplicateField}
-            onDeleteField={handleDeleteField}
-            onDropFieldReorder={handleDropFieldReorder}
-            onDropNewField={handleDropNewField}
-            onAddSection={handleAddSection}
-          />
+        {/* 中间：画布 */}
+        <DesignerCanvas
+          sections={sections}
+          selectedField={selectedField}
+          selectedSection={selectedSection}
+          formMeta={formMeta}
+          activeSectionId={selectedSection?.id || null}
+          onSelectField={(f, s) => {
+            setSelectedField(f);
+            setSelectedSection(s);
+          }}
+          onSelectSection={(s) => {
+            setSelectedSection(s);
+            setSelectedField(null);
+          }}
+          onSelectGlobal={() => {
+            setSelectedField(null);
+            setSelectedSection(null);
+          }}
+          onMoveField={handleMoveField}
+          onDuplicateField={handleDuplicateField}
+          onDeleteField={handleDeleteField}
+          onDropFieldReorder={handleDropFieldReorder}
+          onDropNewField={handleDropNewField}
+          onAddSection={handleAddSection}
+        />
 
-          {/* 右侧：属性面板 */}
-          <DesignerInspector
-            selectedField={selectedField}
-            selectedSection={selectedSection}
-            onUpdateField={handleUpdateField}
-            onUpdateSection={handleUpdateSection}
-            onDeleteField={handleDeleteField}
-            onDeleteSection={handleDeleteSection}
-          />
-        </div>
-      ) : (
-        /* ─── 实时预览模式 (Live Preview) ─── */
-        <div className="flex-1 overflow-y-auto p-6 sm:p-8 bg-muted/10">
-          <div className="max-w-4xl mx-auto space-y-6">
-            <div className="p-4 rounded-2xl border border-primary/30 bg-primary/5 flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <div className="size-9 rounded-xl bg-primary/20 flex items-center justify-center text-primary">
-                  <Eye className="size-5" />
-                </div>
-                <div>
-                  <h4 className="text-xs font-bold text-foreground">真实运行预览中 (Live Form Preview)</h4>
-                  <p className="text-[11px] text-muted-foreground">
-                    当前表单直接由 <code>&lt;SchemaForm sections=&#123;schema&#125; /&gt;</code> 渲染，所有交互、校验与联动逻辑已完全生效。
-                  </p>
-                </div>
-              </div>
-              <Button
-                size="sm"
-                variant="outline"
-                onClick={() => setViewMode("design")}
-                className="h-8 text-xs cursor-pointer font-mono"
-              >
-                返回画布编辑
-              </Button>
-            </div>
+        {/* 右侧：属性面板 */}
+        <DesignerInspector
+          selectedField={selectedField}
+          selectedSection={selectedSection}
+          formMeta={formMeta}
+          onUpdateFormMeta={setFormMeta}
+          onUpdateField={handleUpdateField}
+          onUpdateSection={handleUpdateSection}
+          onDeleteField={handleDeleteField}
+          onDeleteSection={handleDeleteSection}
+        />
 
-            {/* 真实 SchemaForm 渲染 */}
-            <SchemaForm
-              sections={sections}
-              onSubmit={async (values) => {
-                setPreviewResult(values);
-                toast.success("表单数据校验通过并成功提交！");
-              }}
-              submitText="提交测试数据"
-              resetText="清空表单"
-            />
-
-            {/* 提交后输出 JSON */}
-            {previewResult && (
-              <div className="rounded-2xl border border-emerald-500/30 bg-card p-4 space-y-2 animate-in fade-in zoom-in-95">
-                <div className="text-xs font-bold text-emerald-400 flex items-center gap-2 font-mono">
-                  <CheckCircle2 className="size-4" />
-                  <span>表单提交成功 · 输出 JSON 结构数据：</span>
-                </div>
-                <pre className="p-3.5 rounded-xl bg-muted/60 text-xs font-mono text-muted-foreground overflow-x-auto leading-relaxed">
-                  {JSON.stringify(previewResult, null, 2)}
-                </pre>
-              </div>
-            )}
-          </div>
-        </div>
-      )}
+        {/* 🌟 画布内右下角高颜值悬浮 FAB 预览按钮 */}
+        <button
+          type="button"
+          onClick={() => setPreviewOpen(true)}
+          className="absolute bottom-6 right-84 z-20 flex items-center gap-2 px-4 py-2 rounded-full bg-primary text-primary-foreground font-bold text-xs shadow-xl hover:shadow-2xl hover:scale-105 active:scale-95 transition-all cursor-pointer border border-primary/30 backdrop-blur-md select-none group"
+          title="点击打开实时表单测试弹窗"
+        >
+          <div className="size-2 rounded-full bg-emerald-400 animate-ping" />
+          <Eye className="size-4 group-hover:rotate-6 transition-transform" />
+          <span>实时运行预览</span>
+        </button>
+      </div>
 
       {/* 导入与导出模态框 */}
       {modalMode && (
@@ -453,14 +468,28 @@ export function FormDesignerTab() {
           open={Boolean(modalMode)}
           onOpenChange={(o) => !o && setModalMode(null)}
           mode={modalMode}
-          sections={sections}
-          onImport={(importedSections) => {
-            setSections(importedSections);
-            setSelectedSection(importedSections[0] || null);
+          formDefinition={fullFormDefinition}
+          onImport={(importedDefinition) => {
+            setFormMeta({
+              id: importedDefinition.id,
+              name: importedDefinition.name,
+              version: importedDefinition.version || "1.0.0",
+              description: importedDefinition.description || ""
+            });
+            setSections(importedDefinition.sections);
+            setSelectedSection(null);
             setSelectedField(null);
           }}
         />
       )}
+
+      {/* 🌟 实时表单运行预览弹窗 */}
+      <FormPreviewModal
+        open={previewOpen}
+        onOpenChange={setPreviewOpen}
+        sections={sections}
+        formMeta={formMeta}
+      />
     </div>
   );
 }

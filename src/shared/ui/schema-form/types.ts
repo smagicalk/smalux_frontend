@@ -15,9 +15,19 @@ export type FormFieldType =
   | "select"
   | "pill-select"
   | "multi-select"
+  | "checkbox-group"
+  | "radio-group"
+  | "date"
+  | "time"
+  | "datetime"
+  | "color"
+  | "rate"
   | "slider"
   | "key-value"
   | "tags"
+  | "code"
+  | "divider"
+  | "alert"
   | "custom";
 
 /**
@@ -93,6 +103,10 @@ export interface FormFieldSchema<FormData = Record<string, any>> {
   size?: "sm" | "md" | "lg";
   /** 高度网格单位 (1x: 单行高度, 2x: 双倍高度, 3x: 三倍高度...) */
   heightUnit?: number;
+  /** 选项列表（适用于 select, pill-select, multi-select） */
+  options?: SelectOption[];
+  /** 对齐方式（适用于 pill-select 等，支持 left 靠左 | center 居中 | right 靠右 | justify 等宽分布） */
+  align?: "left" | "center" | "right" | "justify";
   /** 自定义像素高度 (如 '80px', '120px') */
   customHeight?: string;
   /** 多行文本行数（适用于 textarea） */
@@ -102,6 +116,12 @@ export interface FormFieldSchema<FormData = Record<string, any>> {
     text: string;
     variant?: "primary" | "success" | "warning" | "danger" | "neutral" | "outline";
   };
+  /** 代码编辑器语言（如 json, yaml, bash, javascript） */
+  language?: string;
+  /** 警告提示条变体类型（适用于 alert） */
+  alertType?: "info" | "success" | "warning" | "danger";
+  /** 最大评星/等级数（适用于 rate，默认 5） */
+  maxRate?: number;
   /** 字段校验规则 */
   validation?: FieldValidationRule<any, FormData>;
   /** 自定义渲染插槽（当 type: "custom" 时生效） */
@@ -170,3 +190,33 @@ export interface SchemaFormProps<FormData extends Record<string, any> = Record<s
   /** 紧凑模式（更小的间距） */
   compact?: boolean;
 }
+
+/**
+ * 完整表单 Schema 规范定义 (带全局唯一 ID 与名称)
+ */
+export interface FormSchemaDefinition<FormData = Record<string, any>> {
+  /** 表单全局唯一标识 (必填，用于 API 提交、持久化与索引，如 "server_baseline_config") */
+  id: string;
+  /** 表单展示名称 (必填，如 "服务器基线安全加固配置") */
+  name: string;
+  /** 表单版本号 (如 "1.0.0") */
+  version?: string;
+  /** 表单用途说明 */
+  description?: string;
+  /** 分块列表 */
+  sections: FormSectionSchema<FormData>[];
+}
+
+/**
+ * 表单提交的标准输出结构 (包含元数据与表单键值)
+ */
+export interface FormSubmissionPayload<FormData = Record<string, any>> {
+  _meta: {
+    formId: string;
+    formName: string;
+    version?: string;
+    submittedAt: string;
+  };
+  values: FormData;
+}
+

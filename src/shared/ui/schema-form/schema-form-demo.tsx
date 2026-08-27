@@ -172,8 +172,8 @@ export const DEMO_FORM_SCHEMA: FormSectionSchema[] = [
         label: "全局请求头注入 (Custom HTTP Headers)",
         description: "发往后端微服务时统一附带的自定义安全或追踪头",
         defaultValue: [
-          { id: "h1", key: "X-Smalux-Cluster", value: "cluster-alpha-01" },
-          { id: "h2", key: "X-Trace-Sampled", value: "true" }
+          { key: "X-Smalux-Cluster", value: "cluster-alpha-01" },
+          { key: "X-Trace-Sampled", value: "true" }
         ],
         colSpan: 12
       }

@@ -1,5 +1,5 @@
 import { Server, Sliders, Shield } from "lucide-react";
-import type { FormSectionSchema } from "@/shared/ui/schema-form";
+import type { FormSectionSchema, FormSchemaDefinition } from "@/shared/ui/schema-form";
 
 export const DEFAULT_DESIGNER_SECTIONS: FormSectionSchema[] = [
   {
@@ -30,6 +30,7 @@ export const DEFAULT_DESIGNER_SECTIONS: FormSectionSchema[] = [
         description: "选择部署环境阶段",
         colSpan: 6,
         defaultValue: "production",
+        align: "justify",
         options: [
           { label: "开发环境", value: "development" },
           { label: "预发测试", value: "staging" },
@@ -133,8 +134,8 @@ export const DEFAULT_DESIGNER_SECTIONS: FormSectionSchema[] = [
         label: "自定义 HTTP 请求头",
         description: "自动附带在请求中的键值对",
         defaultValue: [
-          { id: "kv-1", key: "X-Smalux-Cluster", value: "cluster-alpha-01" },
-          { id: "kv-2", key: "X-Trace-Sampled", value: "true" }
+          { key: "X-Smalux-Cluster", value: "cluster-alpha-01" },
+          { key: "X-Trace-Sampled", value: "true" }
         ],
         colSpan: 12
       },
@@ -149,3 +150,11 @@ export const DEFAULT_DESIGNER_SECTIONS: FormSectionSchema[] = [
     ]
   }
 ];
+
+export const DEFAULT_FORM_DEFINITION: FormSchemaDefinition = {
+  id: "edge_service_config",
+  name: "边缘节点核心服务与安全基线配置",
+  version: "1.0.0",
+  description: "用于向集群管理节点下发统一的应用运行参数、安全防护策略与扩展头配置",
+  sections: DEFAULT_DESIGNER_SECTIONS
+};

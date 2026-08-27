@@ -10,6 +10,14 @@ import { SelectControl } from "./controls/select-control";
 import { SliderControl } from "./controls/slider-control";
 import { KeyValueControl } from "./controls/key-value-control";
 import { TagsControl } from "./controls/tags-control";
+import { DateTimeControl } from "./controls/date-time-control";
+import { ColorControl } from "./controls/color-control";
+import { RateControl } from "./controls/rate-control";
+import { CheckboxGroupControl } from "./controls/checkbox-group-control";
+import { RadioGroupControl } from "./controls/radio-group-control";
+import { CodeControl } from "./controls/code-control";
+import { AlertNoticeControl } from "./controls/alert-notice-control";
+import { DividerControl } from "./controls/divider-control";
 
 export interface FormFieldRendererProps {
   field: FormFieldSchema;
@@ -53,7 +61,25 @@ export function FormFieldRenderer({
   const isRequired = Boolean(field.validation?.required);
   const colSpanClass = COL_SPAN_MAP[field.colSpan || 12] || "col-span-12";
 
-  // 开关控件自带内置 Label，使用自包含渲染
+  // 1. 分割线控件 (无需外部 label)
+  if (field.type === "divider") {
+    return (
+      <div className={cn(colSpanClass, "my-1")}>
+        <DividerControl field={field} />
+      </div>
+    );
+  }
+
+  // 2. 提示警告条控件 (无需外部 label)
+  if (field.type === "alert") {
+    return (
+      <div className={cn(colSpanClass, "my-1")}>
+        <AlertNoticeControl field={field} />
+      </div>
+    );
+  }
+
+  // 3. 开关控件自带内置 Label，使用自包含渲染
   if (field.type === "switch") {
     return (
       <div className={cn(colSpanClass, "space-y-1")}>
@@ -95,6 +121,18 @@ export function FormFieldRenderer({
           <TextControl field={field} value={value} onChange={onChange} disabled={isDisabled} hasError={Boolean(error)} />
         ) : field.type === "number" ? (
           <NumberControl field={field} value={value} onChange={onChange} disabled={isDisabled} hasError={Boolean(error)} />
+        ) : field.type === "date" || field.type === "time" || field.type === "datetime" ? (
+          <DateTimeControl field={field} value={value} onChange={onChange} disabled={isDisabled} />
+        ) : field.type === "color" ? (
+          <ColorControl field={field} value={value} onChange={onChange} disabled={isDisabled} />
+        ) : field.type === "rate" ? (
+          <RateControl field={field} value={value} onChange={onChange} disabled={isDisabled} />
+        ) : field.type === "checkbox-group" ? (
+          <CheckboxGroupControl field={field} value={value} onChange={onChange} disabled={isDisabled} />
+        ) : field.type === "radio-group" ? (
+          <RadioGroupControl field={field} value={value} onChange={onChange} disabled={isDisabled} />
+        ) : field.type === "code" ? (
+          <CodeControl field={field} value={value} onChange={onChange} disabled={isDisabled} />
         ) : field.type === "pill-select" ? (
           <PillSelectControl field={field} value={value} onChange={onChange} disabled={isDisabled} />
         ) : field.type === "select" ? (
@@ -118,8 +156,8 @@ export function FormFieldRenderer({
         )}
       </div>
 
-      {/* 辅助副文案（如果不是通过 tooltip 展示，则下方小字补充） */}
-      {field.description && field.type !== "slider" && (
+      {/* 辅助副文案 */}
+      {field.description && field.type !== "slider" && field.type !== "code" && (
         <p className="text-[11px] text-muted-foreground leading-tight">
           {field.description}
         </p>

@@ -10,6 +10,15 @@ import {
   Tag,
   List,
   Layers,
+  Calendar,
+  Clock,
+  Palette,
+  Star,
+  CheckSquare,
+  Radio,
+  Code2,
+  AlertTriangle,
+  Minus,
   FolderPlus,
   Plus
 } from "lucide-react";
@@ -20,7 +29,7 @@ export interface PaletteItem {
   label: string;
   description: string;
   icon: React.ComponentType<{ className?: string }>;
-  defaultColSpan: 12 | 6 | 4;
+  defaultColSpan: 12 | 6 | 4 | 3;
 }
 
 const PALETTE_CATEGORIES: {
@@ -28,35 +37,50 @@ const PALETTE_CATEGORIES: {
   items: PaletteItem[];
 }[] = [
   {
-    category: "文本与输入",
+    category: "文本与输入 (Text & Inputs)",
     items: [
       { type: "text", label: "单行文本", description: "普通字符串输入", icon: Type, defaultColSpan: 6 },
-      { type: "password", label: "密码输入", description: "支持一键明文切换", icon: KeyRound, defaultColSpan: 6 },
+      { type: "password", label: "密码私钥", description: "带明密文切换", icon: KeyRound, defaultColSpan: 6 },
       { type: "textarea", label: "多行文本", description: "长文本与说明输入", icon: AlignLeft, defaultColSpan: 12 },
-      { type: "email", label: "电子邮箱", description: "自动格式校验", icon: Mail, defaultColSpan: 6 },
-      { type: "url", label: "网址链接", description: "HTTP(S) 端点地址", icon: Link, defaultColSpan: 6 }
+      { type: "email", label: "电子邮箱", description: "邮箱格式校验", icon: Mail, defaultColSpan: 6 },
+      { type: "url", label: "网址链接", description: "HTTP(S) 端点地址", icon: Link, defaultColSpan: 6 },
+      { type: "number", label: "数字步进器", description: "带单位与加减按钮", icon: Hash, defaultColSpan: 6 }
     ]
   },
   {
-    category: "数值与度量",
+    category: "开关与选择 (Selection)",
     items: [
-      { type: "number", label: "数字步进器", description: "带加减按钮与单位后缀", icon: Hash, defaultColSpan: 6 },
-      { type: "slider", label: "范围滑块", description: "百分比与数值连续拖动", icon: SlidersHorizontal, defaultColSpan: 12 }
+      { type: "switch", label: "状态开关", description: "现代化布尔 Switch", icon: ToggleLeft, defaultColSpan: 12 },
+      { type: "pill-select", label: "药丸标签", description: "高颜值分段标签单选", icon: Layers, defaultColSpan: 6 },
+      { type: "select", label: "下拉菜单", description: "标准下拉菜单选择", icon: List, defaultColSpan: 6 },
+      { type: "checkbox-group", label: "复选框组", description: "网格多项勾选", icon: CheckSquare, defaultColSpan: 12 },
+      { type: "radio-group", label: "卡片单选", description: "卡片式图文单选", icon: Radio, defaultColSpan: 12 },
+      { type: "tags", label: "标签多选", description: "回车快速添加 Tag", icon: Tag, defaultColSpan: 12 }
     ]
   },
   {
-    category: "开关与选择",
+    category: "时间与日期 (Date & Time)",
     items: [
-      { type: "switch", label: "开关切换", description: "现代化布尔 Switch", icon: ToggleLeft, defaultColSpan: 12 },
-      { type: "pill-select", label: "药丸标签单选", description: "高颜值分段标签选择", icon: Layers, defaultColSpan: 6 },
-      { type: "select", label: "下拉单选", description: "标准下拉菜单选择", icon: List, defaultColSpan: 6 },
-      { type: "tags", label: "标签多选", description: "回车快速添加多个 Tag", icon: Tag, defaultColSpan: 12 }
+      { type: "date", label: "日期选择", description: "年月日快速挑选", icon: Calendar, defaultColSpan: 6 },
+      { type: "time", label: "时间选择", description: "时分秒精准设定", icon: Clock, defaultColSpan: 6 },
+      { type: "datetime", label: "日期时间", description: "完整时间戳输入", icon: Calendar, defaultColSpan: 12 }
     ]
   },
   {
-    category: "复杂数据与键值",
+    category: "度量与视觉 (Metrics & Colors)",
     items: [
-      { type: "key-value", label: "键值对列表", description: "请求头/环境变量增删改", icon: List, defaultColSpan: 12 }
+      { type: "slider", label: "范围滑块", description: "百分比与数值连续拖动", icon: SlidersHorizontal, defaultColSpan: 12 },
+      { type: "rate", label: "星级评分", description: "优先级与评星等级", icon: Star, defaultColSpan: 6 },
+      { type: "color", label: "颜色拾取", description: "色板与 HEX 色彩选择", icon: Palette, defaultColSpan: 6 }
+    ]
+  },
+  {
+    category: "结构化与排版 (Structures & Layout)",
+    items: [
+      { type: "key-value", label: "键值对列表", description: "请求头/环境变量增删", icon: List, defaultColSpan: 12 },
+      { type: "code", label: "代码脚本", description: "YAML/JSON/Shell 脚本", icon: Code2, defaultColSpan: 12 },
+      { type: "alert", label: "提示警告条", description: "静态说明与警示指引", icon: AlertTriangle, defaultColSpan: 12 },
+      { type: "divider", label: "分割线", description: "分界线与分段标题", icon: Minus, defaultColSpan: 12 }
     ]
   }
 ];
@@ -68,12 +92,12 @@ export interface DesignerPaletteProps {
 
 export function DesignerPalette({ onAddField, onAddSection }: DesignerPaletteProps) {
   return (
-    <div className="w-64 shrink-0 flex flex-col border-r border-border/80 bg-card/40 backdrop-blur-md">
+    <div className="w-68 shrink-0 flex flex-col border-r border-border/80 bg-card/40 backdrop-blur-md">
       {/* 顶部标题栏 */}
       <div className="p-3.5 border-b border-border/60 flex items-center justify-between">
         <div className="flex items-center gap-2">
           <Layers className="size-4 text-primary" />
-          <span className="text-xs font-bold text-foreground">控件物料库</span>
+          <span className="text-xs font-bold text-foreground">控件物料库 (18+)</span>
         </div>
         <button
           type="button"

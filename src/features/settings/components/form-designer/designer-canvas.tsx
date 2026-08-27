@@ -10,7 +10,20 @@ import {
   GripVertical,
   Minus,
   Plus,
-  KeyRound
+  KeyRound,
+  Sparkles,
+  Calendar,
+  Clock,
+  Palette,
+  Star,
+  Check,
+  Disc,
+  Circle,
+  Terminal,
+  Info,
+  CheckCircle2,
+  AlertTriangle,
+  AlertCircle
 } from "lucide-react";
 import { Badge } from "@/shared/ui/badge";
 import { Switch } from "@/shared/ui/switch";
@@ -22,9 +35,16 @@ export interface DesignerCanvasProps {
   sections: FormSectionSchema[];
   selectedField: FormFieldSchema | null;
   selectedSection: FormSectionSchema | null;
+  formMeta: {
+    id: string;
+    name: string;
+    version?: string;
+    description?: string;
+  };
   activeSectionId: string | null;
   onSelectField: (field: FormFieldSchema, section: FormSectionSchema) => void;
   onSelectSection: (section: FormSectionSchema) => void;
+  onSelectGlobal: () => void;
   onMoveField: (sectionId: string, fieldIndex: number, direction: "up" | "down") => void;
   onDuplicateField: (sectionId: string, fieldIndex: number) => void;
   onDeleteField: (fieldName: string) => void;
@@ -71,6 +91,38 @@ function CanvasFieldVisualPreview({ field }: { field: FormFieldSchema }) {
   const computedHeight = getFieldVisualHeight(field);
   const heightClass = size === "sm" ? "h-7 text-[10px]" : size === "lg" ? "h-10 text-xs" : "h-8 text-xs";
 
+  if (field.type === "divider") {
+    return (
+      <div className="flex items-center py-1 select-none">
+        <div className="flex-grow border-t border-border/80" />
+        <span className="mx-2 text-[10px] font-mono text-muted-foreground uppercase">{field.label || "分割线"}</span>
+        <div className="flex-grow border-t border-border/80" />
+      </div>
+    );
+  }
+
+  if (field.type === "alert") {
+    const alertType = field.alertType || "info";
+    const bgClass =
+      alertType === "success"
+        ? "bg-emerald-500/10 border-emerald-500/30 text-emerald-400"
+        : alertType === "warning"
+        ? "bg-amber-500/10 border-amber-500/30 text-amber-400"
+        : alertType === "danger"
+        ? "bg-rose-500/10 border-rose-500/30 text-rose-400"
+        : "bg-sky-500/10 border-sky-500/30 text-sky-400";
+
+    return (
+      <div className={cn("flex items-center gap-2 p-2 rounded-lg border text-xs", bgClass)}>
+        <AlertTriangle className="size-3.5 shrink-0" />
+        <div className="min-w-0">
+          <div className="font-semibold truncate">{field.label}</div>
+          <div className="text-[10px] opacity-80 truncate">{field.description || "提示说明文字内容..."}</div>
+        </div>
+      </div>
+    );
+  }
+
   if (field.type === "switch") {
     return (
       <div
@@ -90,11 +142,22 @@ function CanvasFieldVisualPreview({ field }: { field: FormFieldSchema }) {
 
   if (field.type === "pill-select") {
     const options = field.options || [{ label: "选项 1", value: "1" }, { label: "选项 2", value: "2" }];
+    const align = field.align || "left";
+    const alignClass =
+      align === "center"
+        ? "justify-center"
+        : align === "right"
+        ? "justify-end"
+        : align === "justify"
+        ? "justify-between [&>span]:flex-1 [&>span]:text-center"
+        : "justify-start";
+
     return (
       <div
         style={computedHeight ? { height: computedHeight } : undefined}
         className={cn(
           "flex flex-wrap items-center gap-1 p-1 rounded-lg bg-muted/30 border border-border/60",
+          alignClass,
           !computedHeight && "min-h-8"
         )}
       >
@@ -112,6 +175,86 @@ function CanvasFieldVisualPreview({ field }: { field: FormFieldSchema }) {
         {options.length > 3 && (
           <span className="text-[10px] text-muted-foreground/60 self-center">+{options.length - 3}</span>
         )}
+      </div>
+    );
+  }
+
+  if (field.type === "checkbox-group") {
+    const options = field.options || [{ label: "勾选项 1", value: "1" }, { label: "勾选项 2", value: "2" }];
+    return (
+      <div className="grid grid-cols-2 gap-1.5 p-1.5 rounded-lg border border-border/60 bg-muted/20">
+        {options.slice(0, 4).map((opt, i) => (
+          <div key={i} className="flex items-center gap-1.5 p-1 rounded bg-background/50 text-[10px] text-muted-foreground border border-border/40">
+            <div className={cn("size-3 rounded border flex items-center justify-center", i === 0 ? "bg-primary border-primary text-primary-foreground" : "border-border")}>
+              {i === 0 && <Check className="size-2 stroke-[3]" />}
+            </div>
+            <span className="truncate">{opt.label}</span>
+          </div>
+        ))}
+      </div>
+    );
+  }
+
+  if (field.type === "radio-group") {
+    const options = field.options || [{ label: "单选项 A", value: "a" }, { label: "单选项 B", value: "b" }];
+    return (
+      <div className="grid grid-cols-2 gap-1.5 p-1.5 rounded-lg border border-border/60 bg-muted/20">
+        {options.slice(0, 2).map((opt, i) => (
+          <div key={i} className={cn("flex items-center gap-1.5 p-1.5 rounded-lg border text-[10px]", i === 0 ? "bg-primary/10 border-primary/40 text-foreground font-semibold" : "bg-background/40 border-border/40 text-muted-foreground")}>
+            {i === 0 ? <Disc className="size-3 text-primary" /> : <Circle className="size-3 text-muted-foreground/40" />}
+            <span className="truncate">{opt.label}</span>
+          </div>
+        ))}
+      </div>
+    );
+  }
+
+  if (field.type === "date" || field.type === "time" || field.type === "datetime") {
+    return (
+      <div
+        style={computedHeight ? { height: computedHeight } : undefined}
+        className={cn(
+          "rounded-lg border border-border/60 bg-muted/30 px-2.5 flex items-center justify-between font-mono text-[11px] text-muted-foreground",
+          !computedHeight && heightClass
+        )}
+      >
+        <span>{field.type === "time" ? "14:30:00" : "2026-08-28"}</span>
+        {field.type === "time" ? <Clock className="size-3 text-muted-foreground/50" /> : <Calendar className="size-3 text-muted-foreground/50" />}
+      </div>
+    );
+  }
+
+  if (field.type === "color") {
+    const color = String(field.defaultValue || "#3b82f6");
+    return (
+      <div className="flex items-center gap-2 p-1.5 rounded-lg border border-border/60 bg-muted/30">
+        <div className="size-5 rounded-md border border-border/60 shadow-2xs" style={{ backgroundColor: color }} />
+        <span className="text-[11px] font-mono uppercase text-foreground">{color}</span>
+      </div>
+    );
+  }
+
+  if (field.type === "rate") {
+    const max = field.maxRate || 5;
+    const current = Number(field.defaultValue) || 4;
+    return (
+      <div className="flex items-center gap-1 p-1.5 rounded-lg border border-border/60 bg-muted/30">
+        {Array.from({ length: max }).map((_, i) => (
+          <Star key={i} className={cn("size-3.5", i < current ? "text-amber-400 fill-amber-400" : "text-muted-foreground/30")} />
+        ))}
+        <span className="text-[10px] font-mono text-muted-foreground ml-1.5">{current}/{max}</span>
+      </div>
+    );
+  }
+
+  if (field.type === "code") {
+    return (
+      <div className="rounded-lg border border-border/60 bg-muted/40 p-2 font-mono text-[10px] space-y-1">
+        <div className="flex items-center justify-between text-muted-foreground pb-1 border-b border-border/40">
+          <span className="flex items-center gap-1"><Terminal className="size-2.5" /> {(field.language || "yaml").toUpperCase()}</span>
+          <span>script</span>
+        </div>
+        <div className="text-muted-foreground/70 truncate">{field.defaultValue ? String(field.defaultValue).split("\n")[0] : "# 脚本配置..."}</div>
       </div>
     );
   }
@@ -216,9 +359,11 @@ export function DesignerCanvas({
   sections,
   selectedField,
   selectedSection,
+  formMeta,
   activeSectionId,
   onSelectField,
   onSelectSection,
+  onSelectGlobal,
   onMoveField,
   onDuplicateField,
   onDeleteField,
@@ -275,7 +420,50 @@ export function DesignerCanvas({
           </button>
         </div>
       ) : (
-        <div className="space-y-6 max-w-4xl mx-auto">
+        <div className="space-y-5 max-w-4xl mx-auto">
+          {/* 🌟 表单全局元数据卡片 (点击可激活全局属性配置) */}
+          <div
+            onClick={(e) => {
+              e.stopPropagation();
+              onSelectGlobal();
+            }}
+            className={cn(
+              "p-4 rounded-2xl border bg-card/60 backdrop-blur-md transition-all cursor-pointer select-none",
+              !selectedField && !selectedSection
+                ? "border-primary ring-2 ring-primary/20 bg-primary/5 shadow-sm"
+                : "border-border/80 hover:border-border hover:bg-muted/30"
+            )}
+          >
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <div className="flex items-center gap-2.5 min-w-0">
+                <div className="flex size-7 items-center justify-center rounded-lg bg-primary/10 border border-primary/20 text-primary shrink-0">
+                  <Sparkles className="size-3.5" />
+                </div>
+                <div className="min-w-0">
+                  <div className="flex items-center gap-2">
+                    <span className="text-sm font-bold text-foreground truncate">
+                      {formMeta.name || "未命名表单"}
+                    </span>
+                    <Badge variant="primary" className="text-[10px] font-mono h-4 px-1.5 py-0">
+                      v{formMeta.version || "1.0.0"}
+                    </Badge>
+                  </div>
+                  {formMeta.description && (
+                    <p className="text-[11px] text-muted-foreground truncate pt-0.5">
+                      {formMeta.description}
+                    </p>
+                  )}
+                </div>
+              </div>
+
+              {/* 必填 Form ID 胶囊 */}
+              <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-muted/60 border border-border/80 text-[11px] font-mono">
+                <span className="text-muted-foreground">ID:</span>
+                <span className="font-bold text-primary truncate max-w-[160px]">{formMeta.id || "未设置"}</span>
+              </div>
+            </div>
+          </div>
+
           {sections.map((sec) => {
             const isSectionSelected = selectedSection?.id === sec.id && !selectedField;
             const Icon = sec.icon || Settings;

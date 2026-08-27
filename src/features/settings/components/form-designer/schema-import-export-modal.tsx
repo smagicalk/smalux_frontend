@@ -10,34 +10,34 @@ import {
 } from "@/shared/ui/dialog";
 import { Button } from "@/shared/ui/button";
 import { toast } from "@/shared/ui/toaster";
-import type { FormSectionSchema } from "@/shared/ui/schema-form";
+import type { FormSchemaDefinition } from "@/shared/ui/schema-form";
 
 export interface SchemaImportExportModalProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   mode: "export" | "import";
-  sections: FormSectionSchema[];
-  onImport: (sections: FormSectionSchema[]) => void;
+  formDefinition: FormSchemaDefinition;
+  onImport: (definition: FormSchemaDefinition) => void;
 }
 
 export function SchemaImportExportModal({
   open,
   onOpenChange,
   mode,
-  sections,
+  formDefinition,
   onImport
 }: SchemaImportExportModalProps) {
   const [copied, setCopied] = useState(false);
   const [importCode, setImportCode] = useState("");
   const [parseError, setParseError] = useState("");
 
-  const jsonCode = JSON.stringify(sections, null, 2);
+  const jsonCode = JSON.stringify(formDefinition, null, 2);
 
   // 复制 Schema 到剪贴板
   const handleCopy = () => {
     navigator.clipboard.writeText(jsonCode);
     setCopied(true);
-    toast.success("Schema JSON 代码已复制到剪贴板");
+    toast.success("表单 Schema JSON 代码已复制到剪贴板");
     setTimeout(() => setCopied(false), 2000);
   };
 
@@ -47,7 +47,7 @@ export function SchemaImportExportModal({
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = `smalux-form-schema-${Date.now()}.json`;
+    a.download = `${formDefinition.id || "smalux-form-schema"}-${Date.now()}.json`;
     a.click();
     URL.revokeObjectURL(url);
     toast.success("已下载 Schema 配置文件");
@@ -57,18 +57,23 @@ export function SchemaImportExportModal({
   const handlePerformImport = () => {
     setParseError("");
     if (!importCode.trim()) {
-      setParseError("请输入或粘贴要导入的 Schema JSON 代码");
+      setParseError("请输入或粘贴要导入的 FormSchemaDefinition JSON 代码");
       return;
     }
 
     try {
       const parsed = JSON.parse(importCode);
-      if (!Array.isArray(parsed)) {
-        setParseError("导入的 Schema 必须为数组结构 (FormSectionSchema[])");
+      if (!parsed || typeof parsed !== "object" || Array.isArray(parsed)) {
+        setParseError("导入的 Schema 必须为包含 id, name 与 sections 的标准 JSON 对象");
         return;
       }
-      onImport(parsed);
-      toast.success("Schema 成功解析，表单已全量还原！");
+      if (!parsed.id || !parsed.name || !Array.isArray(parsed.sections)) {
+        setParseError("Schema 缺少必填字段: id (唯一标识), name (表单名称) 或 sections (分块数组)");
+        return;
+      }
+
+      onImport(parsed as FormSchemaDefinition);
+      toast.success(`表单「${parsed.name}」已成功解析并全量还原！`);
       onOpenChange(false);
     } catch (err: any) {
       setParseError(`JSON 语法解析失败: ${err?.message || "请检查格式"}`);
@@ -85,12 +90,12 @@ export function SchemaImportExportModal({
             </div>
             <div>
               <DialogTitle className="text-sm font-bold text-foreground">
-                {mode === "export" ? "导出表单 Schema 代码" : "导入 Schema 还原表单"}
+                {mode === "export" ? "导出表单 Schema 定义 (FormSchemaDefinition)" : "导入 Schema 还原表单"}
               </DialogTitle>
               <DialogDescription className="text-xs text-muted-foreground pt-0.5">
                 {mode === "export"
-                  ? "当前可视画布中设计的表单结构已转换为标准 JSON Schema 规范，可直接复制或下载使用。"
-                  : "粘贴任意合法的 FormSectionSchema 规范 JSON 代码，一键将表单结构完整还原至画布中。"}
+                  ? `包含全局 Form ID [${formDefinition.id}]、表单名称与全部分块字段的标准 Schema 对象。`
+                  : "粘贴包含 id, name 与 sections 的标准 FormSchemaDefinition JSON 代码，一键将表单完整还原至画布中。"}
               </DialogDescription>
             </div>
           </div>
@@ -112,7 +117,7 @@ export function SchemaImportExportModal({
                   setImportCode(e.target.value);
                   setParseError("");
                 }}
-                placeholder="在此粘贴 [ { id: 'sec-1', title: '...', fields: [ ... ] } ] 格式的 JSON Schema 代码..."
+                placeholder='在此粘贴 { "id": "my_form", "name": "我的表单", "sections": [ ... ] } 格式的 JSON Schema 代码...'
                 className="w-full rounded-xl border border-border/80 bg-muted/30 p-3.5 text-xs font-mono outline-none focus:border-primary focus:ring-2 focus:ring-primary/20 text-foreground resize-none"
               />
               {parseError && (

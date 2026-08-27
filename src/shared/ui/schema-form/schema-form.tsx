@@ -6,18 +6,25 @@ import type { SchemaFormProps, FormFieldSchema } from "./types";
 import { FormSectionCard } from "./form-section-card";
 import { FormFieldRenderer } from "./form-field-renderer";
 
+/** 纯展示/排版辅助类控件，无需数据收集与校验 */
+export const DISPLAY_ONLY_FIELD_TYPES = new Set<string>(["divider", "alert"]);
+
 /**
- * 提取所有字段的默认初始值
+ * 提取所有数据录入字段的默认初始值
  */
 function extractDefaultValues(sections: SchemaFormProps["sections"]): Record<string, any> {
   const defaults: Record<string, any> = {};
   sections.forEach((sec) => {
     sec.fields.forEach((field) => {
+      // 纯展示排版类控件无需产生默认数据
+      if (DISPLAY_ONLY_FIELD_TYPES.has(field.type)) {
+        return;
+      }
       if (field.defaultValue !== undefined) {
         defaults[field.name] = field.defaultValue;
       } else if (field.type === "switch") {
         defaults[field.name] = false;
-      } else if (field.type === "tags" || field.type === "multi-select") {
+      } else if (field.type === "tags" || field.type === "multi-select" || field.type === "checkbox-group") {
         defaults[field.name] = [];
       } else if (field.type === "key-value") {
         defaults[field.name] = [];
@@ -168,7 +175,15 @@ export function SchemaForm<T extends Record<string, any> = Record<string, any>>(
     if (!isValid) return;
 
     if (onSubmit) {
-      await onSubmit(formData as T);
+      const pureData: Record<string, any> = {};
+      sections.forEach((sec) => {
+        sec.fields.forEach((field) => {
+          if (!DISPLAY_ONLY_FIELD_TYPES.has(field.type) && field.name && formData[field.name] !== undefined) {
+            pureData[field.name] = formData[field.name];
+          }
+        });
+      });
+      await onSubmit(pureData as T);
     }
   };
 
